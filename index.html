@@ -57,6 +57,17 @@
   .stat span.bar { height: 7px; background: #dde6f2; border-radius: 4px; overflow: hidden; }
   .stat span.bar b { display: block; height: 100%; background: #d62828; border-radius: 4px; transition: width .25s; }
   #hDesc { font-size: 14px; line-height: 20px; margin: 2px 0 0; grid-column: 1 / -1; color: #24324a; }
+  #chapters { margin-top: 10px; }
+  #chapterList { display: grid; gap: 6px; }
+  .chap { display: grid; grid-template-columns: 1fr auto; gap: 0 10px; align-items: center; padding: 6px 10px; border: 2px solid #a9c8ec; border-radius: 8px; background: rgba(255,255,255,.75); }
+  .chap b { color: #1d4fa3; font-size: 16px; grid-column: 1; }
+  .chap span { font-size: 13px; line-height: 18px; grid-column: 1; }
+  .chap .chip { grid-column: 2; grid-row: 1 / span 2; }
+  #storyCard { position: fixed; left: 50%; top: 78px; transform: translateX(-50%); width: min(560px, 86vw); padding: 10px 18px; border-radius: 6px; pointer-events: none;
+    background: linear-gradient(90deg, transparent 22px, #ef6f6f 22px, #ef6f6f 24px, transparent 24px), repeating-linear-gradient(#fdfcf6 0 22px, #a9c8ec 22px 23px);
+    color: #24324a; box-shadow: 0 8px 24px rgba(0,0,0,.35); transition: opacity .7s; z-index: 6; }
+  #storyCard b { display: block; color: #d62828; font-size: 18px; padding-left: 14px; }
+  #storyCard span { display: block; font-size: 15px; line-height: 22px; padding-left: 14px; }
   .rank { font-size: 72px; font-weight: 800; color: #d62828; float: right; line-height: 1; margin-top: -6px; }
 </style>
 </head>
@@ -75,7 +86,7 @@
     <h1>✈ Máy Bay Giấy</h1>
     <h2>Không Chiến Sân Trường</h2>
     <p class="en">Paper Plane Dogfight: Schoolyard Skies</p>
-    <p><b>BẢN TIN NHIỆM VỤ:</b> Phi đội "Hạc Giấy Đỏ" của Trường Bên Kia Sông đang xâm phạm vùng trời trường ta. Phi đội <b>Ô Li</b> xuất kích! Vượt qua 11 trận: đánh chặn, gió mùa, bảo vệ sân trường khỏi bom nước, sương mù, Tàu Mẹ, đêm trăng, cặp át Song Ưng, giông bão… hạ gục át chủ bài <b>Đại Bàng Đỏ</b>, rồi <b>phản công</b>: hộ tống máy bay ném bom Hạc Lớn sang thả bóng giấy xuống trường đối thủ để kết thúc cuộc chiến.</p>
+    <p><b>BẢN TIN NHIỆM VỤ:</b> Hai trường đã chia thành hai phe: <b style="color:#1d4fa3">Phe Xanh</b> (trường ta) và <b style="color:#c8102e">Phe Đỏ</b> (Trường Bên Kia Sông). Hạm đội máy bay giấy của Phe Đỏ đang xâm phạm vùng trời trường ta. Phi đội <b>Ô Li</b> của Phe Xanh xuất kích! Vượt qua 11 trận: đánh chặn, gió mùa, bảo vệ sân trường khỏi bom nước, sương mù, Tàu Mẹ, đêm trăng, cặp át Song Ưng, giông bão… hạ gục <b>Đại Bàng Đỏ</b>, át chủ bài giỏi nhất của Phe Đỏ, rồi <b>phản công</b>: hộ tống máy bay ném bom Hạc Lớn sang thả bóng giấy xuống trường đối thủ để kết thúc cuộc chiến.</p>
     <div class="keys">
       <b>Chuột</b><span>Ngắm hướng bay (máy bay tự bay theo, kiểu War Thunder)</span>
       <b id="kPitch">W / S</b><span id="kPitchTxt">Bay lên / bay xuống (thả phím: tự bay ngang)</span>
@@ -114,17 +125,19 @@
       </div>
       <p id="hDesc"></p>
     </div>
-    <button id="startBtn">XUẤT KÍCH ▶</button>
+    <button id="startBtn" title="Chơi liền từ chương 1 đến hết">XUẤT KÍCH ▶</button><button id="chapterBtn" class="alt">CHỌN CHƯƠNG ☰</button>
+    <div id="chapters" class="hidden"><div id="chapterList"></div></div>
   </div>
 </div>
 
+<div id="storyCard" class="hidden"><b id="storyT"></b><span id="storyB"></span></div>
 <div id="result" class="overlay hidden">
   <div class="paper">
     <div class="rank" id="resRank">S</div>
     <h1 id="resTitle">Nhiệm vụ hoàn thành</h1>
     <h2 id="resSub"></h2>
     <table id="resTable"></table>
-    <button id="againBtn">CHƠI LẠI</button><button class="alt" id="menuBtn">MENU</button>
+    <button id="nextBtn" class="hidden">CHƯƠNG TIẾP ▶</button><button id="againBtn">CHƠI LẠI</button><button class="alt" id="menuBtn">MENU</button>
   </div>
 </div>
 
@@ -747,7 +760,7 @@ const houseCols = [0xf4d35e, 0x9ad1d4, 0xf7a072, 0xc5e1a5, 0xf2b5d4, 0xffffff, 0
 function house(cx, cz, w, d, h, alongZ) {   // w = frontage
   const sx = alongZ ? d : w, sz = alongZ ? w : d;
   houseList.push({ x: cx, y: h / 2, z: cz, sv: new THREE.Vector3(sx, h, sz), color: houseCols[Math.floor(rnd() * houseCols.length)] });
-  addBox(cx - sx / 2, 0, cz - sz / 2, cx + sx / 2, h, cz + sz / 2);
+  houseList[houseList.length - 1].box = addBox(cx - sx / 2, 0, cz - sz / 2, cx + sx / 2, h, cz + sz / 2);
 }
 const tallH = () => rnd() < 0.05 ? R(28, 42) : R(8, 22);
 for (const sx of [-1, 1]) for (const base of [67, 87, 110, 133]) for (let z = 30; z > -1036;) {
@@ -757,7 +770,17 @@ for (const sx of [-1, 1]) for (const base of [67, 87, 110, 133]) for (let z = 30
 }
 for (const zb of [30, 52, 75, 98, 121]) for (let x = -150; x < 150;) { const w = R(4, 6.5), d = R(8, 12); house(x + w / 2, zb + d / 2, w - 0.25, d, tallH(), false); x += w; }
 for (const zb of [-1036, -1059, -1082, -1105, -1128]) for (let x = -150; x < 150;) { const w = R(4, 6.5), d = R(8, 12); house(x + w / 2, zb - d / 2, w - 0.25, d, tallH(), false); x += w; }
-instances(new THREE.BoxGeometry(1, 1, 1), lam(0xffffff, { map: houseTex }), houseList, false);
+const houseMesh = instances(new THREE.BoxGeometry(1, 1, 1), lam(0xffffff, { map: houseTex }), houseList, false);
+// houses standing where the river and the Red Faction's school go (escort finale): cleared for that chapter only
+const rivalSiteHouses = houseList.map((h, i) => ({ h, i })).filter(({ h }) => h.z < -1030 && Math.abs(h.x) < 75);
+function setRivalSiteHouses(show) {
+  const m4 = new THREE.Matrix4();
+  for (const { h, i } of rivalSiteHouses) {
+    if (show) m4.compose(_p.set(h.x, h.y, h.z), _q.identity(), h.sv); else m4.makeScale(0, 0, 0);
+    houseMesh.setMatrixAt(i, m4); h.box.off = !show;
+  }
+  houseMesh.instanceMatrix.needsUpdate = true;
+}
 
 // Water tower landmark
 put(new THREE.CylinderGeometry(0.6, 0.6, 26, 10), MAT.concrete, -100, 13, -480);
@@ -781,7 +804,16 @@ solid(-2.2, 0.4, -117.8, 2.2, 0.8, -122.2, MAT.concrete);
 put(new THREE.CylinderGeometry(0.08, 0.14, 16, 10), MAT.metal, 0, 8.8, -120);
 put(new THREE.SphereGeometry(0.22, 10, 8), lam(0xffd93b), 0, 16.9, -120);
 addBox(-0.3, 0, -120.3, 0.3, 17, -119.7);
-const flagTex = canvasTex(300, 200, (g, w, h) => { g.fillStyle = '#da251d'; g.fillRect(0, 0, w, h); g.fillStyle = '#ffff00'; starPath(g, w / 2, h / 2 + 4, 62); g.fill(); });
+// faction flags: our side is the Blue Faction (white paper plane on blue), theirs the Red Faction (black eagle on red)
+function paperPlaneMark(g, cx, cy, s, col) {
+  g.fillStyle = col; g.beginPath(); g.moveTo(cx + 1.0 * s, cy - 0.45 * s); g.lineTo(cx - 1.0 * s, cy + 0.05 * s); g.lineTo(cx - 0.2 * s, cy + 0.2 * s); g.closePath(); g.fill();
+  g.globalAlpha = 0.75; g.beginPath(); g.moveTo(cx + 1.0 * s, cy - 0.45 * s); g.lineTo(cx - 0.2 * s, cy + 0.2 * s); g.lineTo(cx - 0.05 * s, cy + 0.6 * s); g.closePath(); g.fill(); g.globalAlpha = 1;
+}
+const flagTex = canvasTex(300, 200, (g, w, h) => {
+  g.fillStyle = '#1d4fa3'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#ffffff'; g.fillRect(0, h - 26, w, 8); g.fillRect(0, 18, w, 8);   // white stripes
+  paperPlaneMark(g, w / 2, h / 2, 62, '#ffffff');
+});
 const flagGeo = new THREE.PlaneGeometry(4.2, 2.8, 18, 8); flagGeo.translate(2.1, 0, 0);
 const flagBase = flagGeo.attributes.position.array.slice();
 put(flagGeo, lam(0xffffff, { map: flagTex, side: THREE.DoubleSide }), 0.1, 15.2, -120);
@@ -930,9 +962,16 @@ rivalBlock(-58, -42, -1110, -1290, 14); rivalBlock(42, 58, -1150, -1330, 14); ri
 for (const sx of [-1, 1]) solid(sx * 60 - 0.5, 0, -1080, sx * 60 + 0.5, 3.2, -1500, lam(0x9c4a3a));
 solid(-60, 0, -1500, 60, 4, -1501, lam(0x9c4a3a));
 put(new THREE.PlaneGeometry(20, 3), signMat(signTex([{ t: 'TRƯỜNG BÊN KIA SÔNG', size: 110 }], { w: 1024, h: 150, bg: '#7a2e2e', fg: '#ffd93b' })), 0, 15.5, -1461.9, { cast: false });
-const rivalFlagTex = canvasTex(300, 200, (g, w, h) => { g.fillStyle = '#5b2a86'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.beginPath(); g.moveTo(80, 140); g.lineTo(230, 60); g.lineTo(150, 150); g.closePath(); g.fill(); });
+const rivalFlagTex = canvasTex(300, 200, (g, w, h) => {
+  g.fillStyle = '#c8102e'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#1a0505'; g.fillRect(0, h - 26, w, 8); g.fillRect(0, 18, w, 8);
+  // a black eagle with spread, feathered wings
+  g.fillStyle = '#1a0505'; g.beginPath(); g.moveTo(150, 70); g.lineTo(70, 92); g.lineTo(52, 84); g.lineTo(64, 100); g.lineTo(48, 104); g.lineTo(70, 112); g.lineTo(130, 110);
+  g.lineTo(140, 150); g.lineTo(150, 136); g.lineTo(160, 150); g.lineTo(170, 110); g.lineTo(230, 112); g.lineTo(252, 104); g.lineTo(236, 100); g.lineTo(248, 84); g.lineTo(230, 92); g.closePath(); g.fill();
+  g.beginPath(); g.arc(150, 72, 11, 0, PI * 2); g.fill();
+});
 solid(-0.15, 0, -1200.15, 0.15, 16, -1199.85, MAT.metal);
-put(new THREE.PlaneGeometry(4, 2.6), lam(0xffffff, { map: rivalFlagTex, side: THREE.DoubleSide }), 2.1, 14.6, -1200, { cast: false });
+const rivalFlag = put(new THREE.PlaneGeometry(4, 2.6), lam(0xffffff, { map: rivalFlagTex, side: THREE.DoubleSide, transparent: true, alphaTest: 0.05 }), 2.1, 14.6, -1200, { cast: false });
 put(new THREE.PlaneGeometry(36, 22), decal(lam(0x4f9a43), 3), 18, 0.04, -1390, { rx: -PI / 2, cast: false });   // football pitch
 for (const sx of [-1, 1]) solid(18 + sx * 18 - 0.1, 0, -1393, 18 + sx * 18 + 0.1, 2.4, -1387, MAT.white);
 const rivalGroup = new THREE.Group();
@@ -963,6 +1002,7 @@ function pointBlocked(p, margin = 0) {
   const items = cellAt(p.x, p.z);
   for (let i = 0; i < items.length; i++) {
     const it = items[i];
+    if (it.off) continue;
     if (it.t === 0) {
       if (p.x > it.min.x - margin && p.x < it.max.x + margin && p.y > it.min.y - margin && p.y < it.max.y + margin && p.z > it.min.z - margin && p.z < it.max.z + margin) return true;
     } else if (it.t === 1) {
@@ -1001,6 +1041,7 @@ function collideSphere(pos, PR) {
   };
   for (let i = 0; i < items.length; i++) {
     const it = items[i];
+    if (it.off) continue;
     if (it.t === 0) testBox(it);
     else if (it.t === 1) {
       const dx = pos.x - it.c.x, dy = (pos.y - it.c.y) / it.sy, dz = pos.z - it.c.z, r2 = it.r + PR;
@@ -1157,6 +1198,22 @@ const PLANE_GEOS = {
     [0, 0.02, -1.1], [0, 0.02, 0.45], [0, -0.22, 0.3]]),
   ring: makeRingGeo(),
   crumple: makeCrumpleGeo(),
+  // Đại Bàng Đỏ: a B-2 style flying wing (swept leading edge, sawtooth trailing edge, cockpit hump)
+  // whose wingtips fan out into eagle "finger" feathers
+  eagle: (() => {
+    const N = [0, 0.06, -0.9], M = [-0.45, 0.07, 0.1], T = [-1.5, 0.12, 0.33];
+    const A = [-1.17, 0.1, 0.62], B = [-0.82, 0.08, 0.36], C = [-0.47, 0.07, 0.64], D = [-0.2, 0.06, 0.42], E = [0, 0.06, 0.6];
+    const H = [0, 0.22, -0.25], S = [-0.32, 0.07, 0.02], R = [0, 0.1, 0.42];
+    const feather = (b0, b1, tip) => [b0, tip, b1];
+    return triGeo([
+      N, T, M, M, T, A, M, A, B, M, B, C, M, C, D, M, D, E, M, E, N,   // wing (fan around M)
+      N, S, H, H, S, R,   // cockpit hump
+      ...feather([-1.32, 0.11, 0.24], [-1.5, 0.12, 0.33], [-1.92, 0.2, 0.36]),   // primaries spread like fingers
+      ...feather([-1.36, 0.11, 0.38], [-1.46, 0.11, 0.5], [-1.86, 0.18, 0.6]),
+      ...feather([-1.25, 0.1, 0.5], [-1.33, 0.1, 0.6], [-1.68, 0.15, 0.82]),
+      ...feather([-1.1, 0.09, 0.58], [-1.17, 0.1, 0.62], [-1.36, 0.12, 0.92]),
+    ]);
+  })(),
   mother: makeMotherGeo(),
 };
 const PLANE_EDGES = {};
@@ -1191,8 +1248,8 @@ const KINDS = {
   crumple:   { hp: 20, veq: 10, rates: [1.8, 2.5, 0.8], scale: 0.42, hitR: 0.55, color: 0xe8e2d0, gunDmg: 0, gunCone: 0, gunRange: 0, fireRate: 1, points: 80, label: 'Giấy Vo', evade: 0.3, geo: 'crumple', ai: 'ram' },
   mother:    { hp: 420, veq: 5, rates: [0.6, 1.0, 0.25], scale: 0.95, hitR: 1.4, color: 0xc0c7d6, gunDmg: 2.4, gunCone: 0.16, gunRange: 26, fireRate: 4, points: 600, label: 'Tàu Mẹ', evade: 0.1, geo: 'mother', ai: 'carrier', mslN: 2, flares: 4 },
   elite:     { hp: 230, veq: 10.5, rates: [2.0, 3.6, 0.8], scale: 0.4, hitR: 0.5, color: 0x1e1e24, gunDmg: 3.2, gunCone: 0.1, gunRange: 32, fireRate: 9, points: 800, label: 'Song Ưng', evade: 2.2, geo: 'swallow', ai: 'elite', mslN: 4, flares: 6 },
-  heron:     { hp: 360, veq: 7, rates: [0.7, 1.2, 0.3], scale: 0.9, hitR: 1.2, color: 0x3d6fd8, gunDmg: 0, gunCone: 0, gunRange: 0, fireRate: 1, label: 'Hạc Lớn', geo: 'glider', ai: 'route', flares: 6 },
-  ace:    { hp: 520, veq: 11, rates: [2.1, 3.6, 0.85], scale: 0.46, hitR: 0.65, color: 0x8e1414, gunDmg: 3.4, gunCone: 0.09, gunRange: 34, fireRate: 10, points: 2000, label: 'Đại Bàng Đỏ', evade: 2.4, mslN: 6, flares: 8, ai: 'boss' },
+  heron:     { hp: 480, veq: 7, rates: [0.7, 1.2, 0.3], scale: 2.0, hitR: 2.4, color: 0x3d6fd8, gunDmg: 0, gunCone: 0, gunRange: 0, fireRate: 1, label: 'Hạc Lớn', geo: 'glider', ai: 'route', flares: 6 },
+  ace:    { hp: 520, veq: 11, rates: [2.1, 3.6, 0.85], scale: 0.36, hitR: 0.65, color: 0xc8102e, geo: 'eagle', gunDmg: 3.4, gunCone: 0.09, gunRange: 34, fireRate: 10, points: 2000, label: 'Đại Bàng Đỏ', evade: 2.4, mslN: 6, flares: 8, ai: 'boss' },
 };
 // player's folding designs (hangar): each tweaks the base player plane
 const PLAYER_DESIGNS = {
@@ -1245,9 +1302,9 @@ function makeFlyer(kind, team, name, color, edgeColor) {
   mesh.castShadow = true; g.add(mesh);
   const edges = new THREE.LineSegments(PLANE_EDGES[geo], addFlutter(new THREE.LineBasicMaterial({ color: edgeColor ?? (kind === 'ace' ? 0x000000 : 0x7d8da0), transparent: true, opacity: edgeColor != null ? 0.95 : 0.7 })));
   g.add(edges);
-  if (kind === 'ace') {   // black tiger stripes on the boss
-    const st = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.08), new THREE.MeshBasicMaterial({ color: 0x111111, side: THREE.DoubleSide }));
-    for (const sx of [-1, 1]) for (let k = 0; k < 2; k++) { const m = st.clone(); m.rotation.set(-PI / 2, 0, sx * 0.5); m.position.set(sx * (0.3 + k * 0.18), 0.12, 0.2 + k * 0.15); g.add(m); }
+  if (kind === 'ace') {   // dark chevrons along the wing, following the leading-edge sweep
+    const st = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.07), new THREE.MeshBasicMaterial({ color: 0x1a0505, side: THREE.DoubleSide }));
+    for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) { const m = st.clone(); m.rotation.set(-PI / 2, 0, sx * 0.62); m.position.set(sx * (0.38 + k * 0.28), 0.1 + k * 0.012, -0.32 + k * 0.2); g.add(m); }
   }
   g.scale.setScalar(K.scale);
   scene.add(g);
@@ -1631,7 +1688,7 @@ function startEscort() {
   ZONE.zMin = -1520; AREA.zMin = -1510;
   strikeTargets.length = 0;
   for (const d of STRIKE_DEFS) strikeTargets.push({ ...d, pos: d.pos.clone(), alive: true, hp: 1 });
-  rivalGroup.visible = true;
+  rivalGroup.visible = true; resetRivalFlag(); setRivalSiteHouses(false);
   for (const u of groundUnits) { u.alive = true; u.hp = u.maxHp; u.obj.visible = true; u.obj.rotation.set(0, 0, 0); u.cd = rr(0, 2); u.lockT = 0; u.ammo = u.kind === 'sam' ? 3 : 0; }
   flakShells.length = 0;
   // everyone starts over the back yard, the bomber in the middle of the formation
@@ -1641,15 +1698,18 @@ function startEscort() {
   waveState = 'escort';
   skyTo = PALETTES.sunset;
   P.hp = P.maxHp; P.msl = Math.max(P.msl, MSL_PER_WAVE); P.flares = Math.max(P.flares, FLR_PER_WAVE);
-  radio('Bảng Đen', 'Không quân Trường Bên Kia Sông đã tan tác! Đến lúc kết thúc cuộc chiến: chiến dịch Hạc Lớn, phản công!');
-  radio('Bảng Đen', 'Hộ tống Hạc Lớn vượt sông, thả bóng giấy xuống 3 mục tiêu. Bên đó còn pháo phòng không và trạm tên lửa đất đối không, bắn hạ được bằng súng!');
-  radio('Lan', 'Mấy chiếc còn sót lại sẽ liều mạng nhắm vào Hạc Lớn. Bám sát nó nhé!');
+  interceptT = 22;
+  startEscortCut();
+}
+function escortBriefing() {
+  radio('Bảng Đen', 'Hộ tống Hạc Lớn vượt sông, thả bóng giấy xuống 3 mục tiêu. Bên đó còn pháo phòng không và trạm tên lửa đất đối không, bắn hạ được bằng súng!', true);
+  radio('Lan', 'Mấy chiếc còn sót lại của Phe Đỏ sẽ liều mạng nhắm vào Hạc Lớn. Đừng bỏ nó quá xa nhé!');
   flash(WAVES[wave] ? WAVES[wave].title : 'PHẢN CÔNG', 'Hộ tống Hạc Lớn · ném bóng giấy xuống Trường Bên Kia Sông', 3.2);
 }
 function endEscortWorld() {   // back to the normal campaign layout
   gameMode = 'campaign'; ZONE.zMin = -1030; AREA.zMin = -1026; heron = null;
   strikeTargets.length = 0; flakShells.length = 0;
-  rivalGroup.visible = false;
+  rivalGroup.visible = false; resetRivalFlag(); setRivalSiteHouses(true);
   for (const u of groundUnits) { u.alive = false; u.obj.visible = false; u.obj.rotation.set(0, 0, 0); }
 }
 function strikeHit(t, at) {
@@ -1659,7 +1719,7 @@ function strikeHit(t, at) {
   const left = strikeTargets.filter(x => x.alive).length;
   flash('TRÚNG ĐÍCH!', `${t.name} ngập bóng giấy · +300 · còn ${left}`, 2);
   radio('Bảng Đen', left ? `Hạc Lớn ném trúng ${t.name}! Còn ${left} mục tiêu.` : 'Tất cả mục tiêu đã ngập bóng giấy! Nhiệm vụ hoàn thành!', true);
-  if (!left && state === 'play') { escortDone = true; missionComplete(); }
+  if (!left && state === 'play') { escortDone = true; startEnding(); }
 }
 // the bomber: fly to the next live target at bombing height, release when the predicted impact is on it
 function updateHeron(a, dt) {
@@ -1876,7 +1936,7 @@ function setMute(m) { AU.muted = m; if (AU.master) AU.master.gain.value = m ? 0 
 //  Radio chatter
 // =====================================================================
 const radioQ = []; let radioT = 0; const radioCD = {};
-const WHO_COL = { 'Bảng Đen': '#9effa0', 'Lan': '#ff8fc0', 'Minh': '#6fd0ff', 'Đại Bàng Đỏ': '#ff5050', 'Địch': '#ff8a80', 'Ô Li 1': '#ffffff' };
+const WHO_COL = { 'Bảng Đen': '#9effa0', 'Lan': '#ff8fc0', 'Minh': '#6fd0ff', 'Tuấn': '#9be37a', 'Hà': '#ffb35c', 'Hạc Lớn': '#7fd6ff', 'Đại Bàng Đỏ': '#ff5050', 'Địch': '#ff8a80', 'Ô Li 1': '#ffffff' };
 function radio(who, text, prio = false) { if (prio) radioQ.unshift({ who, text }); else radioQ.push({ who, text }); if (radioQ.length > 5) radioQ.length = 5; }
 function radioOnce(key, who, text, cd = 15) { if ((radioCD[key] || -99) > clock) return; radioCD[key] = clock + cd; radio(who, text, true); }
 function updateRadio(dt) {
@@ -2050,7 +2110,18 @@ function refreshHangar() {
 }
 
 $('startBtn').onclick = () => startGame();
-$('againBtn').onclick = () => startGame();
+$('againBtn').onclick = () => startGame(startChapter, playMode === 'chapter');
+$('nextBtn').onclick = () => startGame(wave + 1, true);
+$('chapterBtn').onclick = () => {
+  const box = $('chapterList');
+  if (!box.childElementCount) WAVES.forEach((W, i) => {   // built on first open (WAVES is defined further down)
+    const b = document.createElement('div'); b.className = 'chap';
+    b.innerHTML = `<b>${W.title}</b><span>${W.story || ''}</span><button class="chip">CHƠI ▶</button>`;
+    b.querySelector('button').onclick = () => startGame(i, true);
+    box.appendChild(b);
+  });
+  $('chapters').classList.toggle('hidden');
+};
 $('menuBtn').onclick = () => toMenu();
 $('quitBtn').onclick = () => { togglePause(); toMenu(); };
 $('resumeBtn').onclick = (e) => { e.stopPropagation(); togglePause(); };
@@ -2097,24 +2168,33 @@ function setupScene() {
   aim.set(0, 0, -1);
 }
 
-function startGame() {
+function startGame(chapter = 0, single = false) {
+  playMode = single ? 'chapter' : 'campaign'; startChapter = chapter;
   initAudio();
   if (paused) togglePause();
   endEscortWorld();
   setupScene();
-  skyTo = PALETTES.morning; windOn = 0; pendingIntro = null; allyReturns.length = 0;
-  wave = -1; waveState = 'wait'; waveT = 4; score = 0; kills = 0; missionTime = 0; endT = 0;
+  skyTo = PALETTES.morning; windOn = 0; pendingIntro = null; allyReturns.length = 0; cut = null;
+  wave = chapter - 1; waveState = 'wait'; waveT = chapter ? 6 : 4; score = 0; kills = 0; missionTime = 0; endT = 0;
   Object.assign(stats, { shots: 0, hits: 0, msl: 0, dmg: 0, passes: 0, evades: 0, skim: 0, bestCombo: 0, booms: 0, pickups: 0, courses: 0, objLost: 0, sonicDmg: 0, ground: 0 });
   popups.length = 0;
   gaps.forEach(g => { g.inside = false; g.lastT = -99; });
   cine.t = 0; cineCD = 0; document.body.classList.remove('cine');
   radioQ.length = 0; radioT = 0; for (const k in radioCD) delete radioCD[k];
-  radio('Bảng Đen', 'Đây là đài chỉ huy Bảng Đen. Phi đội Ô Li, cất cánh! Radar phát hiện máy bay giấy lạ hướng sân sau.');
-  radio('Lan', 'Ô Li 2 sẵn sàng! Bay sát cánh với cậu nhé!');
-  radio('Minh', 'Ô Li 3 vào vị trí. Hôm nay không ai được làm nhàu máy bay của tớ!');
-  radio('Bảng Đen', 'Nhắc lại: không bay ra khỏi khuôn viên trường. Ra xa quá các em sẽ choáng và mất kiểm soát!');
-  radio('Lan', 'Mẹo nè: luồn dưới ghế đá hay qua tán cây, tên lửa bám theo sẽ đâm sầm vào đó!');
-  $('menu').classList.add('hidden'); $('result').classList.add('hidden'); $('objective').classList.remove('hidden');
+  if (!chapter) {
+    radio('Bảng Đen', 'Đây là đài chỉ huy Bảng Đen. Phi đội Ô Li, cất cánh! Radar phát hiện máy bay giấy lạ hướng sân sau.');
+    radio('Lan', 'Ô Li 2 sẵn sàng! Bay sát cánh với cậu nhé!');
+    radio('Minh', 'Ô Li 3 vào vị trí. Hôm nay không ai được làm nhàu máy bay của tớ!');
+    radio('Bảng Đen', 'Nhắc lại: không bay ra khỏi khuôn viên trường. Ra xa quá các em sẽ choáng và mất kiểm soát!');
+    radio('Lan', 'Mẹo nè: luồn dưới ghế đá hay qua tán cây, tên lửa bám theo sẽ đâm sầm vào đó!');
+  } else {
+    radio('Bảng Đen', `Phi đội Ô Li, cất cánh! ${WAVES[chapter].title}.`);
+    skyTo = PALETTES[WAVES[chapter].sky] || PALETTES.morning;   // start under that chapter's sky
+    // later chapters: the back-yard fights start over the back yard
+    if (WAVES[chapter].area === 'back') { P.pos.set(0, 12, -700); orient(P, FWD); aim.set(0, 0, -1); flyers.filter(f => f.team === 'blue' && f !== P).forEach((f, i) => f.pos.set(i ? 6 : -6, 12, -690)); }
+  }
+  $('menu').classList.add('hidden'); $('result').classList.add('hidden'); $('chapters').classList.add('hidden'); $('objective').classList.remove('hidden');
+  if (chapter) showStory(chapter);
   state = 'play';
   lockPointer();
 }
@@ -2140,35 +2220,35 @@ const PALETTES = {
 };
 for (const k in PALETTES) { PALETTES[k].fn ??= 140; PALETTES[k].ff ??= 620; }
 const WAVES = [
-  { title: 'Màn 1: Đánh chặn buổi sáng', sky: 'morning', spawn: [['dart', 4]],
+  { title: 'Chương 1: Đánh chặn buổi sáng', story: 'Sáng thứ Hai, bốn chiếc Phi Tiêu của Phe Đỏ bên kia sông bay sang, xé tờ thời khoá biểu trên bảng tin. Phi đội Ô Li cất cánh lần đầu tiên.', sky: 'morning', spawn: [['dart', 4]],
     radio: [['Bảng Đen', 'Bốn máy bay Phi Tiêu đang tiến vào. Tiêu diệt chúng!'], ['Lan', 'Nhớ nhé: B là siêu thanh, cánh gập lại bay vèo vèo nhưng khó lượn lắm!']] },
-  { title: 'Màn 2: Gió mùa', sky: 'windy', wind: 1, spawn: [['swallow', 3], ['dart', 2]],
+  { title: 'Chương 2: Gió mùa', story: 'Bị đuổi về tay trắng, chúng chờ gió mùa đông bắc nổi lên rồi thả Chim Én, loại nhanh nhất, theo gió lao sang.', sky: 'windy', wind: 1, spawn: [['swallow', 3], ['dart', 2]],
     radio: [['Bảng Đen', 'Gió mùa đông bắc thổi mạnh, máy bay sẽ bị dạt! Chim Én đuôi chẻ đang lao tới.'], ['Lan', 'Gió đẩy cả đạn lẫn máy bay, ngắm bù một chút nha!']] },
-  { title: 'Màn 3: Bảo vệ sân trường', sky: 'noon', defend: ['flag', 'roofA', 'roofB'], area: 'front', spawn: [['ring', 3], ['nakamura', 1], ['dart', 2]],
+  { title: 'Chương 3: Bảo vệ sân trường', story: 'Thua hai trận, Bên Kia Sông đổi chiến thuật: Vòng Ống mang bom nước định làm ướt cột cờ và mái nhà trước giờ chào cờ.', sky: 'noon', defend: ['flag', 'roofA', 'roofB'], area: 'front', spawn: [['ring', 3], ['nakamura', 1], ['dart', 2]],
     radio: [['Bảng Đen', 'Khẩn cấp! Vòng Ống mang bom nước định ném vào cột cờ và mái hai dãy nhà! Hạ chúng trước khi chúng bay tới!'], ['Minh', 'Bom nước bắn vỡ được đấy, cứ xả súng vào!']] },
-  { title: 'Màn 4: Gánh xiếc hoàng hôn', sky: 'sunset', spawn: [['stunt', 2], ['boomerang', 2], ['tape', 1]],
+  { title: 'Chương 4: Gánh xiếc hoàng hôn', story: 'Chiều tan học, một gánh xiếc trên không kéo đến: Diều Nhào Lộn, Bumerang, và một chiếc Băng Keo chuyên vá cho đồng bọn.', sky: 'sunset', spawn: [['stunt', 2], ['boomerang', 2], ['tape', 1]],
     radio: [['Bảng Đen', 'Có một chiếc Băng Keo đi kèm, nó dán vá cho đồng đội. Hạ nó trước!'], ['Lan', 'Băng Keo nhát lắm, thấy cậu là chạy. Bật siêu thanh đuổi theo!']] },
-  { title: 'Màn 5: Sương sớm', sky: 'mist', spawn: [['nakamura', 2], ['crumple', 3], ['dart', 2]],
+  { title: 'Chương 5: Sương sớm', story: 'Sáng hôm sau sương phủ kín sân trường. Nakamura bắn tỉa và Giấy Vo cảm tử lợi dụng sương mù để đánh úp.', sky: 'mist', spawn: [['nakamura', 2], ['crumple', 3], ['dart', 2]],
     radio: [['Bảng Đen', 'Sương mù dày đặc, mắt thường chỉ thấy vài chục mét. Nhìn radar mà đánh!'], ['Minh', 'Nakamura bắn tỉa trong sương đấy, đừng bay thẳng một đường!']] },
-  { title: 'Màn 6: Tàu Mẹ', sky: 'overcast', boss: 'mother', spawn: [['mother', 1], ['crumple', 3], ['glider', 1]],
+  { title: 'Chương 6: Tàu Mẹ', story: 'Radar bắt được một bóng khổng lồ: Tàu Mẹ hình diều hộp, mang theo cả một đàn Phi Tiêu con.', sky: 'overcast', boss: 'mother', spawn: [['mother', 1], ['crumple', 3], ['glider', 1]],
     radio: [['Bảng Đen', 'Một Tàu Mẹ hình diều hộp đang thả Phi Tiêu liên tục! Kèm theo là Giấy Vo cảm tử lao thẳng vào cậu!'], ['Minh', 'Giấy Vo không bắn được, nhưng đâm trúng là đau lắm. Né sang bên rồi bắn!']] },
-  { title: 'Màn 7: Giữ sân sau', sky: 'noon', defend: ['canteen', 'roofC', 'stage'], area: 'back', spawn: [['ring', 4], ['swallow', 2], ['tape', 1]],
+  { title: 'Chương 7: Giữ sân sau', story: 'Mất Tàu Mẹ, chúng vòng ra sân sau, nhắm vào căn tin, Nhà C và sân khấu chuẩn bị cho lễ khai giảng.', sky: 'noon', defend: ['canteen', 'roofC', 'stage'], area: 'back', spawn: [['ring', 4], ['swallow', 2], ['tape', 1]],
     radio: [['Bảng Đen', 'Vòng Ống kéo sang sân sau, nhắm vào căn tin, Nhà C và sân khấu khai giảng! Bay qua hành lang ra sân sau ngay!'], ['Lan', 'Có Băng Keo vá cho bọn ném bom, hạ nó trước kẻo đánh mãi không xong!']] },
-  { title: 'Màn 8: Đêm trăng', sky: 'night', spawn: [['dart', 6], ['boomerang', 2], ['tape', 1]],
+  { title: 'Chương 8: Đêm trăng', story: 'Đêm trước lễ khai giảng, một bầy Phi Tiêu tập kích dưới ánh trăng, mong phi đội Ô Li đã ngủ say.', sky: 'night', spawn: [['dart', 6], ['boomerang', 2], ['tape', 1]],
     radio: [['Bảng Đen', 'Bầy Phi Tiêu tập kích ban đêm! Nhìn vệt đạn và radar, đừng để bị vây.'], ['Minh', 'Đêm tối bọn nó cũng khó thấy mình đấy, luồn qua tán cây mà đánh úp!']] },
-  { title: 'Màn 9: Song Ưng', sky: 'sunset', boss: 'elite', spawn: [['elite', 2]],
+  { title: 'Chương 9: Song Ưng', story: 'Hắc Ưng và Bạch Ưng, cặp át nhanh nhất bên kia sông, được cử sang với một nhiệm vụ: lùa Ô Li 1 vào bẫy.', sky: 'sunset', boss: 'elite', spawn: [['elite', 2]],
     radio: [['Hắc Ưng', 'Bạch Ưng, con mồi đây rồi. Lùa nó như mọi khi.'], ['Bạch Ưng', 'Rõ. Tôi dụ phía trước, anh khép đuôi.'], ['Bảng Đen', 'Cặp át nhanh nhất của chúng! Một chiếc dụ cậu đuổi, chiếc kia sẽ vòng ra sau. Đừng mải đuổi mồi, ngoái radar thường xuyên!']] },
-  { title: 'Màn 10: Giông bão', sky: 'storm', wind: 1.6, spawn: [['stunt', 2], ['swallow', 3], ['nakamura', 2], ['glider', 1]],
+  { title: 'Chương 10: Giông bão', story: 'Song Ưng gãy cánh. Phe Đỏ dốc toàn bộ những chiếc còn lại của hạm đội, ẩn trong cơn giông để tung đòn cuối.', sky: 'storm', wind: 1.6, spawn: [['stunt', 2], ['swallow', 3], ['nakamura', 2], ['glider', 1]],
     radio: [['Bảng Đen', 'Giông kéo tới, gió giật cực mạnh! Giữ máy bay thật chắc tay.'], ['Lan', 'Gió to thế này siêu thanh là chạy thoát nhanh nhất đó!']] },
-  { title: 'Màn 11: Đại Bàng Đỏ · 3 đấu 1', sky: 'dusk', boss: 'ace', area: 'front', spawn: [['ace', 1]],
-    radio: [['Đại Bàng Đỏ', 'Ba đánh một à? Vừa đủ để ta khởi động.'], ['Bảng Đen', 'Hắn nhanh hơn và lượn gắt hơn cả ba em! Hắn có GIÁP GIẤY KÉP: một mình bắn không thủng, phải có ít nhất 2 máy bay áp sát cùng lúc!'], ['Lan', 'Ô Li 1, Minh, khép vòng vây! Hắn vọt lên thì bật siêu thanh đuổi theo!']] },
+  { title: 'Chương 11: Đại Bàng Đỏ · 3 đấu 1', story: 'Hạm đội Phe Đỏ gần như đã bị xoá sổ. Họ chỉ còn lại một quân bài cuối cùng: Đại Bàng Đỏ, át chủ bài giỏi nhất của Phe Đỏ, chưa từng thua một trận. Một mình Ô Li 1 không đủ, cả phi đội phải cùng ra trận.', sky: 'dusk', boss: 'ace', area: 'front', spawn: [['ace', 1]],
+    radio: [], cutscene: 'eagle' },
   // the finale: their air force is gone, so we end the war by escorting our bomber across the river
-  { title: 'Màn cuối: Phản công', escort: true, spawn: [], radio: [] },
+  { title: 'Chương 12: Phản công', story: 'Đại Bàng Đỏ đã rơi, Phe Đỏ không còn máy bay nào đáng gờm. Đến lúc kết thúc cuộc chiến: hộ tống Hạc Lớn vượt sông, ném bóng giấy xuống trường đối thủ.', escort: true, spawn: [], radio: [] },
 ];
 const BOSS_INTRO = {
   elite: ['SONG ƯNG', 'Hắc Ưng & Bạch Ưng · cặp át nhanh nhất · lùa mồi, né tên lửa siêu hạng'],
   mother: ['TÀU MẸ', 'Diều hộp khổng lồ · liên tục thả Phi Tiêu con'],
-  ace: ['ĐẠI BÀNG ĐỎ', 'Át chủ bài Trường Bên Kia Sông · giáp giấy kép · cần 2 máy bay áp sát'],
+  ace: ['ĐẠI BÀNG ĐỎ', 'Át chủ bài giỏi nhất của Phe Đỏ · giáp giấy kép · cần 2 máy bay áp sát'],
 };
 const skyCur = { ...PALETTES.morning }, _c1 = new THREE.Color(), _c2 = new THREE.Color();
 let skyTo = PALETTES.morning, windOn = false;
@@ -2193,8 +2273,18 @@ function applyWind(dt) {
   for (const b of bullets) if (b.alive) b.v.addScaledVector(windV, dt * 0.8);
   if (Math.random() < dt * 25) puff(smoke, _tmp.copy(P.pos).add(_pv.set(rr(6, 12), rr(-3, 4), rr(-10, 4))), _pv.copy(windV).multiplyScalar(2.5), 1.2, 0.03, 0.05, 0xffffff);
 }
+let playMode = 'campaign', startChapter = 0;   // 'campaign' = chapter 1 to the end, 'chapter' = one chapter only
+function showStory(i) {
+  const W = WAVES[i]; if (!W || !W.story) return;
+  $('storyT').textContent = W.title; $('storyB').textContent = W.story;
+  const c = $('storyCard'); c.classList.remove('hidden'); c.style.opacity = 1;
+  clearTimeout(showStory.t1); clearTimeout(showStory.t2);
+  showStory.t1 = setTimeout(() => { c.style.opacity = 0; }, 6500);
+  showStory.t2 = setTimeout(() => c.classList.add('hidden'), 7200);
+}
 function spawnWave(i) {
   const W = WAVES[i];
+  showStory(i);
   if (W.escort) { startEscort(); return; }
   waveState = 'active';
   flash(W.title, 'Bắn hạ tất cả máy bay địch', 2.4);
@@ -2207,7 +2297,8 @@ function spawnWave(i) {
     f.pos.copy(findSpawn(30, 80, W.area));
     orient(f, _ax.subVectors(P.pos, f.pos));
     f.speed = f.K.veq;
-    if (W.boss === kind) pendingIntro = { f, t: 1.4 };   // let the level title read first
+    if (W.cutscene === 'eagle' && kind === 'ace') startEagleCutscene(f);
+    else if (W.boss === kind) pendingIntro = { f, t: 1.4 };   // let the level title read first
   }
 }
 let pendingIntro = null;
@@ -2241,7 +2332,8 @@ function updateWaves(dt) {
     waveT -= dt;
     if (waveT <= 0) spawnWave(++wave);
   } else if (enemies.length === 0) {
-    if (wave >= WAVES.length - 1) missionComplete();
+    if (playMode === 'chapter') chapterComplete();
+    else if (wave >= WAVES.length - 1) missionComplete();
     else {
       waveState = 'wait'; waveT = 13; startCourse();
       const saved = objectives.filter(o => o.alive).length;
@@ -2263,6 +2355,7 @@ function updateWaves(dt) {
 function damage(f, amt, src) {
   if (!f.alive) return;
   if (f === P && P.invulnT > 0) return;
+  if (cut && f === cut.boss) return;   // untouchable while his entrance plays
   if (f === P && P.shieldT > 0) { amt *= 0.3; if (P.shieldMesh) P.shieldMesh.material.opacity = 0.5; }
   if (f.kind === 'ace' && f.team === 'red') {
     // "giáp giấy kép": one plane alone barely scratches him; two close together tear through, three even better
@@ -2284,11 +2377,11 @@ function damage(f, amt, src) {
       const sub = ph === 1 ? 'Nạp thêm tên lửa · bay nhanh hơn' : 'Khoá tên lửa cực nhanh · liều mạng';
       if (!underPursuit() && cine.t <= 0) bossIntro(f, ph === 1 ? 'ĐẠI BÀNG ĐỎ NỔI GIẬN!' : 'ĐẠI BÀNG ĐỎ LIỀU MẠNG!', sub, 1.8);
       else flash(ph === 1 ? 'ĐẠI BÀNG ĐỎ NỔI GIẬN!' : 'ĐẠI BÀNG ĐỎ LIỀU MẠNG!', sub, 2.2);
-      radio('Đại Bàng Đỏ', ph === 1 ? 'Các ngươi dám làm nhàu cánh ta?! Giờ mới là thật!' : 'Ta chưa thua đâu! Ba đứa các ngươi cùng rơi với ta!!', true);
+      radio(ph === 1 ? 'Minh' : 'Bảng Đen', ph === 1 ? 'Hắn... còn nhanh hơn lúc nãy!' : 'Hắn đang liều mạng! Giữ vòng vây, đừng để hắn thoát!', true);   // the Red Eagle himself never speaks
       shake = Math.min(0.8, shake + 0.4);
     }
   }
-  if (f.kind === 'ace' && f.hp < f.maxHp * 0.35) radioOnce('aceLow', 'Đại Bàng Đỏ', 'Không thể nào... giấy của ta là giấy A4 loại một!', 999);
+  if (f.kind === 'ace' && f.hp < f.maxHp * 0.35) radioOnce('aceLow', 'Lan', 'Cánh hắn rách rồi! Cố lên, sắp được rồi!', 999);
   if (f.hp <= 0) destroy(f, src);
 }
 function destroy(f, src, crashed = false) {
@@ -2320,7 +2413,7 @@ function destroy(f, src, crashed = false) {
     else if (src && src.team === 'blue') radio(src.name, pick(['Hạ được một chiếc!', 'Trúng rồi!', 'Một chiếc nữa xuống đất!']));
   } else if (f.team === 'blue') {
     radio('Bảng Đen', `${f.name} đã rơi! ${f.name}, cậu ổn chứ?`, true);
-    if (f.kind === 'ally' && flyers.some(o => o.alive && o.kind === 'ace')) { allyReturns.push({ name: f.name, color: f.colorHex, t: 15 }); popup(`${f.name} RƠI · GẤP LẠI MÁY BAY, 15s NỮA QUAY LẠI`, YEL, 2); }
+    if (f.kind === 'ally' && !f.noReturn && flyers.some(o => o.alive && o.kind === 'ace')) { allyReturns.push({ name: f.name, color: f.colorHex, t: 15 }); popup(`${f.name} RƠI · GẤP LẠI MÁY BAY, 15s NỮA QUAY LẠI`, YEL, 2); }
   }
 }
 function crash(f) { destroy(f, f.lastHitBy, true); }
@@ -2330,22 +2423,33 @@ function playerDown() {
   radio('Bảng Đen', 'Ô Li 1 đã rơi! Ô Li 1, trả lời đi!', true);
   flash('MÁY BAY BỊ HẠ', '', 2.5);
 }
+function chapterComplete() {
+  state = 'won'; endT = 0;
+  const last = wave >= WAVES.length - 1;
+  radio('Bảng Đen', last ? 'Cuộc chiến máy bay giấy kết thúc! Về lớp thôi các em!' : 'Chương này xong rồi! Nghỉ một chút, bên kia sông chưa chịu thua đâu.', true);
+  flash('CHƯƠNG HOÀN THÀNH', WAVES[wave].title, 3);
+}
 function missionComplete() {
   state = 'won'; endT = 0;
-  radio('Bảng Đen', 'Cuộc chiến máy bay giấy kết thúc! Trường Bên Kia Sông ngập trong bóng giấy. Về lớp thôi các em!', true);
+  if (gameMode !== 'escort') radio('Bảng Đen', 'Cuộc chiến máy bay giấy kết thúc! Về lớp thôi các em!', true);
+  if (gameMode === 'escort') { flash('CHIẾN TRANH KẾT THÚC', 'Lá cờ Phe Đỏ đã cháy', 3.5); return; }   // a quiet end, no confetti
   flash('NHIỆM VỤ HOÀN THÀNH', 'Mission Accomplished', 3);
   for (let i = 0; i < 4; i++) setTimeout(() => burst(P.pos.clone().add(new THREE.Vector3(rr(-6, 6), rr(2, 6), rr(-6, 6))), 60, [0xff4757, 0xffd93b, 0x2ed573, 0x1e90ff, 0xffffff], 12, 3, 4), i * 350);
 }
 function showResult(won) {
   if (document.pointerLockElement) document.exitPointerLock();
   const acc = stats.shots ? Math.round(stats.hits / stats.shots * 100) : 0;
-  const timeBonus = won ? Math.max(0, Math.round((1000 - missionTime) * 5)) : 0;
+  const single = playMode === 'chapter';
+  const timeBonus = won ? Math.max(0, Math.round(((single ? 150 : 1000) - missionTime) * 5)) : 0;
   const hpBonus = won ? Math.round(P.hp * 5) : 0;
   const total = score + timeBonus + hpBonus;
-  const rank = !won ? 'F' : total >= 10000 ? 'S' : total >= 8000 ? 'A' : total >= 6000 ? 'B' : 'C';
+  const rank = !won ? 'F' : single ? (total >= 1800 ? 'S' : total >= 1300 ? 'A' : total >= 900 ? 'B' : 'C') : total >= 10000 ? 'S' : total >= 8000 ? 'A' : total >= 6000 ? 'B' : 'C';
   $('resRank').textContent = rank;
-  $('resTitle').textContent = won ? 'Nhiệm vụ hoàn thành!' : 'Nhiệm vụ thất bại';
-  $('resSub').textContent = won ? 'Chiến tranh máy bay giấy kết thúc: Trường Bên Kia Sông ngập trong bóng giấy!' : (P.failReason || 'Máy bay giấy của bạn đã bị xé nát…');
+  $('resTitle').textContent = single ? (won ? `Chương ${wave + 1} hoàn thành!` : `Chương ${wave + 1} thất bại`) : won ? 'Nhiệm vụ hoàn thành!' : 'Nhiệm vụ thất bại';
+  const hasNext = single && won && wave < WAVES.length - 1;
+  $('nextBtn').classList.toggle('hidden', !hasNext);
+  if (hasNext) $('nextBtn').textContent = `CHƯƠNG ${wave + 2} ▶`;
+  $('resSub').textContent = won && single && wave < WAVES.length - 1 ? (WAVES[wave + 1].story || '') : won ? 'Chiến tranh máy bay giấy kết thúc: Trường Bên Kia Sông ngập trong bóng giấy!' : (P.failReason || 'Máy bay giấy của bạn đã bị xé nát…');
   const rows = [['Thời gian', fmt(missionTime)], ['Số địch bắn hạ', kills], ['Độ chính xác súng', acc + '%'], ['Tên lửa đã bắn', stats.msl], ['Pha luồn lách', stats.passes], ['Né tên lửa hoàn hảo', stats.evades], ['Chuỗi hạ dài nhất', stats.bestCombo], ['Lướt sát đất', stats.skim], ['Phá bức tường âm thanh', stats.booms], ['Giấy rách vì siêu thanh', Math.round(stats.sonicDmg)], ...(gameMode === 'escort' ? [['Phòng không bị phá', stats.ground], ['Hạc Lớn còn lại', heron ? Math.max(0, Math.round(heron.hp)) + ' / ' + heron.maxHp : '—']] : []), ['Vật phẩm đã nhặt', stats.pickups], ['Đường bay vòng hoàn hảo', stats.courses], ['Sát thương nhận', Math.round(stats.dmg)],
     ['Điểm hạ địch', score], ['Thưởng thời gian', timeBonus], ['Thưởng độ bền', hpBonus], ['TỔNG ĐIỂM', total]];
   // personal best & medals
@@ -2799,6 +2903,359 @@ function startCine(kind, o) {
 // =====================================================================
 const ctlA = { pitch: 0, roll: 0, yaw: 0, throttle: 0.7 };
 const _des = new THREE.Vector3(), _leadDir = new THREE.Vector3(), _fa = new THREE.Vector3(), _tmp = new THREE.Vector3(), _tmp2 = new THREE.Vector3();
+// =====================================================================
+//  Cutscene: "Chỉ một chiếc thôi sao?" -- five of ours fly in, a single silhouette appears, and with a
+//  couple of basic moves the Red Eagle drops two of them. Then the 3-vs-1 fight begins.
+// =====================================================================
+let cut = null;
+const CUT_LEN = 15.8;
+const FORM = [[0, 0, 0], [-4, 0.3, 3], [4, 0.3, 3], [-8, 0.6, 6], [8, 0.6, 6]];   // P, Lan, Minh, Tuấn, Hà (heading -z)
+// the whole scene plays out at CUT_Y: above every tree, the flagpole and the roofs, so nothing blocks the shots
+const CUT_Y = 26;
+const EAGLE_KEYS = [   // [t, x, dy, z] (dy relative to the flight): head-on dash, pass by Tuấn with a roll, half-loop behind the flight, onto Hà's tail
+  [0, 0, 8, -280], [5.5, -3, 4, -175], [6.9, -5, 1, -141], [8.0, -2, 7, -120], [9.0, 2, 11, -128], [10.2, 8, 2, -158],
+  // ...then it pulls ahead, hairpins round, and comes back to shave past Ô Li 1's left wing (in slow motion)
+  [11.4, 6, 4, -196], [12.4, 1, 5, -222], [13.3, -2.6, 1.6, -214], [14.0, -1.4, 0.35, -202], [14.8, -3, 1.2, -188], [15.8, -4, 2.5, -172],
+].map(([t, x, dy, z]) => [t, x, CUT_Y + dy, z]);
+const cutSlow = t => t > 13.45 && t < 14.45 ? lerp(0.22, 0.6, Math.abs(t - 13.95) / 0.5) : 1;   // the close pass crawls
+// =====================================================================
+//  ENDING: Hạc Lớn's last run over the Red Faction's base, the view from high above Ô Li 1,
+//  and the Red Faction's flag burning away. Then the war is over.
+// =====================================================================
+const END_LEN = 19.5;
+// Ô Li 1's farewell pass: down from the orbit, low across the burning base, right past the burning flag,
+// over the river and up into the sky towards home.  [t, x, y, z]
+const END_PATH = [[8.5, 25, 40, -1500], [10.0, 14, 20, -1440], [11.5, 10, 9, -1390], [13.0, 2, 10, -1300], [14.5, -1.6, 14.2, -1208], [16.0, -6, 18, -1120], [17.5, -4, 30, -1060], [19.5, 0, 46, -960]];
+const endCurve = new THREE.CatmullRomCurve3(END_PATH.map(k => new THREE.Vector3(k[1], k[2], k[3])));
+const endPathAt = (t, out) => {
+  let k = 0; while (k < END_PATH.length - 2 && t > END_PATH[k + 1][0]) k++;
+  const a = END_PATH[k][0], b = END_PATH[k + 1][0], u = (k + clamp((t - a) / (b - a), 0, 1)) / (END_PATH.length - 1);
+  return out.copy(endCurve.getPoint(u));
+};
+const burnCvs = document.createElement('canvas'); burnCvs.width = 300; burnCvs.height = 200;
+const burnTex = new THREE.CanvasTexture(burnCvs);
+function resetRivalFlag() { rivalFlag.material.map = rivalFlagTex; rivalFlag.material.needsUpdate = true; rivalFlag.visible = true; }
+function burnFlag(p) {   // p 0..1: the fire eats the flag from the fly end (x = 1) towards the pole (x = 0)
+  const g = burnCvs.getContext('2d'), w = 300, h = 200;
+  if (!g || !g.drawImage) return;
+  if (p <= 0.001) { g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, w, h); g.drawImage(rivalFlagTex.image, 0, 0, w, h); rivalFlag.material.map = burnTex; rivalFlag.material.needsUpdate = true; }
+  const front = w * (1 - p);
+  for (let y = 0; y < h; y += 8) {
+    const fx = front + Math.sin(y * 0.09 + p * 20) * 14 + Math.sin(y * 0.031) * 10;
+    g.globalCompositeOperation = 'destination-out'; g.fillStyle = '#000'; g.fillRect(fx + 6, y, w, 8);   // burnt away
+    g.globalCompositeOperation = 'source-atop';
+    const gr = g.createLinearGradient(fx - 26, 0, fx + 6, 0); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(0.6, 'rgba(30,10,0,0.9)'); gr.addColorStop(1, 'rgba(255,140,30,1)');
+    g.fillStyle = gr; g.fillRect(fx - 26, y, 32, 8);   // charred, glowing edge
+  }
+  g.globalCompositeOperation = 'source-over';
+  burnTex.needsUpdate = true;
+  return front / w;
+}
+const END_FIRES = [[-50, 15, -1180], [-48, 15, -1240], [50, 15, -1220], [0, 13, -1470], [-20, 13, -1472], [22, 13, -1468], [18, 1, -1390], [0, 1, -1200], [-30, 1, -1320], [34, 1, -1180]];
+function startEnding() {
+  // the remnants turn tail; guns fall silent
+  for (const f of [...flyers]) if (f.alive && f.team === 'red') removeFlyer(f);
+  for (const u of groundUnits) u.alive = false;
+  for (const m of missiles) { m.alive = false; scene.remove(m.mesh); } missiles.length = 0;
+  flakShells.length = 0;
+  const crew = flyers.filter(f => f.alive && f.team === 'blue' && f !== P && f !== heron);
+  cut = { kind: 'ending', t: 0, boss: heron, crew, said: {}, drops: 0, fires: [], flagP: 0 };
+  P.invulnT = 99; burnFlag(0);
+  document.body.classList.add('cine');
+  if (!cineOn) finishEnding();
+}
+function updateEnding(dt) {
+  const c = cut; c.t += dt; const t = c.t;
+  // 1 (0-4 s): the last bombing run along the base
+  if (t < 4.2) {
+    const hz = -1330 - 40 * (t / 4.2);
+    heron.pos.set(0, 24, hz); orient(heron, FWD); heron.vel.set(0, 0, -9.5); heron.speed = 9.5;
+    if (t > 0.6 + c.drops * 0.38 && c.drops < 9) { c.drops++; const b = { p: heron.pos.clone().add(_pv.set(rr(-1, 1), -1, 0)), v: _pv.set(rr(-1.5, 1.5), -2, -7).clone(), alive: true, owner: heron, mesh: new THREE.Mesh(PLANE_GEOS.crumple, paperBallMat) }; b.mesh.scale.setScalar(0.9); scene.add(b.mesh); bombs.push(b); }
+  } else { heron.pos.addScaledVector(_pv.set(0, 0.15, -1).normalize(), 9 * dt); }
+  // paper balls hitting the base: paper bursts, fire, smoke columns
+  for (const b of bombs) if (b.alive && b.owner === heron && (b.p.y < 1 || pointBlocked(b.p))) {
+    b.alive = false; scene.remove(b.mesh);
+    burst(b.p, 50, [0xf4f1e6, 0xffffff, 0xc8102e], 9, 2.5, 3); explosion(b.p, 1.1, 0.7);
+    c.fires.push(b.p.clone().setY(Math.max(1, b.p.y)));
+  }
+  // the base keeps burning
+  const spots = c.fires.concat(t > 2 ? END_FIRES.map(a => new THREE.Vector3(...a)) : []);
+  for (const sp of spots) {
+    if (Math.random() < dt * 9) puff(fire, _tmp.copy(sp).add(_pv.set(rr(-1.5, 1.5), rr(0, 1), rr(-1.5, 1.5))), _pv.set(0, rr(1, 2.5), 0), rr(0.5, 0.9), 0.5, 1.4, [0xffa53a, 0xff6a1f, 0xffd23f][(Math.random() * 3) | 0]);
+    if (Math.random() < dt * 5) puff(smoke, _tmp.copy(sp).add(_pv.set(rr(-1, 1), 2, rr(-1, 1))), _pv.set(rr(-0.3, 0.3), rr(2.5, 4), rr(-0.3, 0.3)), rr(3, 5), 0.8, 3.2, [0x2b2b2b, 0x444444, 0x555555][(Math.random() * 3) | 0]);
+    if (Math.random() < dt * 2) burst(_tmp.copy(sp).add(_pv.set(0, 3, 0)), 2, [0xf4f1e6, 0xd8d2c0], 2, 3, 2);   // drifting scraps of paper
+  }
+  if (t < 8.5) {
+    // 2 (4-8.5 s): Ô Li 1 circles high above, the flight in a loose echelon
+    const a0 = 0.6 + t * 0.09, cx = 0, cz = -1300, R = 42;
+    P.pos.set(cx + Math.cos(a0) * R, 46, cz + Math.sin(a0) * R);
+    orient(P, _tmp.set(-Math.sin(a0), 0, Math.cos(a0))); P.q.multiply(_q.setFromAxisAngle(FWD, -0.35)); P.speed = 8; aim.copy(fwdOf(P, _tmp));
+    c.crew.forEach((f, i) => { const a = a0 - 0.08 * (i + 1); f.pos.set(cx + Math.cos(a) * (R + 4 + i * 3), 45 - i * 0.8, cz + Math.sin(a) * (R + 4 + i * 3)); orient(f, _tmp.set(-Math.sin(a), 0, Math.cos(a))); f.q.multiply(_q.setFromAxisAngle(FWD, -0.35)); f.speed = 8; });
+  } else {
+    // 3 (8.5-19.5 s): the farewell pass, banking into the turns; the flight trails behind in line
+    const p0 = endPathAt(t, new THREE.Vector3()), p1 = endPathAt(t + 0.05, new THREE.Vector3()), p2 = endPathAt(t + 0.1, new THREE.Vector3());
+    const d1 = _tmp.subVectors(p1, p0), d2 = _tmp2.subVectors(p2, p1);
+    const turn = Math.atan2(d1.x * d2.z - d1.z * d2.x, d1.x * d2.x + d1.z * d2.z);   // signed heading change -> bank into it
+    c.bank = lerp(c.bank || 0, clamp(-turn * 18, -0.8, 0.8), 0.1);
+    P.pos.copy(p0); orient(P, d1); P.q.multiply(_q.setFromAxisAngle(FWD, c.bank)); P.speed = d1.length() / 0.05; P.vel.copy(d1).divideScalar(0.05);
+    aim.copy(fwdOf(P, _tmp));
+    c.crew.forEach((f, i) => {
+      const q0 = endPathAt(Math.max(8.5, t - 0.55 * (i + 1)), new THREE.Vector3()), q1 = endPathAt(Math.max(8.5, t - 0.55 * (i + 1)) + 0.05, new THREE.Vector3());
+      f.pos.copy(q0).add(_pv.set((i % 2 ? 1 : -1) * (2 + i), 1 + i * 0.6, 0)); orient(f, _ar.subVectors(q1, q0)); f.speed = 9;
+    });
+  }
+  // the flag catches and burns as Ô Li 1 sweeps past it
+  if (t > 12.6) {
+    c.flagP = Math.min(1, (t - 12.6) / 3.6);
+    const frontU = burnFlag(c.flagP);
+    if (frontU !== undefined) {
+      const fxw = 0.1 + 4 * frontU;
+      for (let k = 0; k < 3; k++) puff(fire, _tmp.set(fxw + rr(-0.2, 0.2), 13.4 + Math.random() * 2.5, -1200 + rr(-0.1, 0.1)), _pv.set(rr(-0.2, 0.2), rr(0.8, 1.6), 0), rr(0.3, 0.6), 0.12, 0.35, [0xffa53a, 0xff6a1f, 0xffd23f][k]);
+      if (Math.random() < 0.5) puff(smoke, _tmp.set(fxw, 15.5, -1200), _pv.set(0, 1.5, 0), 2, 0.15, 0.7, 0x333333);
+    }
+    if (c.flagP >= 1) rivalFlag.visible = false;
+  }
+  const line = (k, at, who, text) => { if (t > at && !c.said[k]) { c.said[k] = 1; sayNow(who, text); } };
+  line(1, 0.4, 'Hạc Lớn', 'Thả toàn bộ bóng giấy còn lại!');
+  line(2, 4.6, 'Lan', 'Xong rồi... cuộc chiến kết thúc rồi.');
+  line(3, 6.8, 'Minh', 'Nhìn từ trên này... sao chẳng thấy vui gì cả.');
+  line(4, 15.0, 'Bảng Đen', 'Lá cờ Phe Đỏ đã cháy. Chiến tranh máy bay giấy kết thúc.');
+  line(5, 17.6, 'Bảng Đen', 'Tất cả các phi đội... về trường thôi các em.');
+  if (t >= END_LEN || pressed.Enter || pressed.NumpadEnter) finishEnding();
+}
+function finishEnding() {
+  if (cut && cut.kind === 'ending') { burnFlag(1); rivalFlag.visible = false; }
+  cut = null; document.body.classList.remove('cine');
+  missionComplete();
+}
+function endingCamera(dt) {
+  const t = cut.t, h = heron.pos;
+  let pos = _cd, look = _cl, fov = 55, shot;
+  if (t < 4.2) { shot = 1; pos.set(16, 4, -1440); look.copy(h).lerp(_tmp.set(0, 4, -1420), 0.35); fov = 58; }   // low on the enemy base, the bomber roaring over
+  else if (t < 8.5) {   // high above, behind Ô Li 1, looking down on the burning school
+    shot = 2; pos.copy(P.pos).addScaledVector(fwdOf(P, _tmp2), -7).add(_pv.set(0, 3.5, 0)); look.set(0, 0, -1300); fov = 60;
+  } else {   // Ô Li 1's view: tight behind the plane as it skims the ruins and climbs away
+    shot = 3; const fw = fwdOf(P, _tmp2);
+    pos.copy(P.pos).addScaledVector(fw, -2.3).addScaledVector(upOf(P, _ar).lerp(UP, 0.6).normalize(), 0.55);
+    look.copy(P.pos).addScaledVector(fw, 22); fov = 64 + clamp((P.speed - 8) * 0.8, 0, 8);
+  }
+  camera.position.lerp(pos, shot !== cut.shot ? 1 : 1 - Math.exp(-dt * (shot === 3 ? 14 : 6))); cut.shot = shot;
+  camera.up.set(0, 1, 0); if (shot === 3) camera.up.copy(upOf(P, _ui)).lerp(UP, 0.7).normalize();   // lean a little with the banks
+  camera.lookAt(look);
+  camera.fov += (fov - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix();
+  camPos.copy(camera.position);
+}
+
+// ---- Chương 12 intro: the giant bomber lumbers past, the five fighters ease in around it, then
+//      open the throttles and surge ahead towards the river.
+const ESC_LEN = 11.5, ESC_V = 5;
+const ESC_FORM = [[0, 3, -5], [-6, 0, 2], [6, 0, 2], [-10, 1, -3], [10, 1, -3]];   // P, Lan, Minh, Tuấn, Hà around the bomber
+function startEscortCut() {
+  for (const a of ALLIES) if (!flyers.some(f => f.alive && f.name === a.name)) makeFlyer('ally', 'blue', a.name, a.color);
+  const lan = flyers.find(f => f.alive && f.name === 'Lan'), minh = flyers.find(f => f.alive && f.name === 'Minh');
+  const tuan = makeFlyer('ally', 'blue', 'Tuấn', 0x9be37a), ha = makeFlyer('ally', 'blue', 'Hà', 0xffb35c);
+  cut = { kind: 'escort', t: 0, boss: heron, crew: [P, lan, minh, tuan, ha], said: {} };
+  P.invulnT = ESC_LEN; document.body.classList.add('cine');
+  if (!cineOn) endEscortCut();
+}
+const escHeronZ = t => -560 - ESC_V * t;
+function updateEscortCut(dt) {
+  const c = cut; c.t += dt; const t = c.t, hz = escHeronZ(t), y = 22;
+  heron.pos.set(Math.sin(t * 0.4) * 0.6, y + Math.sin(t * 0.7) * 0.3, hz); orient(heron, FWD);
+  heron.q.multiply(_q.setFromAxisAngle(FWD, Math.sin(t * 0.5) * 0.05)); heron.vel.set(0, 0, -ESC_V); heron.speed = ESC_V;
+  // after the order to go, the fighters accelerate (a = 4 m/s²) and pull away ahead of the bomber
+  const go = Math.max(0, t - 6.8), ahead = 0.5 * 4 * go * go;
+  c.crew.forEach((f, i) => {
+    if (!f || !f.alive) return;
+    const o = ESC_FORM[i];
+    f.pos.set(o[0] * (1 + go * 0.05), y + o[1] + Math.sin(t * 1.3 + i) * 0.15, hz + o[2] - ahead - (go > 0 ? i * 0.6 * go : 0));
+    orient(f, FWD); f.speed = ESC_V + 4 * go; f.vel.set(0, 0, -f.speed);
+    f.afterburner = go > 0;
+  });
+  if (go > 0 && Math.random() < 0.6) for (const f of c.crew) if (f && f.alive) puff(fire, _tmp.copy(f.pos).add(_pv.set(0, 0, 0.35)), _pv.set(0, 0, 3), 0.18, 0.12, 0.04, 0xffb347);
+  aim.set(0, 0, -1);
+  const line = (k, at, who, text) => { if (t > at && !c.said[k]) { c.said[k] = 1; sayNow(who, text); } };
+  line(1, 0.5, 'Bảng Đen', 'Hạc Lớn cất cánh! Máy bay lớn nhất Phe Xanh từng gấp.');
+  line(2, 3.6, 'Lan', 'To thật... nhưng chậm như rùa vậy.');
+  line(3, 5.0, 'Tuấn', 'Tuấn và Hà gấp xong máy bay mới rồi! Lần này cho bọn tớ đi cùng!');
+  line(4, 6.6, 'Bảng Đen', 'Phi đội Ô Li, tăng tốc! Mở đường phía trước cho Hạc Lớn!');
+  line(5, 8.4, 'Minh', 'Rõ! Theo tớ!');
+  line(6, 10.2, 'Hạc Lớn', 'Hạc Lớn bám theo sau. Trông cậy vào các cậu!');
+  if (t > 6.8 && !c.said.boost) { c.said.boost = 1; whoosh(); if (AU.ctx) tone(200, 700, 0.8, 0.07, 'sawtooth'); }
+  if (t >= ESC_LEN || pressed.Enter || pressed.NumpadEnter) endEscortCut();
+}
+function endEscortCut() {
+  const c = cut; cut = null; document.body.classList.remove('cine');
+  // jump to the end state: fighters out in front, bomber cruising behind
+  const hz = escHeronZ(ESC_LEN), ahead = 0.5 * 4 * (ESC_LEN - 6.8) ** 2;
+  heron.pos.set(0, 22, hz); orient(heron, FWD); heron.speed = 7;
+  c.crew.forEach((f, i) => { if (!f || !f.alive) return; const o = ESC_FORM[i]; f.pos.set(o[0] * 1.2, 22 + o[1], hz + o[2] - ahead - i * 2.5); orient(f, FWD); f.speed = 9; });
+  P.invulnT = 1; aim.set(0, 0, -1); camPos.copy(P.pos).add(_pv.set(0, 0.5, 2.5)); camAimS.copy(aim);
+  escortBriefing();
+}
+function escortCutCamera(dt) {
+  const t = cut.t, h = heron.pos;
+  let pos = _cd, look = _cl, fov = 50;
+  if (t < 3.6) {   // 1: low and ahead: the bomber lumbers overhead, huge against the sky
+    pos.set(13, 17.5, -574); look.copy(h).add(_pv.set(0, 0.4, 0)); fov = lerp(46, 58, clamp(t / 3.6, 0, 1));   // beside the corridor roof, not inside it
+  } else if (t < 6.6) {   // 2: tracking alongside: the five fighters throttled back around it
+    pos.copy(h).add(_pv.set(16, 1.5, 3)); look.copy(h).add(_pv.set(-2, 0, -2)); fov = 46;
+  } else if (t < 9.6) {   // 3: from behind and above the bomber: the fighters surge ahead
+    pos.copy(h).add(_pv.set(0, 4, 13)); look.copy(h).add(_pv.set(0, 0, -40)); fov = 52;
+  } else {   // 4: wide: the river and the Red Faction's school ahead
+    pos.copy(h).add(_pv.set(-12, 9, 16)); look.set(0, 16, h.z - 120); fov = 55;
+  }
+  const shot = t < 3.6 ? 1 : t < 6.6 ? 2 : t < 9.6 ? 3 : 4;   // hard cut when the shot changes, smooth within a shot
+  camera.position.lerp(pos, shot !== cut.shot ? 1 : 1 - Math.exp(-dt * 8)); cut.shot = shot;
+  camera.up.set(0, 1, 0); camera.lookAt(look);
+  camera.fov += (fov - camera.fov) * Math.min(1, dt * 4); camera.updateProjectionMatrix();
+  camPos.copy(camera.position);
+}
+function sayNow(who, text) { radioQ.length = 0; radioQ.push({ who, text }); radioT = 0; }
+function startEagleCutscene(boss) {
+  for (const a of ALLIES) if (!flyers.some(f => f.alive && f.name === a.name)) makeFlyer('ally', 'blue', a.name, a.color);   // the whole flight is here for this one
+  const allies = ALLIES.map(a => flyers.find(f => f.alive && f.name === a.name));
+  const tuan = makeFlyer('ally', 'blue', 'Tuấn', 0x9be37a), ha = makeFlyer('ally', 'blue', 'Hà', 0xffb35c);
+  tuan.noReturn = ha.noReturn = true;
+  const crew = [P, allies[0], allies[1], tuan, ha];
+  cut = { t: 0, boss, crew, tuan, ha, path: new THREE.CatmullRomCurve3(EAGLE_KEYS.map(k => new THREE.Vector3(k[1], k[2], k[3]))), said: {}, prevB: new THREE.Vector3() };
+  P.invulnT = CUT_LEN; boss.hp = boss.maxHp;
+  document.body.classList.add('cine');
+  if (!cineOn) skipCutscene();
+}
+const eaglePos = (t, out) => {   // time -> point on the Catmull-Rom path through the keyframes
+  let k = 0; while (k < EAGLE_KEYS.length - 2 && t > EAGLE_KEYS[k + 1][0]) k++;
+  const a = EAGLE_KEYS[k][0], b = EAGLE_KEYS[k + 1][0], u = (k + clamp((t - a) / (b - a), 0, 1)) / (EAGLE_KEYS.length - 1);
+  return out.copy(cut.path.getPoint(u));
+};
+function updateCutscene(dt) {
+  if (cut.kind === 'ending') { updateEnding(dt); return; }
+  if (cut.kind === 'escort') { updateEscortCut(dt); return; }
+  const c = cut; c.t += dt;
+  const t = c.t, cz = -90 - 8 * t;
+  // our flight: straight and level, gentle bobbing
+  c.crew.forEach((f, i) => {
+    if (!f || !f.alive) return;
+    const o = FORM[i]; f.pos.set(o[0], CUT_Y + o[1] + Math.sin(t * 1.3 + i) * 0.15, cz + o[2]);
+    orient(f, FWD); f.vel.set(0, 0, -8); f.speed = 8;
+  });
+  aim.set(0, 0, -1);
+  // the eagle
+  const b = c.boss, bp = eaglePos(t, _v3), prev = c.prevB.copy(eaglePos(Math.max(0, t - 0.05), new THREE.Vector3()));
+  const dir = _tmp.subVectors(bp, prev); if (dir.lengthSq() < 1e-6) dir.set(0, 0, 1);
+  b.vel.copy(dir).divideScalar(0.05); b.speed = b.vel.length(); b.pos.copy(bp); orient(b, dir);
+  if (t > 6.0 && t < 7.4) b.q.multiply(_q.setFromAxisAngle(FWD, (t - 6.0) / 1.4 * PI * 2));   // barrel roll through the formation
+  // guns: short bursts at Tuấn, then at Hà
+  const burstAt = (victim, t0, t1) => {
+    if (t < t0 || t > t1 || !victim.alive) return;
+    c.gunT = (c.gunT || 0) - dt; if (c.gunT > 0) return;
+    c.gunT = 0.07; const keep = b.q.clone(); orient(b, _tmp2.subVectors(victim.pos, b.pos)); fireGun(b, 0.01); b.q.copy(keep);
+  };
+  burstAt(c.tuan, 6.3, 6.9); burstAt(c.ha, 9.9, 10.5);
+  if (t > 6.9 && c.tuan.alive) { damage(c.tuan, 9999, b); shake = 0.5; }
+  if (t > 10.5 && c.ha.alive) { damage(c.ha, 9999, b); shake = 0.5; }
+  // dialogue
+  const line = (k, at, who, text) => { if (t > at && !c.said[k]) { c.said[k] = 1; sayNow(who, text); } };
+  line(1, 0.4, 'Bảng Đen', 'Hạm đội Phe Đỏ đã tan tác... radar chỉ còn bắt được một tín hiệu?');
+  line(2, 2.6, 'Minh', 'Một chiếc thôi sao? Phe Đỏ hết người rồi à?');
+  line(3, 4.0, 'Lan', 'Khoan... sao nó lao tới nhanh vậy?!');
+  if (t > 4.6 && !c.said.card) { c.said.card = 1; flash('⚠ ĐẠI BÀNG ĐỎ', 'Át chủ bài giỏi nhất của Phe Đỏ', 2.6); if (AU.ctx) { tone(110, 82, 1.4, 0.16, 'sawtooth'); noiseHit(AU.ctx.currentTime, 140, 0.5, 1.2); } }
+  line(5, 7.3, 'Hà', 'Tuấn!! Nó bắn rơi Tuấn chỉ trong một lượt!');
+  line(6, 10.7, 'Lan', 'Không thể nào... hắn hạ Tuấn và Hà chỉ bằng vài đường cơ bản!');
+  line(7, 12.3, 'Bảng Đen', 'Nó quay lại! Nó lao thẳng vào Ô Li 1!');
+  if (t > 13.95 && !c.said.pass) {   // the shave: wind blast, a shudder, paper flutter
+    c.said.pass = 1; whoosh(); shake = 0.6;
+    for (let i = 0; i < 16; i++) puff(smoke, _tmp.copy(P.pos).add(_pv.set(rr(-2.5, -0.5), rr(-0.4, 0.6), rr(-1, 1))), _pv.set(rr(-1, 0), 0, rr(1, 3)), 0.6, 0.02, 0.06, 0xffffff);
+  }
+  line(9, 14.9, 'Minh', 'Nó vừa sượt qua cậu chỉ cách một gang tay!');
+  if (t >= CUT_LEN || pressed.Enter || pressed.NumpadEnter) skipCutscene();
+}
+function skipCutscene() {
+  const c = cut; if (!c) return;
+  if (c.kind === 'ending') { finishEnding(); return; }
+  if (c.kind === 'escort') { endEscortCut(); return; }
+  if (c.tuan.alive) damage(c.tuan, 9999, c.boss);
+  if (c.ha.alive) damage(c.ha, 9999, c.boss);
+  const b = c.boss; eaglePos(CUT_LEN, b.pos); orient(b, _tmp.set(0.1, 0, -1)); b.speed = 11; b.mode = 'attack'; b.preyT = 0;
+  P.invulnT = 1; P.speed = 8; aim.copy(fwdOf(P, _tmp)); camPos.copy(P.pos).add(_pv.set(0, 0.5, 2.5)); camAimS.copy(aim);
+  cut = null; document.body.classList.remove('cine');
+  radio('Bảng Đen', 'Ô Li 1, Lan, Minh: chỉ còn ba em! Hắn có GIÁP GIẤY KÉP, một mình bắn không thủng. Phải có ít nhất 2 máy bay áp sát cùng lúc!', true);
+  radio('Lan', 'Khép vòng vây! Hắn vọt lên thì bật siêu thanh đuổi theo!');
+}
+function cutsceneCamera(dt) {
+  if (cut.kind === 'ending') { endingCamera(dt); return; }
+  if (cut.kind === 'escort') { escortCutCamera(dt); return; }
+  const c = cut, t = c.t, b = c.boss.pos;
+  let pos = _cd, look = _cl, fov = 55;
+  if (t < 3.2) {   // 1: the flight of five flying straight at us
+    pos.set(1.5, CUT_Y + 1.2, -90 - 8 * t - 14 + t * 1.2); look.set(0, CUT_Y + 0.3, -90 - 8 * t + 3);
+  } else if (t < 5.8) {   // 2: over Ô Li 1's shoulder: a lone silhouette in the distance (zoom in)
+    pos.copy(P.pos).add(_pv.set(1.8, 1.0, 4.5)); look.copy(b); fov = lerp(48, 24, clamp((t - 3.2) / 2.2, 0, 1));
+  } else if (t < 7.6) {   // 3: side-on as it slices past Tuấn
+    pos.set(-16, CUT_Y + 1.5, -90 - 8 * 6.6 + 2); look.copy(b).lerp(c.tuan.pos, 0.4); fov = 50;
+  } else if (t < 9.6) {   // 4: from below as it pulls up and over
+    pos.copy(b).add(_pv.set(7, -4, 5)); look.copy(b); fov = 50;
+  } else if (t < 11.4) {   // 5: riding on its tail as it guns down Hà
+    pos.copy(b).addScaledVector(fwdOf(c.boss, _tmp2), -5).addScaledVector(UP, 1.3); look.copy(b).addScaledVector(fwdOf(c.boss, _tmp2), 20); fov = 58;
+  } else if (t < 13.1) {   // 6: high behind the three survivors: it hairpins round up ahead
+    pos.copy(P.pos).add(_pv.set(0, 4.5, 9)); look.copy(b); fov = 46;
+  } else {   // 7: tight telephoto over Ô Li 1's right shoulder, slowly dollying in while it shaves past the left wing
+    const k = clamp((t - 13.1) / 1.6, 0, 1);
+    pos.copy(P.pos).add(_pv.set(lerp(1.1, 0.7, k), lerp(0.42, 0.3, k), lerp(1.4, 0.9, k)));
+    look.copy(P.pos).add(_pv.set(-1.2, 0.05, -2)).lerp(b, t < 14.15 ? 0.35 : 0.12);
+    fov = lerp(42, 30, k);
+  }
+  camera.position.lerp(pos, t < 0.05 ? 1 : 1 - Math.exp(-dt * 10));
+  camera.up.set(0, 1, 0); camera.lookAt(look);
+  camera.fov += (fov - camera.fov) * Math.min(1, dt * 4); camera.updateProjectionMatrix();
+  camPos.copy(camera.position);
+}
+
+// Signature move: when one of your missiles closes in, he snaps into a hard break and spins twice round his
+// own axis, shedding flares in a corkscrew and spiralling vapour off the wingtips. Most missiles lose him.
+const SPIN_T = 1.1;
+function eagleSpin(a, dt) {
+  a.spinCD = (a.spinCD || 0) - dt;
+  if (a.spinT > 0 && a.spinT - dt <= 0 && a.spinFoe && a.spinFoe.alive) {
+    // spin finished: reverse onto the tail of whoever fired at him
+    const f = a.spinFoe;
+    a.mode = 'evade'; a.man = null; a.modeT = 1.4; a.target = f; a.preyT = 4;
+    a.evadeDir.copy(f.pos).addScaledVector(fwdOf(f, _tmp2), -12).addScaledVector(UP, 1.5).sub(a.pos).normalize();
+    if (f === P) radioOnce('eagleCounter', 'Lan', 'Hắn né xong là vòng ngay ra sau đuôi cậu đấy!', 12);
+  }
+  if (a.spinT > 0 || a.spinCD > 0) return;
+  // wait for the last moment: ~0.7 s to impact, judged from the closing speed
+  let m = null;
+  for (const mm of missiles) {
+    if (!mm.alive || mm.target !== a) continue;
+    const d = mm.p.distanceTo(a.pos), closing = Math.max(4, mm.speed - a.speed * Math.max(0, mm.dir.dot(fwdOf(a, _tmp2))));
+    if (d / closing < 0.7 || d < 6) { m = mm; break; }
+  }
+  if (!m) return;
+  const fwd = fwdOf(a, new THREE.Vector3());
+  a.spinT = SPIN_T; a.spinA = 0; a.spinCD = 4; a.spinSide = Math.random() < 0.5 ? -1 : 1; a.spinFoe = m.owner && m.owner.alive ? m.owner : null;
+  a.mode = 'evade'; a.man = null; a.modeT = SPIN_T + 0.2;
+  a.evadeDir.subVectors(a.pos, m.p).normalize().cross(UP).normalize().multiplyScalar(a.spinSide).addScaledVector(UP, 0.3).addScaledVector(fwd, 0.3).normalize();
+  a.speed = Math.min(a.speed + 2, 14);
+  // the missiles chasing him mostly bite on the flares
+  for (const mm of missiles) if (mm.alive && mm.target === a && mm.p.distanceTo(a.pos) < 25 && Math.random() < 0.85) {
+    mm.target = null; mm.dodgeRoll = true; if (mm.owner === P) stats.bossSpins = (stats.bossSpins || 0) + 1;
+  }
+  if (a.flares > 0) popFlares(a);
+  whoosh();
+  radioOnce('eagleSpin', pick(['Lan', 'Minh']), pick(['Hắn lại xoay né được!', 'Tên lửa không ăn thua với hắn!', 'Trời ạ, hắn xoay như con quay!']), 8);
+  popup('ĐẠI BÀNG ĐỎ XOAY NÉ TÊN LỬA!', '#ffb36b', 1.2);
+}
+function eagleSpinStep(a, dt) {
+  a.spinT -= dt;
+  const k = clamp(1 - a.spinT / SPIN_T, 0, 1), e = k * k * (3 - 2 * k), target = e * PI * 4;   // two full rolls, eased
+  a.q.multiply(_q.setFromAxisAngle(FWD, (target - a.spinA) * a.spinSide)); a.spinA = target;
+  // corkscrew of flare sparks + vapour spirals off both wingtips
+  const fw = fwdOf(a, _tmp2), rt = rightOf(a, _ar), up = upOf(a, _ui);
+  for (const sx of [-1, 1]) { _tmp.copy(a.pos).addScaledVector(rt, sx * 0.55); puff(smoke, _tmp, _pv.set(0, 0, 0), 0.7, 0.04, 0.12, 0xffffff); }
+  if (Math.random() < 0.7) { const ang = clock * 14; _tmp.copy(a.pos).addScaledVector(rt, Math.cos(ang) * 1.1).addScaledVector(up, Math.sin(ang) * 1.1).addScaledVector(fw, -0.6); puff(fire, _tmp, _pv.copy(fw).multiplyScalar(-2), 0.5, 0.18, 0.06, 0xffd27a); }
+}
+
 // Đại Bàng Đỏ (3 vs 1): faster than all of you and turns harder. He hunts the weakest of your trio,
 // and whenever two of you close in on him he zooms up out of the sandwich, then dives back on someone.
 function bossTactics(a, t, fwd, dist, dt) {
@@ -2817,7 +3274,7 @@ function bossTactics(a, t, fwd, dist, dt) {
     const c = new THREE.Vector3(); near.forEach(o => c.add(o.pos)); c.divideScalar(near.length);
     a.mode = 'extend'; a.man = null; a.modeT = rr(1.8, 2.6);
     a.evadeDir.subVectors(a.pos, c).setY(0).normalize().addScaledVector(UP, a.pos.y < AREA.y - 10 ? 0.8 : 0).normalize();
-    radioOnce('bossZoom', 'Đại Bàng Đỏ', 'Vây ta à? Chậm quá!', 14);
+    radioOnce('bossZoom', 'Bảng Đen', 'Hắn thoát khỏi vòng vây rồi! Đuổi theo!', 14);
   }
   a.speedCap = 11 + 1.0 * (a.rage || 0) + (a.mode === 'extend' ? 2 : 0);   // applied after the physics step
   if (a.mode === 'extend') a.speed = Math.min(a.speedCap, a.speed + 6 * dt);   // burst of speed to break away
@@ -2897,6 +3354,7 @@ function defensiveManeuver(a, chaser, fwd) {
 }
 function updateAI(a, dt) {
   if (a.K.ai === 'route') { updateHeron(a, dt); return; }
+  if (a.kind === 'ace') eagleSpin(a, dt);
   const fwd = fwdOf(a, _fa);
   a.thinkT -= dt;
   if (a.thinkT <= 0 || !a.target || !a.target.alive) {
@@ -3002,7 +3460,7 @@ function updateAI(a, dt) {
     if (!m.alive || m.target !== a) continue;
     const md = m.p.distanceTo(a.pos);
     // a late, hard break (missile < 12 m away) can make it overshoot, same rule as the player's V
-    if (a.mode === 'evade' && md < 12 && !m.dodgeRoll) {
+    if (a.mode === 'evade' && md < 12 && !m.dodgeRoll && a.kind !== 'ace') {
       m.dodgeRoll = true;
       if (Math.random() < 0.3 * (a.K.evade || 1)) { m.target = null; if (m.owner === P) popup(`${a.name} NÉ ĐƯỢC TÊN LỬA!`, '#cfcfcf'); }
       continue;
@@ -3033,6 +3491,7 @@ function updateAI(a, dt) {
   const ahead = t && _tmp.subVectors(t.pos, a.pos).dot(fwd) > 0;
   ctlA.throttle = danger || a.mode === 'evade' || a.mode === 'extend' || a.K.ai === 'ram' || a.K.ai === 'elite' || a.K.ai === 'boss' ? 0.95 : (ahead && dist < 14 ? 0.45 : 0.7);   // hang back ~14 m when chasing
   flyPhysics(a, ctlA, dt);
+  if (a.spinT > 0) eagleSpinStep(a, dt);
   a.pos.addScaledVector(a.vel, dt);
   a.pos.x = clamp(a.pos.x, -AREA.x - 2, AREA.x + 2); a.pos.z = clamp(a.pos.z, AREA.zMin - 2, AREA.zMax + 2); a.pos.y = Math.min(a.pos.y, AREA.y + 1);
   if (a.forceCrash && a.pos.distanceTo(a.forceCrash) < 0.9) { a.lastHitBy = P; a.lastHitT = clock; crash(a); return; }
@@ -3088,6 +3547,7 @@ function updateFalling(f, dt) {
 const camFwd = new THREE.Vector3(0, 0, -1), camAimS = new THREE.Vector3(0, 0, -1);
 const camPos = new THREE.Vector3(0, 18, 70), camUp = new THREE.Vector3(0, 1, 0), _cd = new THREE.Vector3(), _cl = new THREE.Vector3(), _pu = new THREE.Vector3();
 function updateCamera(dt) {
+  if (cut && state === 'play') { cutsceneCamera(dt); sky.position.copy(camera.position); return; }
   if (cine.t > 0 && state !== 'menu' && cine.kind === 'boss') {
     // swoop: from far out to a tight close-up, easing in
     const k = 1 - cine.t / cine.dur, e = 1 - Math.pow(1 - clamp(k / 0.75, 0, 1), 3);
@@ -3286,6 +3746,7 @@ let popLast = 0;
 function drawHUD() {
   hg.clearRect(0, 0, W, H);
   if (state === 'menu' || !P || cine.t > 0) return;
+  if (cut) { text('Enter: bỏ qua', W - 20, H - 24, 'rgba(255,255,255,0.7)', 12, 'right', '700'); return; }
   drawSpeedLines();
   hg.lineWidth = 1.6;
   const fwd = fwdOf(P, _fw).clone();
@@ -3895,6 +4356,7 @@ function frameInner(now) {
   const realDt = dt;
   autoQuality(realDt);
   cineCD -= realDt;
+  if (cut && state === 'play') dt *= cutSlow(cut.t);
   if (cine.t > 0) { cine.t -= realDt; dt *= cine.ts; if (cine.t <= 0) document.body.classList.remove('cine'); }
   else if (state === 'play' && P && P.evadeDur > 0 && P.evadeCalm) { const k = 1 - P.evadeT / P.evadeDur; dt *= lerp(0.4, 1, clamp((k - 0.15) / 0.6, 0, 1)); }  // evade slow-mo
   clock += dt;
@@ -3910,9 +4372,10 @@ function frameInner(now) {
       f.vel.copy(tangent).multiplyScalar(3);
     }
   } else if (!paused) {
-    if (state === 'play') { missionTime += dt; updatePlayer(dt); updateWaves(dt); }
+    if (state === 'play') { missionTime += dt; if (cut) updateCutscene(dt); else updatePlayer(dt); updateWaves(dt); }
     for (const f of [...flyers]) {
       if (f === P) { if (P.falling) updateFalling(P, dt); continue; }
+      if (f.alive && cut && (cut.kind === 'ending' || f === cut.boss || cut.crew.includes(f))) continue;   // scripted during the cutscene
       if (f.alive) { updateAI(f, dt); if (f.team === 'blue' && f.alive) f.hp = Math.min(f.maxHp, f.hp + 1.5 * dt); }
       else if (f.falling) updateFalling(f, dt);
       // damaged aircraft trail smoke
