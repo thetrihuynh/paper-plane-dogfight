@@ -55,6 +55,7 @@ function frameInner(now) {
   autoQuality(realDt);
   cineCD -= realDt;
   if (cut && state === 'play' && cut.slow) dt *= cut.slow(cut.t);   // each cutscene brings its own slow motion
+  if (choosing && state === 'play') dt *= 0.1;   // Chương 12: everything all but stops while Alpha 1 decides
   if (cine.t > 0) { cine.t -= realDt; dt *= cine.ts; if (cine.t <= 0) document.body.classList.remove('cine'); }
   else if (state === 'play' && P && P.evadeDur > 0 && P.evadeCalm) { const k = 1 - P.evadeT / P.evadeDur; dt *= lerp(0.4, 1, clamp((k - 0.15) / 0.6, 0, 1)); }  // evade slow-mo
   clock += dt;

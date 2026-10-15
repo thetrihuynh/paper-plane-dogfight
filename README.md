@@ -8,7 +8,7 @@ Mở `index.html` bằng trình duyệt (cần mạng để tải three.js từ 
 
 ## Tính năng
 
-- 12 chương truyện nối tiếp (Phe Xanh đấu Phe Đỏ): gió mùa, bảo vệ sân trường khỏi bom nước, sương mù, Tàu Mẹ, đêm trăng, Song Nhạn, trận 3 đấu 1 với Red Eagle, và màn Phản công hộ tống Hạc Lớn, có cảnh phim mở đầu và kết thúc
+- 12 chương truyện nối tiếp (Phe Xanh đấu Phe Đỏ): gió mùa, bảo vệ sân trường khỏi bom nước, sương mù, Tàu Mẹ, đêm trăng, Song Nhạn, trận 3 đấu 1 với Red Eagle, và màn Phản công hộ tống Hạc Lớn với một lựa chọn quyết định hai kết thúc khác nhau, có cảnh phim mở đầu và kết thúc
 - Xuất kích chơi liền 12 chương, hoặc chọn chơi riêng từng chương
 - Xưởng gấp máy bay: 7 kiểu gấp có thật (Phi Tiêu, Suzanne, Nakamura, Nhào Lộn, Chim Én, Bumerang, Vòng Ống), tự chọn màu giấy và màu viền
 - Chế độ siêu thanh (cánh gập lại), né tên lửa lăn vòng, súng với vòng ngắm đón đầu, tên lửa khoá mục tiêu

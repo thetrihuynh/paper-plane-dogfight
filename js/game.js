@@ -473,9 +473,10 @@ function damage(f, amt, src) {
   if (f === P && P.invulnT > 0) return;
   if (cut && f === cut.boss) return;   // untouchable while his entrance plays
   if (cut && cut.kind === 'nuke' && f.team === 'blue') return;   // nothing touches the bomb run
-  if (src && src.traitor) {   // Chương 12: Wingman fires on one Crane and on nothing else, least of all Alpha 1
-    if (!isHeron(f) || escortEv.craneDown) return;
-    amt *= 5;
+  if (src && src.traitor) {   // Chương 12: Wingman fires on one Crane and on nothing else, least of all Alpha 1 (unless Alpha 1 joins him: then on the rest of them too)
+    const join = escortEv.choice === 'join';
+    if (!isHeron(f) || (escortEv.craneDown && !join)) return;
+    amt *= join ? 1.5 : 5;
   }
   if (f.name === WINGMAN.name && !f.traitor && gameMode === 'escort' && escortMode === 'finale') amt = Math.min(amt, Math.max(0, f.hp - 40));   // he's still there when it's time
   if (f.traitor) {   // only Alpha 1 can bring him down, and not before he's done what he came for
@@ -541,7 +542,7 @@ function destroy(f, src, crashed = false) {
   burst(f.pos, 40, [f.colorHex, 0xffffff, 0xdddddd], 4, 2.5, 1.5);
   if (f === P) { playerDown(); return; }
   if (f.K.turrets) shipDown(f);
-  if (f.traitor) return;   // no points, no cheering
+  if (f.traitor || (isHeron(f) && f.team === 'red')) return;   // no points, no cheering (nor for a Crane brought down by its own side)
   if (f.team === 'red') {
     const credit = src === P || (f.lastHitBy === P && clock - f.lastHitT < 8);
     if (credit && (f.K.mslN || 0) > 0 && (P.msl <= 3 || Math.random() < 0.5)) {
@@ -565,7 +566,8 @@ function destroy(f, src, crashed = false) {
     } else if (crashed) radio('Blackboard', pick([`${f.name} tự đâm vào địa hình!`, `${f.name} quệt cây rồi rơi luôn.`, `Ối... ${f.name} tự đâm xuống đất kìa.`]));
     else if (src && src.team === 'blue' && !(cut && cut.kind === 'rescue')) radio(src.name, pick(['Splash one!', 'Trúng! Hạ một chiếc!', 'Thêm một bandit xuống đất!']));   // the rescue has its own lines
   } else if (f.team === 'blue') {
-    radio('Blackboard', `${f.name} rơi! ${f.name}, báo cáo tình trạng!`, true);
+    if (isHeron(f)) { if (!cut) radio('Blackboard', `${f.name} bị bắn hạ!`, true); }   // a machine: nobody asks it to report
+    else radio('Blackboard', `${f.name} rơi! ${f.name}, báo cáo tình trạng!`, true);
     if (f.kind === 'ally' && !f.noReturn && flyers.some(o => o.alive && o.kind === 'ace')) { allyReturns.push({ name: f.name, color: f.colorHex, t: 15 }); popup(`${f.name} RƠI · GẤP LẠI MÁY BAY, 15s NỮA QUAY LẠI`, YEL, 2); }
   }
 }
@@ -585,7 +587,7 @@ function chapterComplete() {
 function missionComplete() {
   state = 'won'; endT = 0;
   if (gameMode !== 'escort') radio('Blackboard', 'Cuộc chiến kết thúc. Tất cả phi đội, RTB. Về tổ thôi!', true);
-  if (gameMode === 'escort') { flash('CHIẾN TRANH KẾT THÚC', 'Nhưng ai mới là người chiến thắng?', 3.5); return; }   // a quiet end, no confetti
+  if (gameMode === 'escort') { flash('CHIẾN TRANH KẾT THÚC', escortEv.choice === 'join' ? 'Ba chiếc máy bay đã bay qua bức tường rào' : 'Nhưng ai mới là người chiến thắng?', 3.5); return; }   // a quiet end, no confetti
   flash('NHIỆM VỤ HOÀN THÀNH', 'Mission Accomplished', 3);
   for (let i = 0; i < 4; i++) setTimeout(() => burst(P.pos.clone().add(new THREE.Vector3(rr(-6, 6), rr(2, 6), rr(-6, 6))), 60, [0xff4757, 0xffd93b, 0x2ed573, 0x1e90ff, 0xffffff], 12, 3, 4), i * 350);
 }

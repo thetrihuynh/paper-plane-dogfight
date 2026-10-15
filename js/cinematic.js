@@ -237,7 +237,7 @@ function updateEnding(dt) {
   }
   // the lines wait for each other (c.free), so each one stays up long enough to read; the ending runs until the last is said
   const line = (k, at, who, text) => { if (t > at && t >= (c.free || 0) && !c.said[k]) { c.said[k] = 1; sayNow(who, text); c.free = t + readTime(text) * 0.8; return true; } };
-  line(1, 0.4, 'Crane 1', 'Nhiệm vụ hoàn thành. Crane, RTB.');
+  line(1, 0.4, 'Blackboard', 'Nhiệm vụ hoàn thành. Crane, RTB.');
   line(2, 4.6, 'Alpha 2', 'Xong rồi... cuộc chiến kết thúc rồi.');
   line(3, 7.0, 'Alpha 3', 'Nhìn từ trên này... sao chẳng thấy vui gì cả.');
   if (escortEv.craneDown) line(14, 9.0, 'Alpha 2', 'Dãy nhà phía đông của họ... vẫn còn đứng. Quả bom thứ ba không bao giờ rơi xuống.');   // because of Wingman
@@ -255,6 +255,143 @@ function finishEnding() {
   if (cut && cut.kind === 'ending') { burnFlag(1); rivalFlag.visible = false; }
   cut = null; document.body.classList.remove('cine'); towerStrings.visible = false;
   missionComplete();
+}
+// ---- Chương 12, the other way: Alpha 1 sided with Wingman, and every Crane came down before its run. The last one,
+//      burning, keeps to its last heading the way machines do: low over their roofs and into the West gate, and the wall goes.
+//      The three Alphas fly out through the gap (the old three's dream: over the wall); Wingman turns for home, to
+//      her; and Blackboard, for the first time, calls the other side.
+const SPARE_CRASH = 7.5;   // when the Crane hits the gate
+const SPARE_GATE = new THREE.Vector3(0, 6, SCHOOL.zS);
+// [who, text, earliest?, silence after it?]
+const SPARE_LINES = [
+  ['Alpha 3', '...Bức tường. Sập rồi.', SPARE_CRASH + 2.4],
+  ['Hightower', 'Hightower gọi Alpha 1, Alpha 2, Alpha 3. Quay về. Ngay.'],
+  ['Alpha 3', '...Alpha 3, out.'],   // the one who always did as he was told
+  ['Alpha 2', 'Bên kia tường rào... là gì vậy?'],
+  ['Wingman', 'Hồi xưa có ba đứa hẹn nhau sẽ cùng bay qua bức tường đó. Chưa đứa nào đi được.'],
+  ['Wingman', 'Đi đi, lính mới. Cả ba đứa.'],
+  ['Alpha 1', 'Còn anh?'],
+  ['Wingman', 'Vài tuần nữa tôi mới được nghỉ. Với lại... có người vẫn đang chờ tôi về.'],
+  ['Wingman', 'Bay cho đúng nhé, lính mới.'],   // the first thing he ever told Alpha 1; this time he isn't falling
+  ['Alpha 2', 'Ba đứa, ba hướng...'],
+  ['Alpha 3', '...chung một đường bay.'],
+  ['Alpha 1', '(Bên kia tường rào, chẳng có vạch phấn nào.)', 0, 3],   // and then nothing for a while: Wingman watches them go
+  // they won't answer the tower any more, so it goes through her
+  ['Hightower', 'Hightower gọi Blackboard! Ra lệnh cho Alpha quay về. NGAY LẬP TỨC!'],
+  ['Blackboard', '(cười) Tôi luôn muốn làm điều này!', 0, 0.8],
+  ['Blackboard', 'Blackboard, out.'],
+  ['Wingman', 'Wingman gọi Blackboard. Tôi về đây, Black.'],
+  ['Blackboard', '...Ừ. Tôi chờ.'],
+  // the first time she's ever opened their frequency, and for a long moment nobody answers
+  ['Blackboard', '(hồi hộp) Blackboard gọi khu Tây...', 0, 1.5],
+  ['Blackboard', '...Bên đó có ai nghe không?', 0, 4.5],
+  ['Khu Tây', '...Khu Tây nghe rõ.'],
+];
+const SPARE_GO = SPARE_LINES.findIndex(l => l[1].startsWith('Bay cho đúng')), SPARE_WING = SPARE_LINES.findIndex(l => l[1].startsWith('Wingman gọi')), SPARE_BB = SPARE_LINES.findIndex(l => l[1].includes('khu Tây'));
+function startSpareEnding() {
+  for (const f of [...flyers]) if (f.alive && f.team === 'red') removeFlyer(f);
+  for (const u of groundUnits) u.alive = false;
+  for (const m of missiles) { m.alive = false; scene.remove(m.mesh); } missiles.length = 0;
+  flakShells.length = 0;
+  // the last Crane, just shot: it doesn't drop where it is, the scene flies it (its own physics stop here)
+  const crane = heron; crane.falling = false; if (!flyers.includes(crane)) scene.add(crane.obj);
+  const by = n => flyers.find(f => f.alive && f.name === n);
+  const crew = [by('Alpha 2'), by('Alpha 3'), by(WINGMAN.name)].filter(Boolean);
+  cut = { kind: 'spare', t: 0, boss: null, crew, said: {}, crane, fires: [], wing: by(WINGMAN.name) };
+  P.invulnT = 99; document.body.classList.add('cine');
+  if (!cineOn) finishSpare();
+}
+function updateSpare(dt) {
+  const c = cut; c.t += dt; const t = c.t, cr = c.crane;
+  const say = (k, at, who, text) => { if (t > at && !c.said[k]) { c.said[k] = 1; sayNow(who, text); } };
+  if (t < SPARE_CRASH) {
+    // 1: burning, losing height, still on its heading: over their roofs, straight for the gate; the four of them behind it
+    const k = t / SPARE_CRASH;
+    const p = _tmp.set(Math.sin(t * 1.3) * 1.5, 24 - 18 * k ** 1.5, lerp(-705, SPARE_GATE.z, k));
+    const d = _tmp2.subVectors(p, cr.pos); cr.pos.copy(p); if (d.lengthSq() > 1e-6) orient(cr, d);
+    cr.q.multiply(_q.setFromAxisAngle(FWD, Math.sin(t * 2.1) * 0.25));
+    if (Math.random() < dt * 30) puff(Math.random() < 0.5 ? fire : smoke, cr.pos, _pv.set(rr(-0.5, 0.5), 0.6, rr(0, 1)), rr(1, 1.8), 0.3, 1, Math.random() < 0.5 ? 0xff8c1a : 0x444444);
+    const up = Math.max(0, t - (SPARE_CRASH - 1.6)) ** 2 * 2.5;   // pulling up before the wall
+    [P, ...c.crew].forEach((f, i) => {
+      const o = [[-6, 3, 14], [6, 3.5, 16], [-12, 4, 20], [11, 4.5, 22]][i];
+      f.pos.set(o[0], cr.pos.y + o[1] + up, cr.pos.z + o[2]); orient(f, _ax.set(0.001, up > 0 ? 0.25 : -0.12, -1)); f.speed = 9; f.vel.set(0, 0, -9);
+    });
+    say('c1', 0.6, 'Alpha 2', `${cr.name} chưa rơi! Nó vẫn cứ giữ hướng bay...`);
+    say('c2', 3.6, 'Alpha 3', 'Nó lướt qua mái nhà rồi... thẳng ra tường rào!');
+  } else if (!c.hit) {
+    // the crash: the gate and the wall either side of it come down
+    c.hit = true; scene.remove(cr.obj); removeFlyer(cr);
+    camFlashEl.style.transition = 'none'; camFlashEl.style.opacity = 0.8; requestAnimationFrame(() => { camFlashEl.style.transition = 'opacity 1.4s'; camFlashEl.style.opacity = 0; });
+    if (AU.ctx) { noiseHit(AU.ctx.currentTime, 80, 1.0, 2.5); tone(70, 35, 2, 0.2, 'sawtooth'); }
+    for (let i = 0; i < 5; i++) explosion(_tmp.copy(SPARE_GATE).add(_pv.set(rr(-8, 8), rr(-3, 4), rr(-2, 2))), 3.5, 0);
+    shake = 1; breakGate();
+    for (let i = 0; i < 5; i++) c.fires.push(new THREE.Vector3(rr(-14, 14), rr(0.5, 3), SPARE_GATE.z + rr(-2, 2)));
+  }
+  for (const sp of c.fires) {   // what's left of it burns in the gap
+    if (Math.random() < dt * 8) puff(fire, _tmp.copy(sp).add(_pv.set(rr(-1.5, 1.5), rr(0, 1), rr(-1.5, 1.5))), _pv.set(0, rr(1, 2.5), 0), rr(0.5, 0.9), 0.5, 1.4, [0xffa53a, 0xff6a1f, 0xffd23f][(Math.random() * 3) | 0]);
+    if (Math.random() < dt * 4) puff(smoke, _tmp.copy(sp).add(_pv.set(rr(-1, 1), 2, rr(-1, 1))), _pv.set(rr(-0.3, 0.3), rr(2.5, 4), rr(-0.3, 0.3)), rr(3, 5), 0.8, 3.2, 0x444444);
+  }
+  if (t >= SPARE_CRASH && c.goT == null) {
+    // 2: a slow circle over the broken wall while they talk
+    const a0 = 0.4 + (t - SPARE_CRASH) * 0.16, cz = -735, R = 26;
+    P.pos.set(Math.cos(a0) * R, 20, cz + Math.sin(a0) * R);
+    orient(P, _tmp.set(-Math.sin(a0), 0, Math.cos(a0))); P.q.multiply(_q.setFromAxisAngle(FWD, -0.3)); P.speed = 8;
+    c.crew.forEach((f, i) => { const a = a0 - 0.12 * (i + 1); f.pos.set(Math.cos(a) * (R + 3 + i * 2.5), 19.5 - i * 0.6, cz + Math.sin(a) * (R + 3 + i * 2.5)); orient(f, _tmp.set(-Math.sin(a), 0, Math.cos(a))); f.q.multiply(_q.setFromAxisAngle(FWD, -0.3)); f.speed = 8; });
+  }
+  if (c.goT != null) {
+    // 3: the three of them, out through the gap and away, climbing; Wingman turns back for the east
+    const k = t - c.goT;
+    [P, c.crew.find(f => f.name === 'Alpha 2'), c.crew.find(f => f.name === 'Alpha 3')].forEach((f, i) => {
+      if (!f) return;
+      const o = [[0, 0], [-4, 3], [4, 3]][i];
+      f.pos.set(o[0], 7 + 0.9 * k + 0.05 * k * k, -742 - 10 * k + o[1]); orient(f, _tmp.set(0.001, 0.09 + 0.01 * k, -1)); f.speed = 10; f.vel.set(0, 0, -10);
+    });
+    if (c.wing) {
+      const w = c.wing;
+      if (c.wT == null) {   // he stays behind: a slow, wide circle over the yard, watching them go until they're gone
+        const a = 1.2 + k * 0.12, R = 14; w.pos.set(Math.cos(a) * R, 17, -726 + Math.sin(a) * R);
+        orient(w, _tmp.set(-Math.sin(a), 0, Math.cos(a))); w.q.multiply(_q.setFromAxisAngle(FWD, -0.25)); w.speed = R * 0.12;
+      } else { const kw = t - c.wT; w.pos.set(10 + Math.sin(kw * 0.3) * 3, 18 + kw * 0.4, -726 + 9 * kw); orient(w, _tmp.set(0.08 * Math.cos(kw * 0.3), 0.04, 1)); w.speed = 9; }   // then home, east
+    }
+  }
+  aim.copy(fwdOf(P, _tmp));
+  if (t < SPARE_CRASH + 2) return;
+  const i = talk(c, t, SPARE_LINES);
+  if (i !== c.lastI) { c.lastI = i; const L = SPARE_LINES[i]; if (L && L[3]) c.lAt += L[3]; }   // a held silence after this line
+  c.spk = i >= 0 && t - c.lSaid < readTime(SPARE_LINES[i][1]) * 0.85 + 0.4 ? SPARE_LINES[i][0] : null;
+  if (i === SPARE_GO && c.goT == null && t >= c.lAt) c.goT = t;
+  if (i >= SPARE_WING && c.wT == null) c.wT = c.lSaid;
+  if (i >= SPARE_BB && c.bT == null) c.bT = c.lSaid;
+  if ((i === SPARE_LINES.length - 1 && t >= c.lAt + 3) || t >= END_LEN + 30 || pressed.Enter || pressed.NumpadEnter) finishSpare();
+}
+function finishSpare() {
+  const c = cut;
+  if (c && c.kind === 'spare' && !c.hit) { scene.remove(c.crane.obj); removeFlyer(c.crane); breakGate(); }
+  cut = null; document.body.classList.remove('cine');
+  missionComplete();
+}
+function spareCamera(dt) {
+  const c = cut, t = c.t, w = c.wing;
+  let shot, fov = 55;
+  if (t < SPARE_CRASH) { shot = 1; _cd.copy(P.pos).add(_pv.set(1.5, 1.2, 5)); _cl.copy(c.crane.pos).lerp(SPARE_GATE, 0.3); fov = 52; }   // behind Alpha 1, the Crane going down ahead, the gate beyond it
+  else if (t < SPARE_CRASH + 4) { shot = 2; _cd.set(18, 3, -738); _cl.set(0, 4, SPARE_GATE.z); fov = 58; }   // low in their courtyard: the gate comes down
+  else if (c.bT != null) {   // pull far back and up: the whole school, the hole in its wall, the two towers still lit
+    shot = 6; const u = clamp((t - c.bT) / 14, 0, 1), e = u * u * (3 - 2 * u);
+    _cd.set(lerp(117, 228, e), lerp(90, 150, e), lerp(-278, -162, e)); _cl.set(0, 60, -480); fov = 72;
+  } else if (c.wT != null && w) { shot = 5; _cd.copy(w.pos).add(_pv.set(2.2, 1.2, -5)); _cl.copy(w.pos).add(_pv.set(0, 0, 25)); fov = 54; }   // behind Wingman, alone, heading home
+  else if (c.goT != null && (t - c.goT < 3.5 || !w)) { shot = 4; _cd.set(5, 4, -722); _cl.copy(P.pos); fov = 50; }   // from inside the yard: three planes through the gap
+  else if (c.goT != null) {   // over Wingman's shoulder: the three of them getting smaller beyond the wall, until they're gone
+    shot = 4.5; const away = _tmp2.subVectors(w.pos, P.pos).setY(0).normalize();
+    _cd.copy(w.pos).addScaledVector(away, 2.6).add(_pv.set(0, 0.9, 0)); _cl.copy(P.pos); fov = 44;
+  }
+  else if (c.spk === 'Wingman' && w) { shot = 3.1; const fe = fwdOf(w, _tmp2); _cd.copy(w.pos).addScaledVector(fe, 1.6).add(_pv.set(0, 0.3, 0)).addScaledVector(rightOf(w, _ar), 0.9); _cl.copy(w.pos); fov = 46; }
+  else if (c.spk === 'Alpha 1') { shot = 3.2; const fe = fwdOf(P, _tmp2); _cd.copy(P.pos).addScaledVector(fe, 1.6).add(_pv.set(0, 0.3, 0)).addScaledVector(rightOf(P, _ar), -0.9); _cl.copy(P.pos); fov = 46; }
+  else { shot = 3; _cd.copy(P.pos).addScaledVector(fwdOf(P, _tmp2), -6).add(_pv.set(0, 2.5, 0)); _cl.copy(SPARE_GATE); fov = 58; }   // over the circle, looking down at the hole
+  const pin = shot !== c.shot; c.shot = shot;
+  camera.position.lerp(_cd, pin ? 1 : 1 - Math.exp(-dt * 8));
+  camera.up.set(0, 1, 0); camera.lookAt(_cl);
+  camera.fov += (fov - camera.fov) * (pin ? 1 : Math.min(1, dt * 3)); camera.updateProjectionMatrix();
+  camPos.copy(camera.position);
 }
 function endingCamera(dt) {
   const t = cut.t, h = heron.pos;
@@ -288,25 +425,29 @@ function startEscortCut() {
   const lan = flyers.find(f => f.alive && f.name === 'Alpha 2'), minh = flyers.find(f => f.alive && f.name === 'Alpha 3');
   const tuan = escortMode === 'lab' ? null : makeFlyer('ally', 'blue', 'Alpha 4', 0x9be37a), ha = escortMode === 'lab' ? null : makeFlyer('ally', 'blue', 'Alpha 5', 0xffb35c);   // Alpha 4 and Alpha 5 only fly the finale
   const wing = escortMode === 'lab' ? null : wingmanUp() || makeWingman();   // the finale: Wingman flies it too
-  cut = { kind: 'escort', t: 0, boss: heron, crew: [P, lan, minh, tuan, ha, wing], said: {} };
+  cut = { kind: 'escort', t: 0, boss: heron, crew: [P, lan, minh, tuan, ha, wing, ...herons.filter(h => h !== heron)], said: {} };   // (the wing Cranes are in the crew so the AI leaves them alone; they keep their slots in the V)
   P.invulnT = escLen(); document.body.classList.add('cine');
   if (!cineOn) endEscortCut();
 }
 const escHeronZ = t => -60 - ESC_V * t;   // lifts off over our courtyard
+function escWingCranes() {   // the finale's other two Cranes, in their slots off the lead's wings
+  for (const h of herons) if (h !== heron && h.alive && h.formOff) { h.pos.copy(heron.pos).add(h.formOff); h.q.copy(heron.q); h.vel.copy(heron.vel); h.speed = heron.speed; }
+}
 function updateEscortCut(dt) {
   const c = cut; c.t += dt; const t = c.t, hz = escHeronZ(t), y = 26;
   heron.pos.set(Math.sin(t * 0.4) * 0.6, y + Math.sin(t * 0.7) * 0.3, hz); orient(heron, FWD);
   heron.q.multiply(_q.setFromAxisAngle(FWD, Math.sin(t * 0.5) * 0.05)); heron.vel.set(0, 0, -ESC_V); heron.speed = ESC_V;
+  escWingCranes();
   // after the order to go, the fighters accelerate (a = 4 m/s²) and pull away ahead of the bomber
   const go = Math.max(0, t - escGo()), ahead = 0.5 * 4 * go * go;
   c.crew.forEach((f, i) => {
-    if (!f || !f.alive) return;
+    if (!f || !f.alive || isHeron(f)) return;
     const o = ESC_FORM[i];
     f.pos.set(o[0] * (1 + go * 0.05), y + o[1] + Math.sin(t * 1.3 + i) * 0.15, hz + o[2] - ahead - (go > 0 ? i * 0.6 * go : 0));
     orient(f, FWD); f.speed = ESC_V + 4 * go; f.vel.set(0, 0, -f.speed);
     f.afterburner = go > 0;
   });
-  if (go > 0 && Math.random() < 0.6) for (const f of c.crew) if (f && f.alive) puff(fire, _tmp.copy(f.pos).add(_pv.set(0, 0, 0.35)), _pv.set(0, 0, 3), 0.18, 0.12, 0.04, 0xffb347);
+  if (go > 0 && Math.random() < 0.6) for (const f of c.crew) if (f && f.alive && !isHeron(f)) puff(fire, _tmp.copy(f.pos).add(_pv.set(0, 0, 0.35)), _pv.set(0, 0, 3), 0.18, 0.12, 0.04, 0xffb347);
   aim.set(0, 0, -1);
   const line = (k, at, who, text) => { if (t > at && !c.said[k]) { c.said[k] = 1; sayNow(who, text); } };
   if (escortMode === 'lab') { line(1, 0.5, 'Blackboard', 'Crane đã cất cánh. Máy bay lớn nhất Phe Xanh từng gấp.'); line(2, 3.6, 'Alpha 2', 'To thật... nhưng chậm như rùa vậy.'); line(3, 5.0, 'Alpha 3', 'Chậm thế này, phòng không bắn trúng mất...'); }
@@ -317,7 +458,6 @@ function updateEscortCut(dt) {
   ]);
   line(4, 6.6 + escD() + (escD() ? 0.2 : 0), 'Blackboard', 'Phi đội Alpha, tăng tốc! Mở đường phía trước cho Crane!');
   line(5, 8.4 + escD(), 'Alpha 3', 'Alpha 3, wilco! Theo tôi!');
-  line(6, 10.2 + escD(), 'Crane', 'Crane bám theo sau. Trông cậy vào Alpha!');
   if (t > escGo() && !c.said.boost) { c.said.boost = 1; whoosh(); if (AU.ctx) tone(200, 700, 0.8, 0.07, 'sawtooth'); }
   if (t >= escLen() || pressed.Enter || pressed.NumpadEnter) endEscortCut();
 }
@@ -326,21 +466,24 @@ function endEscortCut() {
   // jump to the end state: fighters out in front, bomber cruising behind
   const hz = escHeronZ(escLen()), ahead = 0.5 * 4 * (escLen() - escGo()) ** 2;
   heron.pos.set(0, 26, hz); orient(heron, FWD); heron.speed = 7;
-  c.crew.forEach((f, i) => { if (!f || !f.alive) return; const o = ESC_FORM[i]; f.pos.set(o[0] * 1.2, 26 + o[1], hz + o[2] - ahead - i * 2.5); orient(f, FWD); f.speed = 9; });
+  escWingCranes();
+  c.crew.forEach((f, i) => { if (!f || !f.alive || isHeron(f)) return; const o = ESC_FORM[i]; f.pos.set(o[0] * 1.2, 26 + o[1], hz + o[2] - ahead - i * 2.5); orient(f, FWD); f.speed = 9; });
   P.invulnT = 1; aim.set(0, 0, -1); camPos.copy(P.pos).add(_pv.set(0, 0.5, 2.5)); camAimS.copy(aim);
   escortBriefing();
 }
 function escortCutCamera(dt) {
-  const t = cut.t, h = heron.pos;
+  const t = cut.t, h = heron.pos, fin = escortMode !== 'lab';
   let pos = _cd, look = _cl, fov = 50;
   if (t < 3.6) {   // 1: low and ahead: the bomber lumbers overhead, huge against the sky
-    pos.set(13, 21.5, -74); look.copy(h).add(_pv.set(0, 0.4, 0)); fov = lerp(46, 58, clamp(t / 3.6, 0, 1));   // low over our courtyard
+    if (fin) { pos.set(0, 18.5, -80); look.copy(h).add(_pv.set(0, 0.4, 4)); fov = lerp(52, 66, clamp(t / 3.6, 0, 1)); }   // the finale: from under the V as the three pass overhead
+    else { pos.set(13, 21.5, -74); look.copy(h).add(_pv.set(0, 0.4, 0)); fov = lerp(46, 58, clamp(t / 3.6, 0, 1)); }   // low over our courtyard
   } else if (t < 6.6 + escD()) {   // 2: tracking alongside: the five fighters throttled back around it
-    pos.copy(h).add(_pv.set(16, 1.5, 3)); look.copy(h).add(_pv.set(-2, 0, -2)); fov = 46;
+    if (fin) { pos.copy(h).add(_pv.set(27, 2.5, -6)); look.copy(h).add(_pv.set(-2, 0, 2)); fov = 50; }   // far enough out to take in all three
+    else { pos.copy(h).add(_pv.set(16, 1.5, 3)); look.copy(h).add(_pv.set(-2, 0, -2)); fov = 46; }
   } else if (t < 9.6 + escD()) {   // 3: from behind and above the bomber: the fighters surge ahead
-    pos.copy(h).add(_pv.set(0, 4, 13)); look.copy(h).add(_pv.set(0, 0, -40)); fov = 52;
+    pos.copy(h).add(_pv.set(0, fin ? 8 : 4, fin ? 32 : 13)); look.copy(h).add(_pv.set(0, 0, -40)); fov = 52;
   } else {   // 4: wide: the yard and the Red Faction's wing ahead
-    pos.copy(h).add(_pv.set(-12, 9, 16)); look.set(0, 16, h.z - 120); fov = 55;
+    pos.copy(h).add(fin ? _pv.set(-28, 12, 34) : _pv.set(-12, 9, 16)); look.set(0, 16, h.z - 120); fov = 55;
   }
   const shot = t < 3.6 ? 1 : t < 6.6 + escD() ? 2 : t < 9.6 + escD() ? 3 : 4;   // hard cut when the shot changes, smooth within a shot
   camera.position.lerp(pos, shot !== cut.shot ? 1 : 1 - Math.exp(-dt * 8)); cut.shot = shot;
@@ -413,6 +556,8 @@ function updateCutscene(dt) {
   if (cut.kind === 'nuke') { updateNukeCut(dt); return; }
   if (cut.kind === 'rescue') { updateRescueCut(dt); return; }
   if (cut.kind === 'ending') { updateEnding(dt); return; }
+  if (cut.kind === 'spare') { updateSpare(dt); return; }
+  if (cut.kind === 'traitor') { updateTraitorCut(dt); return; }
   if (cut.kind === 'escort') { updateEscortCut(dt); return; }
   if (cut.kind === 'twins') { updateTwinsCut(dt); return; }
   const c = cut; c.t += dt;
@@ -491,6 +636,8 @@ function skipCutscene() {
   if (c.kind === 'nuke') { endNukeCut(); return; }
   if (c.kind === 'rescue') { endRescueCut(); return; }
   if (c.kind === 'ending') { finishEnding(); return; }
+  if (c.kind === 'spare') { finishSpare(); return; }
+  if (c.kind === 'traitor') { endTraitorCut(); return; }
   if (c.kind === 'escort') { endEscortCut(); return; }
   if (c.kind === 'twins') { endTwinsCut(); return; }
   for (const f of [c.tuan, c.ha]) if (f.alive) { removeFlyer(f); f.alive = false; }   // both are on the ground by now, out of the fight
@@ -509,6 +656,8 @@ function cutsceneCamera(dt) {
   if (cut.kind === 'nuke') { nukeCamera(dt); return; }
   if (cut.kind === 'rescue') { rescueCamera(dt); return; }
   if (cut.kind === 'ending') { endingCamera(dt); return; }
+  if (cut.kind === 'spare') { spareCamera(dt); return; }
+  if (cut.kind === 'traitor') { traitorCamera(dt); return; }
   if (cut.kind === 'escort') { escortCutCamera(dt); return; }
   if (cut.kind === 'twins') { twinsCamera(dt); return; }
   const c = cut, t = c.t, b = c.boss.pos;

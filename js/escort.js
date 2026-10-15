@@ -48,7 +48,7 @@ const FINALE_POINT = new THREE.Vector3(0, 12, -650);   // where the run begins (
 const missionPoint = () => escortMode === 'lab' ? LAB_TARGET : FINALE_POINT;
 function startEscort(mode) {
   escortMode = mode === 'lab' ? 'lab' : 'finale'; escortEv = {};
-  gameMode = 'escort'; escortDone = false; escortT = 0; interceptT = 12; endingFires.length = 0; restoreSouth();
+  gameMode = 'escort'; escortDone = false; escortT = 0; interceptT = 12; endingFires.length = 0; restoreSouth(); closeChoice();
   strikeTargets.length = 0;
   if (escortMode === 'lab') { strikeTargets.push({ name: 'Phòng Thí Nghiệm', pos: LAB_TARGET.clone(), r: 14, alive: true, hp: 1, lab: true }); setLabRuined(false); showLabWeapon(true, false); }
   else strikeTargets.push({ name: 'Khu Tây', pos: FINALE_POINT.clone(), r: 40, alive: true, hp: 1 });
@@ -89,7 +89,7 @@ function escortBriefing() {
   flash(WAVES[wave] ? WAVES[wave].title : 'PHẢN CÔNG', 'Hộ tống ba Hạc Lớn tới giữa khu Phe Đỏ', 3.2);
 }
 function endEscortWorld() {   // back to the normal campaign layout
-  gameMode = 'campaign'; heron = null; herons = [];
+  gameMode = 'campaign'; heron = null; herons = []; closeChoice();
   strikeTargets.length = 0; flakShells.length = 0;
   resetRivalFlag();
   for (const u of groundUnits) { u.alive = false; u.obj.visible = false; u.box.off = true; u.obj.rotation.set(0, 0, 0); }
@@ -121,7 +121,7 @@ function updateHeron(a, dt) {
     const miss = Math.hypot(impact.x - next.pos.x, impact.z - next.pos.z);
     _des.set(next.pos.x - a.pos.x, 0, next.pos.z - a.pos.z).normalize(); _des.y = (Math.max(next.pos.y + 13, 26) - a.pos.y) * 0.08;   // cruise above the Giếng Trời and the wings _des.normalize();
     a.bombCD -= dt;
-    if (miss < next.r * 0.7 && a.bombCD <= 0) { dropBomb(a); a.bombCD = 0.45; radioOnce('heronDrop', a.name, 'Bombs away!', 6); }
+    if (miss < next.r * 0.7 && a.bombCD <= 0) { dropBomb(a); a.bombCD = 0.45; }
   } else _des.set(0, 0.05, 1).normalize();   // job done: head home
   if (a === heron && escortEv.hold) {   // holding pattern: a wide circle round where it stopped, same height
     const c = escortEv.hold; _tmp.set(a.pos.x - c.x, 0, a.pos.z - c.z); const rad = _tmp.length() || 1; _tmp.divideScalar(rad);
@@ -129,7 +129,7 @@ function updateHeron(a, dt) {
   }
   // self-defence: flares when a missile gets close
   a.flareCD = (a.flareCD || 0) - dt;
-  if (a.flares > 0 && a.flareCD <= 0 && missiles.some(m => m.alive && m.target === a && m.p.distanceTo(a.pos) < 14)) { popFlares(a); radioOnce('heronFlare', a.name, 'Flare, flare!', 8); }
+  if (a.flares > 0 && a.flareCD <= 0 && missiles.some(m => m.alive && m.target === a && m.p.distanceTo(a.pos) < 14)) popFlares(a);
   for (const o of flyers) if (o !== a && o.alive && o.team === a.team) { const d = a.pos.distanceTo(o.pos); if (d < 6 && d > 0.01) _des.addScaledVector(_tmp.subVectors(a.pos, o.pos).normalize(), (6 - d) / 6); }
   if (a.pos.y < 8) _des.y += 0.5;
   _des.normalize();
@@ -164,7 +164,7 @@ function damageGround(u, amt) {
 function updateGround(dt) {
   const blues = flyers.filter(f => f.alive && f.team === 'blue');
   for (const u of groundUnits) {
-    if (!u.alive) continue;
+    if (!u.alive || escortEv.choice === 'join') continue;   // (when the bombers turn on each other over their heads, their guns hold fire)
     let best = null, bd = u.kind === 'flak' ? 48 : 75;
     for (const f of blues) { const d = f.pos.distanceTo(u.pos); const w = isHeron(f) ? d * 0.7 : d; if (f.pos.y > 3 && w < bd) { bd = w; best = f; } }
     if (u.kind === 'sam') {   // the SAM sites wake up late in the run, and then they only want a bomber
@@ -193,7 +193,7 @@ function updateGround(dt) {
         launchMissile(u, best); u.pos.y = 1.4;
         puff(smoke, u.pos, _pv.set(0, 2, 0), 1.5, 0.5, 1.4, 0xdddddd);
         if (best === P) radio('Blackboard', 'Alpha 1, SAM phóng! Break, pháo sáng!', true);
-        else if (isHeron(best)) radioOnce('samHeron', best.name, 'SAM bám theo tôi! Cần người phá trạm SAM!', 10);
+        else if (isHeron(best)) radioOnce('samHeron', 'Blackboard', `SAM đang bám ${best.name}! Cần người phá trạm SAM!`, 10);
       }
     }
   }
@@ -213,9 +213,14 @@ function updateEscort(dt) {
   if (state !== 'play') return;
   if (heron && !heron.alive && !escortDone) {   // the lead is down: the next one takes over, and the wingmen re-form on it
     const next = herons.find(h => h.alive);
-    if (!next) { escortDone = true; missionFail(herons.length > 1 ? 'Cả ba Hạc Lớn đã bị bắn hạ…' : 'Hạc Lớn đã bị bắn hạ…'); return; }
+    if (!next) {
+      escortDone = true;
+      if (escortEv.choice === 'join') { closeChoice(); startSpareEnding(); return; }   // every Crane down before the run: their wing still stands
+      missionFail(herons.length > 1 ? 'Cả ba Hạc Lớn đã bị bắn hạ…' : 'Hạc Lớn đã bị bắn hạ…'); return;
+    }
     heron = next; heron.formLead = null; for (const h of herons) if (h !== heron && h.alive) h.formLead = heron;
-    radio('Blackboard', `${heron.name} dẫn đầu đội hình! Còn ${herons.filter(h => h.alive).length} chiếc, bảo vệ bằng mọi giá!`, true);
+    if (escortEv.choice === 'join') { const w = escortEv.traitor; if (w && w.alive) w.huntHeron = w.target = heron; }
+    else radio('Blackboard', `${heron.name} dẫn đầu đội hình! Còn ${herons.filter(h => h.alive).length} chiếc, bảo vệ bằng mọi giá!`, true);
   }
   // the finale's briefing: everyone holds formation round the bombers at their pace until Blackboard is done talking
   if (escortMode === 'finale' && heron && heron.alive && !cut && escortT < (escortEv.talkUntil || 0)) cruise(dt);
@@ -224,17 +229,22 @@ function updateEscort(dt) {
   // interceptors scramble from the rival school, more as the bomber gets closer (Chương 6 has its own script)
   interceptT -= dt * 0.4;
   const reds = flyers.filter(f => f.alive && f.team === 'red').length;
-  if (interceptT <= 0 && reds < 7 && !escortDone && !cut && !escortEv.traitor) {
+  const fin = escortMode === 'finale';
+  if (interceptT <= 0 && reds < (fin ? 4 : 7) && !escortDone && !cut && !escortEv.traitor) {
     const near = heron && heron.pos.z < SCHOOL.mid;
-    interceptT = near ? 16 : 24;
-    const fin = escortMode === 'finale';
+    interceptT = fin ? 34 : near ? 16 : 24;
     const pool = fin ? ['dart', 'dart', 'swallow', 'stunt'] : near ? ['swallow', 'nakamura', 'dart', 'stunt', 'crumple'] : ['dart', 'swallow', 'dart'];
-    for (let i = 0; i < (fin ? 4 : 3); i++) {
+    for (let i = 0; i < (fin ? 2 : 3); i++) {
       const k = pick(pool), e = makeFlyer(k, 'red', `${KINDS[k].label} chặn đường`); e.pos.copy(findSpawn(35, 80, 'rival')); orient(e, _ax.subVectors(heron ? heron.pos : P.pos, e.pos)); e.speed = e.K.veq;
-      if (fin) { const ram = Math.random() < 0.65; if (ram && heron) e.huntHeron = e.target = pick(herons.filter(h => h.alive)) || heron; rookie(e, ram); }   // the finale: green pilots, most of them rammers
+      if (fin) { const ram = Math.random() < 0.4; if (ram && heron) e.huntHeron = e.target = pick(herons.filter(h => h.alive)) || heron; rookie(e, ram); }   // the finale: green pilots, most of them rammers
     }
     radioOnce('scramble' + (near ? 1 : 0), 'Blackboard', fin ? 'Thêm tân binh cất cánh từ khu Tây!' : near ? 'Bandit mới cất cánh từ khu Tây!' : 'Radar: tiêm kích đánh chặn đang lao tới Crane!', 20);
   }
+  if (escortEv.choice === 'join') {   // (the run starts when the clock runs out, in updateJoin)
+    if (!cut) $('objective').textContent = `HẠ ${herons.filter(h => h.alive).length} HẠC LỚN · vào hướng ném sau ${Math.max(0, Math.ceil(escortEv.joinT))} giây · ĐIỂM ${score}`;
+    return;
+  }
+  if (choosing) { $('objective').textContent = 'ALPHA 1 · [1] NGĂN WINGMAN · [2] BAY CÙNG WINGMAN'; return; }
   if (heron && heron.alive && !escortDone && !cut && Math.hypot(heron.pos.x - missionPoint().x, heron.pos.z - missionPoint().z) < (escortMode === 'lab' ? 70 : 85)) { startNukeCut(); return; }
   const left = strikeTargets.filter(t => t.alive).length;
   { const d = heron ? Math.max(0, Math.round(Math.hypot(heron.pos.x - missionPoint().x, heron.pos.z - missionPoint().z) - (escortMode === 'lab' ? 70 : 85))) : 0;
@@ -369,6 +379,16 @@ function restoreSouth() {   // a new game, or another try at the finale: the sch
   for (const w of ruin.wrecks) scene.remove(w.m);
   ruin.falls.length = 0; ruin.boxesOff.length = 0; ruin.wrecks.length = 0;
 }
+// Chương 12, the other ending: the last Crane goes into the West gate, and the gate and the wall either side of it
+// come down, from the middle outwards (restoreSouth puts it back)
+function breakGate() {
+  const G = SCHOOL.zS;
+  for (const s of gatherSouth()) {
+    if (Math.abs(s.z - G) > 3 || Math.abs(s.x) > 50 || ruin.falls.some(f => f.s === s)) continue;
+    ruin.falls.push({ s, at: clock + Math.abs(s.x) / 40 + rr(0, 0.3), dur: rr(1.2, 2), tx: rr(-0.5, -0.2), tz: rr(-0.25, 0.25), dust: false });   // leaning outwards as it goes
+  }
+  for (const b of boxes) if (!b.off && Math.abs((b.min.z + b.max.z) / 2 - G) < 3 && Math.abs((b.min.x + b.max.x) / 2) < 50) { b.off = true; ruin.boxesOff.push(b); }
+}
 // a bomb went off at T: queue up the collapse of everything in reach, nearest first, as the ring rolls outward
 function bringDown(T) {
   const reach = escortEv.craneDown ? 55 : 105;   // fewer bombs: the blasts don't meet, and what's between them stands
@@ -459,14 +479,14 @@ function updateNukeCut(dt) {
   }
   const line = (n, at, who, text) => { if (t > at && !c.said[n]) { c.said[n] = 1; sayNow(who, text); } };
   if (!c.finale) {
-    line(1, 0.4, 'Crane', 'Crane vào hướng ném. Mở khoang bom.');
+    line(1, 0.4, 'Blackboard', 'Crane vào hướng ném. Khoang bom mở.');
     line(2, 2.0, 'Alpha 2', 'Chỉ một quả thôi sao? Có đủ không?');
-    line(3, NUKE_DROP + 0.2, 'Crane', 'Bombs away. Tất cả... quay mặt đi.');
+    line(3, NUKE_DROP + 0.2, 'Blackboard', 'Bom đã thả. Tất cả... quay mặt đi.');
     if (c.hit >= 0) { line(4, c.hit + 2.6, 'Alpha 3', '...Trời ơi.'); line(5, c.hit + 4.6, 'Blackboard', 'Phòng Thí Nghiệm và Tàu Mẹ II... không còn gì nữa. Crane, RTB.'); }
   } else {
-    line(1, 0.4, 'Crane 1', 'Đội Crane vào hướng ném. Mở khoang bom.');
-    line(2, 2.0, 'Alpha 2', c.runs.length > 1 ? `${c.runs.length} quả... cùng một lúc sao?` : 'Chỉ còn một chiếc... nhưng một quả cũng đủ rồi.');
-    line(3, NUKE_DROP + 0.2, 'Crane 1', 'Thả.');
+    line(1, 0.4, 'Hightower', 'Hightower gọi Crane. Vào hướng ném.');
+    line(2, 2.0, 'Alpha 2', escortEv.choice === 'join' ? 'Không... không kịp nữa rồi!' : c.runs.length > 1 ? `${c.runs.length} quả... cùng một lúc sao?` : 'Chỉ còn một chiếc... nhưng một quả cũng đủ rồi.');
+    line(3, NUKE_DROP + 0.2, 'Hightower', 'Thả.');
     if (c.hit >= 0) { line(4, c.hit + 2.8, 'Alpha 3', 'Đủ rồi... thế là đủ rồi mà...'); line(5, c.hit + 5.2, 'Alpha 1', '(Bên dưới đó... là nơi những chiếc như mình được gấp ra.)'); }
   }
   if (t >= NUKE_LEN + (c.runs.length - 1) * 0.45 || pressed.Enter || pressed.NumpadEnter) endNukeCut();
@@ -478,6 +498,7 @@ function endNukeCut() {
   const keep = Math.round(herons.reduce((s, h) => s + (h.alive ? h.hp / h.maxHp : 0), 0) / herons.length * 100); score += keep * 10;   // bonus for bringing the bombers through
   for (const u of groundUnits) u.alive && damageGround(u, 999);
   for (const f of flyers) if (f.alive && f.team === 'red') f.flee = true;
+  if (c.finale && escortEv.choice === 'join') { missionFail('Không kịp... những quả bom vẫn rơi xuống khu Tây.'); return; }
   if (c.finale) { startEnding(); return; }   // and the war is over
   setLabRuined(true); showLabWeapon(false); labWeapon.position.y = LABW.y;
   flash('PHÒNG THÍ NGHIỆM ĐÃ BỊ XOÁ SỔ', `Tàu Mẹ II bị chôn vùi · +1500 · Hạc Lớn còn ${keep}%: +${keep * 10}`, 3.4);
@@ -538,7 +559,7 @@ function huntersOn(kind, n, label, from, tag, mod) {
     const f = makeFlyer(kind, 'red', `${KINDS[kind].label} ${label} ${i + 1}`); f.huntHeron = prey; f.target = prey; f.wave = tag;
     f.pos.copy(from()); orient(f, _ax.subVectors(heron.pos, f.pos)); f.speed = f.K.veq + 2;
     if (kind === 'crumple') {   // a paper ball: one short burst pops it, but one that gets through tears a big hole in a Hạc Lớn
-      f.hp = f.maxHp = 6; f.ramDmg = 45; f.kamikaze = true; f.speed = f.K.veq;
+      f.hp = f.maxHp = 6; f.ramDmg = escortMode === 'finale' ? 28 : 45; f.kamikaze = true; f.speed = f.K.veq;
       f.K = Object.assign({}, f.K, { hitR: 0.8 });
     }
     if (mod) mod(f, i);
@@ -547,9 +568,9 @@ function huntersOn(kind, n, label, from, tag, mod) {
 // the finale: Phe Đỏ has no pilots left, only planes folded last week. Thin paper, shaky hands, no missiles, and
 // most of them don't even try to dogfight: they aim themselves at a Hạc Lớn
 function rookie(f, ram) {
-  f.rookie = true; f.name = `Tân binh ${f.K.label}`; f.hp = f.maxHp = Math.round(f.maxHp * 0.35); f.mslLeft = 0;
-  f.K = Object.assign({}, f.K, { gunDmg: f.K.gunDmg * 0.6, gunCone: f.K.gunCone * 0.6, evade: 0.3, points: Math.round((f.K.points || 100) * 0.6) });
-  if (ram) { f.K.ai = 'ram'; f.kamikaze = true; f.ramDmg = 35; f.speed = f.K.veq + 1; f.name = `Tân binh cảm tử`; }
+  f.rookie = true; f.name = `Tân binh ${f.K.label}`; f.hp = f.maxHp = Math.max(8, Math.round(f.maxHp * 0.25)); f.mslLeft = 0;
+  f.K = Object.assign({}, f.K, { gunDmg: f.K.gunDmg * 0.5, gunCone: f.K.gunCone * 0.6, evade: 0.2, hitR: f.K.hitR * 1.5, points: Math.round((f.K.points || 100) * 0.6) });
+  if (ram) { f.K.ai = 'ram'; f.kamikaze = true; f.ramDmg = 20; f.K.veq *= 0.85; f.speed = f.K.veq; f.name = `Tân binh cảm tử`; }   // slow enough to run down, and one alone only dents a Crane
 }
 const rookieOf = ram => f => rookie(f, typeof ram === 'function' ? ram(f) : ram);
 // a few lines of radio, each at its own moment (radio() puts urgent lines at the front of the queue, so a burst of
@@ -561,16 +582,109 @@ function startTraitor(E, h) {
   w.team = 'red'; w.traitor = true; w.wave = 'traitor'; w.mslLeft = 0; w.flares = 0; w.speed = 12; w.mode = 'attack';
   w.huntHeron = w.target = prey;
   Object.assign(E, { traitor: w, prey, craneDown: 0, twT: 0 });
-  radioChain([
-    ['Alpha 3', 'Wingman? Anh tách đội hình làm gì vậy?!'],
-    ['Wingman', 'Đây không phải là hoà bình, mà là diệt chủng!'],
-    ['Wingman', 'Tôi đã quá chán nản với việc bị kiểm soát bởi bọn ở trên cao kia rồi.'],
-    ['Blackboard', 'Wingman, quay về đội hình đi... làm ơn.'],
-    ['Wingman', 'Black... Red nhờ tôi nhắn: cậu ấy không giận.'],
-    ['Wingman', 'Xin lỗi Black... vì đã làm cô liên luỵ.'],
-    ['Wingman', 'Red, đây là thứ ít ra tôi có thể làm...'],
-  ], true);
-  flash('WINGMAN', '', 3);
+  startTraitorCut(E);   // he breaks formation and brings it down, up close (the talking comes after, in updateTraitor)
+}
+// ---- the cutscene: everyone held in formation round the lead Crane, flying on; Wingman drops back, lights his burner
+//      and zooms straight up, comes over the top and down onto the Crane on the wing, and shoots it to pieces from
+//      close behind (in slow motion), then pulls over it and out ahead. Close-ups of Alpha 2 and Alpha 3 as it falls.
+//      Positions are in the formation's own frame: x right, y up, z back from the lead Crane
+const TW_FIRE = 5.0, TW_KILL = 6.8, TW_LEN = 13;
+function startTraitorCut(E) {
+  const w = E.traitor, prey = E.prey, h = heron;
+  const fw = fwdOf(h, new THREE.Vector3()).setY(0); if (fw.lengthSq() < 1e-3) fw.set(0, 0, -1); fw.normalize();
+  const rt = new THREE.Vector3().crossVectors(fw, UP).normalize();
+  const H0 = h.pos.clone(), v = 7;
+  const local = new Map();   // where everyone sits in the formation
+  const pl = prey.formOff ? new THREE.Vector3(Math.sign(prey.formOff.x) * 16, -1, 12) : new THREE.Vector3(16, -1, 12), px = pl.x;
+  for (const c of herons) if (c.alive && c !== h) local.set(c, c === prey ? pl : new THREE.Vector3(-px, -1, 12));
+  local.set(h, new THREE.Vector3(0, 0, 0));
+  const sx = Math.sign(px);   // Alpha 2 on the prey's side, Alpha 3 across from it: they both see it go
+  const slots = { 'Alpha 2': [6 * sx, 0.5, 2], 'Alpha 3': [-6 * sx, 0.5, 2], 'Alpha 4': [-10, 1, -3], 'Alpha 5': [10, 1, -3] };
+  local.set(P, new THREE.Vector3(px * 0.35, 3, 2));
+  for (const f of flyers) if (f.alive && slots[f.name]) local.set(f, new THREE.Vector3(...slots[f.name]));
+  // his line: [t, x, y, z]
+  const keys = [[0, 0, 2.5, 7], [1.0, px * 0.15, 2.2, 10], [2.2, px * 0.3, 10, 9], [3.4, px * 0.55, 20, 6], [4.3, px * 0.9, 14, 18], [TW_FIRE, px, 5.5, 25], [TW_KILL, px, 1.8, 15.5], [7.8, px * 0.9, 4.5, 4], [9.5, px * 0.5, 4, -12], [TW_LEN, 0, 4, -40]];
+  cut = { kind: 'traitor', t: 0, boss: w, crew: [...local.keys()].filter(f => f !== w), said: {}, E, w, prey, fw, rt, H0, v, local, keys,
+    curve: new THREE.CatmullRomCurve3(keys.map(k => new THREE.Vector3(k[1], k[2], k[3]))), slow: t => t > TW_FIRE - 0.3 && t < TW_KILL + 0.8 ? 0.4 : 1 };
+  w.team = 'red';
+  P.invulnT = 99; document.body.classList.add('cine');
+  if (!cineOn) endTraitorCut();
+}
+const twWorld = (c, l, t, out) => out.copy(c.H0).addScaledVector(c.fw, c.v * t - l.z).addScaledVector(c.rt, l.x).add(_pv.set(0, l.y, 0));
+function twLocal(c, t, out) {   // his position in the formation frame at time t, along the spline through the keys
+  const K = c.keys; let k = 0; while (k < K.length - 2 && t > K[k + 1][0]) k++;
+  const u = (k + clamp((t - K[k][0]) / (K[k + 1][0] - K[k][0]), 0, 1)) / (K.length - 1);
+  return out.copy(c.curve.getPoint(u));
+}
+const _twA = new THREE.Vector3(), _twB = new THREE.Vector3();
+function updateTraitorCut(dt) {
+  const c = cut; c.t += dt; const t = c.t, w = c.w, prey = c.prey;
+  for (const [f, l] of c.local) {
+    if (!f.alive) continue;
+    twWorld(c, l, t, f.pos); f.pos.y += Math.sin(t * 1.3 + l.x) * 0.15;
+    orient(f, c.fw); f.vel.copy(c.fw).multiplyScalar(c.v); f.speed = c.v;
+  }
+  // Wingman: along his line, nose along his true path, the burner lit from the moment he breaks
+  twWorld(c, twLocal(c, t, _twA), t, w.pos);
+  twWorld(c, twLocal(c, t + 0.05, _twB), t + 0.05, _tmp);
+  _tmp.sub(w.pos); orient(w, _tmp); w.vel.copy(_tmp).divideScalar(0.05); w.speed = w.vel.length();
+  w.afterburner = t > 1.0 && t < 4;
+  if (w.afterburner && Math.random() < 0.8) puff(fire, _tmp.copy(w.pos).addScaledVector(fwdOf(w, _tmp2), -0.4), _pv.set(0, 0, 0), 0.2, 0.12, 0.05, 0xffb347);
+  if (t > 1.0 && t < 1.2 && !c.said.boom) { c.said.boom = 1; whoosh(); if (AU.ctx) tone(200, 700, 0.8, 0.07, 'sawtooth'); }
+  // the guns: a long burst from close behind, into its wing and body
+  if (t > TW_FIRE && t < TW_KILL && prey.alive) {
+    c.gunT = (c.gunT || 0) - dt;
+    if (c.gunT <= 0) {
+      c.gunT = 0.05;
+      const from = _tmp.copy(w.pos).addScaledVector(fwdOf(w, _tmp2), 0.5);
+      fireBullet(w, from, _ax.subVectors(_twA.copy(prey.pos).add(_pv.set(rr(-1.5, 1.5), rr(-0.4, 0.4), rr(-1, 1))), from).normalize(), 0);
+      if (AU.ctx && Math.random() < 0.5) tone(900, 300, 0.05, 0.03, 'square');
+    }
+    if (Math.random() < dt * 25) { const p = _tmp.copy(prey.pos).add(_pv.set(rr(-2.5, 2.5), rr(-0.3, 0.6), rr(-1.5, 1.5))); burst(p, 4, [prey.colorHex, 0xf4f1e8], 3, 0.8, 0.6); if (Math.random() < 0.4) puff(fire, p, _pv.set(0, 1, 0), 0.5, 0.3, 0.6, 0xff8c1a); }
+    prey.hp = Math.max(1, prey.maxHp * (1 - (t - TW_FIRE) / (TW_KILL - TW_FIRE)));
+  }
+  if (t >= TW_KILL && prey.alive) {   // it comes apart
+    c.local.delete(prey); prey.hp = 0; destroy(prey, w);
+    prey.vel.copy(c.fw).multiplyScalar(c.v * 0.7).add(_pv.set(0, -1, 0)); prey.spin.set(rr(-1, 1), rr(-0.5, 0.5), Math.sign(c.keys[5][1]) * rr(2, 3));
+    explosion(prey.pos, 3); for (let i = 0; i < 3; i++) burst(_tmp.copy(prey.pos).add(_pv.set(rr(-3, 3), rr(-1, 1), rr(-2, 2))), 40, [prey.colorHex, 0xffffff, 0xd8d2c0], 8, 2.5, 2.5);
+    shake = 0.6;
+  }
+  const say = (k, at, who, text) => { if (t > at && !c.said[k]) { c.said[k] = 1; sayNow(who, text); } };
+  say(1, 1.3, 'Alpha 3', 'Wingman? Anh tách đội hình làm gì vậy?!');
+  say(2, 4.4, 'Wingman', 'Đây không phải là hoà bình, mà là diệt chủng!');
+  say(3, 8.0, 'Alpha 2', 'Không... không thể nào!');
+  say(4, 10.2, 'Alpha 3', `Wingman... bắn hạ ${prey.name}!`);
+  aim.copy(c.fw);
+  if (t >= TW_LEN || pressed.Enter || pressed.NumpadEnter) endTraitorCut();
+}
+function endTraitorCut() {
+  const c = cut; cut = null; document.body.classList.remove('cine');
+  const E = c.E, w = c.w, prey = c.prey;
+  if (prey.alive) { prey.hp = 0; destroy(prey, w); }
+  w.afterburner = false; w.huntHeron = null; w.target = null; w.mode = 'attack';
+  P.invulnT = 1; P.speed = Math.max(P.speed, 8); aim.copy(c.fw); camPos.copy(P.pos).addScaledVector(c.fw, -2.5).add(_pv.set(0, 0.5, 0)); camAimS.copy(aim);
+  E.twT = 0;
+}
+function traitorCamera(dt) {
+  const c = cut, t = c.t, w = c.w, prey = c.prey;
+  const a2 = flyers.find(f => f.alive && f.name === 'Alpha 2'), a3 = flyers.find(f => f.alive && f.name === 'Alpha 3');
+  let shot, fov = 50;
+  const close = (f, side) => {   // just ahead of a plane, looking back at it
+    const fe = fwdOf(f, _tmp2); _cd.copy(f.pos).addScaledVector(fe, 1.7).addScaledVector(rightOf(f, _ar), side * 0.9).add(_pv.set(0, 0.3, 0)); _cl.copy(f.pos); fov = 46;
+  };
+  if (t < 1.0) { shot = 1; close(w, 1); }   // Wingman in his slot, quiet
+  else if (t < 3.4) { shot = 2; twWorld(c, _twB.set(c.keys[1][1] + 1.5, 0.8, 14), t, _cd); _cl.copy(w.pos); fov = 54; }   // from below and behind, keeping pace with the formation, as he goes straight up
+  else if (t < TW_FIRE) { shot = 3; _cd.copy(w.pos).addScaledVector(fwdOf(w, _tmp2), -2.4).addScaledVector(upOf(w, _ar), 0.7); _cl.copy(prey.pos); fov = 56; }   // over his shoulder, coming down onto it
+  else if (t < TW_KILL + 0.6) { shot = 4; _cd.copy(prey.pos).addScaledVector(c.rt, Math.sign(c.keys[5][1]) * 7).add(_pv.set(0, 1.8, 0)).addScaledVector(c.fw, 3); _cl.copy(prey.pos).lerp(w.pos, 0.3); fov = 48; }   // close on the Crane as the rounds tear into it
+  else if (t < 8.0) { shot = 5; _cd.copy(P.pos).addScaledVector(c.fw, -2).add(_pv.set(0, 0.7, 0)); _cl.copy(prey.pos); fov = 52; }   // Alpha 1's view: it falls away, burning
+  else if (t < 10.2 && a2) { shot = 6; close(a2, -1); }
+  else if (a3) { shot = 7; close(a3, 1); }
+  else { shot = 5; _cd.copy(P.pos).addScaledVector(c.fw, -2).add(_pv.set(0, 0.7, 0)); _cl.copy(w.pos); }
+  const pin = shot !== c.shot; c.shot = shot;
+  camera.position.lerp(_cd, pin ? 1 : 1 - Math.exp(-dt * 10));
+  camera.up.set(0, 1, 0); camera.lookAt(_cl);
+  camera.fov += (fov - camera.fov) * (pin ? 1 : Math.min(1, dt * 4)); camera.updateProjectionMatrix();
+  camPos.copy(camera.position);
 }
 function updateTraitor(E, dt) {
   const w = E.traitor; if (!w || !w.alive) return;
@@ -579,15 +693,86 @@ function updateTraitor(E, dt) {
   if (!E.craneDown && !E.prey.alive) {
     E.craneDown = 1; E.downT = E.twT;
     w.huntHeron = null; w.K = Object.assign({}, w.K, { gunRange: 0 });   // he's done: he won't fire another round, at anyone
-    radioChain([
-      ['Alpha 3', `${E.prey.name} rơi rồi! Wingman... bắn hạ ${E.prey.name}!`],
+    const n = herons.filter(h => h.alive).length;
+    radioChain([   // (the cutscene had the first lines; at most 10 fit in the queue)
+      ['Wingman', 'Tôi đã quá chán nản với việc bị kiểm soát bởi bọn ở trên cao kia rồi.'],
+      ['Blackboard', 'Wingman, quay về đội hình đi... làm ơn.'],
+      ['Wingman', 'Black... Red nhờ tôi nhắn: cậu ấy không giận.'],
+      ['Wingman', 'Xin lỗi Black... vì đã làm cô liên luỵ.'],
+      ['Wingman', 'Red, đây là thứ ít ra tôi có thể làm...'],
       ['Hightower', 'Hightower gọi Alpha. Wingman là kẻ phản bội. Hạ hắn.'],
-      ['Alpha 2', 'Không... đó là Wingman! Anh ấy dạy chúng ta bay mà!'],
-      ['Alpha 3', 'Lệnh là lệnh, Alpha 2. ...Alpha 1, cậu ở gần anh ấy nhất.'],
+      ['Wingman', `Còn ${n > 1 ? 'hai' : 'một'} chiếc nữa, lính mới. Tôi không bắt cậu theo tôi đâu.`],
+      ['Alpha 2', 'Alpha 1... cậu định làm gì?'],
+      // the new three: whatever Alpha 1 does, the other two go with it
+      ['Alpha 3', 'Cậu chọn gì thì tôi vẫn bay sau cánh cậu. Từ hồi sân cờ đã thế rồi.'],
+      ['Alpha 2', 'Tôi cũng vậy. Ba đứa, ba hướng... nhưng chung một đường bay.'],
+    ], true);
+    E.askAt = escortT + radioHushT;
+  }
+  // Alpha 1's choice: the world all but stops until it's made (main.js slows time while `choosing`)
+  if (E.craneDown && !E.choice) {
+    if (!choosing && escortT >= E.askAt) openChoice(E);
+    if (choosing) {
+      P.invulnT = Math.max(P.invulnT, 0.5);
+      if (pressed.Digit1 || pressed.Numpad1) chooseSide(E, 'stop');
+      else if (pressed.Digit2 || pressed.Numpad2) chooseSide(E, 'join');
+    }
+    return;
+  }
+  if (E.choice === 'stop' && E.twT > E.downT + 30) radioOnce('traitorWait', 'Wingman', 'Tôi sẽ không bắn cậu đâu, lính mới. Làm điều cậu phải làm đi.', 999);
+}
+let choosing = null;   // the escort events waiting on Alpha 1, while the choice is up
+function openChoice(E) { choosing = E; $('choice').classList.remove('hidden'); }
+function closeChoice() { choosing = null; $('choice').classList.add('hidden'); }
+document.querySelectorAll('#choice button').forEach(b => b.addEventListener('click', () => { if (choosing) chooseSide(choosing, b.dataset.k); }));
+function chooseSide(E, k) {
+  closeChoice(); E.choice = k;
+  if (k === 'stop') {   // Hightower's way: Alpha 1 brings him down (only Alpha 1 can: game.js damage())
+    radioChain([
+      ['Alpha 1', 'Alpha 1, rõ.'],
+      ['Alpha 2', '...Được. Cậu đã quyết thì tôi yểm hộ cậu.'],
+      ['Alpha 3', 'Bọn tôi chặn hai bên. Phát cuối... là của cậu, Alpha 1.'],
       ['Blackboard', 'Wingman? Wingman, trả lời tôi!'],
     ], true);
+    return;
   }
-  if (E.craneDown && E.twT > E.downT + 30) radioOnce('traitorWait', 'Wingman', 'Tôi sẽ không bắn cậu đâu, lính mới. Làm điều cậu phải làm đi.', 999);
+  // his way: the three of them turn on the bombers too. Alpha 4 and 5 won't fire on friends either way, and go home;
+  // the Cranes come round for a new run, and that's all the time there is
+  const w = E.traitor;
+  w.team = 'blue'; w.K = Object.assign({}, w.K, { gunRange: 30 }); w.mode = 'attack';
+  w.huntHeron = w.target = heron;
+  for (const h of herons) if (h.alive) h.team = 'red';
+  E.leavers = flyers.filter(f => f.alive && (f.name === 'Alpha 4' || f.name === 'Alpha 5'));
+  for (const f of E.leavers) { f.retreat = true; f.target = null; }
+  E.joinT = JOIN_T; E.cranesLeft = herons.filter(h => h.alive).length; E.hold ||= heron.pos.clone();
+  for (const u of groundUnits) u.lockT = 0;
+  radioChain([
+    ['Alpha 1', 'Không. Không phải thế này.'],
+    ['Wingman', '...Đúng là học trò của tôi.'],
+    ['Alpha 2', 'Alpha 2 theo cậu! Hạ mấy con Hạc trước khi chúng tới khu Tây!'],
+    ['Alpha 3', '...Hightower sẽ xoá tên cả ba đứa mình. Kệ. Tôi bay sau cánh cậu.'],
+    ['Hightower', 'Hightower gọi Crane. Alpha 1, 2, 3 đã phản bội. Vòng lại, lấy hướng ném mới.'],
+    ['Alpha 4', 'Alpha 4, Alpha 5... chúng tôi không bắn bạn mình. Rút khỏi trận.'],
+    ['Blackboard', '...Radar của tôi vừa mất tín hiệu Crane. Tôi không thấy gì nữa cả.'],   // she isn't guiding them any more
+  ], true);
+  flash('', 'Hạ những chiếc Hạc còn lại trước khi chúng vào hướng ném', 3);
+}
+const JOIN_T = 70;   // how long the Cranes take to come round onto a new bombing run
+function updateJoin(E, dt) {
+  E.joinT -= dt;
+  for (const f of E.leavers) if (f.alive) {   // Alpha 4 and 5, heading home
+    f.retreat = true; f.leaveT = (f.leaveT || 0) + dt;
+    if (f.leaveT > 18 || f.pos.distanceTo(P.pos) > 110) { f.alive = false; removeFlyer(f); }
+  }
+  const alive = herons.filter(h => h.alive);
+  if (alive.length < E.cranesLeft) {   // another one down: on to the next
+    E.cranesLeft = alive.length;
+    const gone = herons.filter(h => !h.alive && !h.mourned);
+    for (const h of gone) h.mourned = true;
+    if (alive.length && gone.length) radio('Alpha 3', `${gone[0].name} rơi rồi! Còn ${alive.length > 1 ? 'hai' : 'một'} chiếc, nhanh lên!`, true);
+  }
+  if (E.joinT < 20) radioOnce('joinHurry', 'Hightower', 'Crane, còn hai mươi giây. Giữ hướng, bỏ qua mọi thứ khác.', 999);
+  if (E.joinT <= 0 && heron && heron.alive) { radio('Hightower', 'Hightower gọi Crane. Vào hướng ném.', true); startNukeCut(); }
 }
 function sayLater(E, lines) { const t0 = escortT; for (const [dt, who, text] of lines) (E.lines ||= []).push({ at: t0 + dt, who, text }); }
 // a set piece that feeds its attackers in one at a time, from well ahead so you see them coming
@@ -620,7 +805,7 @@ const LAB_PHASES = [   // Chương 6
   SAM_PHASE,
   { id: 'last', at: 0.82, maxT: 0, go(E, h) {   // the last throw: rammers dropping on it from above
     huntersOn('crumple', 4, 'bổ nhào', () => _tmp.set(h.pos.x + rr(-15, 15), h.pos.y + rr(18, 26), h.pos.z - rr(50, 70)).clone(), 'last');
-    radio(h.name, 'Sắp tới điểm ném! Giấy Vo bổ nhào từ trên cao, giữ chúng tránh xa thêm vài giây!', true);
+    radio('Blackboard', 'Crane sắp tới điểm ném! Giấy Vo bổ nhào từ trên cao, giữ chúng tránh xa thêm vài giây!', true);
   } },
 ];
 const FINALE_PHASES = [   // Chương 12: many of them, all green, most of them flying at a Crane to die
@@ -635,7 +820,7 @@ const FINALE_PHASES = [   // Chương 12: many of them, all green, most of them 
       [16, 'Alpha 3', 'Coi chừng! Mấy chiếc không thèm bắn, cứ thế lao thẳng vào Crane!']]);
   } },
   { id: 'ram', at: 0.25, maxT: 35, go(E, h) {
-    feed(E, 8, 1.5, k => huntersOn(k % 3 ? 'dart' : 'swallow', 1, '', side(h, k, 100, 120, 20, 40), 'ram', rookieOf(true)));
+    feed(E, 6, 1.8, k => huntersOn(k % 3 ? 'dart' : 'swallow', 1, '', side(h, k, 100, 120, 20, 40), 'ram', rookieOf(true)));
     flash('TÂN BINH CẢM TỬ', 'Chúng không bắn · chúng lao thẳng vào Hạc Lớn!', 2.6);
     radio('Alpha 3', 'Lại nữa! Cả chuỗi lao vào Crane, không chiếc nào định quay đầu!', true);
     sayLater(E, [[5, 'Blackboard', 'Phe Đỏ hết phi công rồi. Thứ duy nhất chúng còn là thân mình. Hạ từng chiếc trước khi chúng chạm Crane.'],
@@ -643,7 +828,7 @@ const FINALE_PHASES = [   // Chương 12: many of them, all green, most of them 
       [18, 'Alpha 5', 'Đừng nghĩ nữa, Alpha 2. Một chiếc lọt qua là Crane thủng một mảng.']]);
   } },
   { id: 'swarm', at: 0.45, maxT: 40, go(E, h) {
-    feed(E, 12, 1.1, k => k % 3 === 2 ? huntersOn('crumple', 1, 'cảm tử', side(h, k, 80, 100, 35, 55), 'swarm')
+    feed(E, 9, 1.4, k => k % 3 === 2 ? huntersOn('crumple', 1, 'cảm tử', side(h, k, 80, 100, 35, 55), 'swarm')
       : huntersOn('dart', 1, '', side(h, k, 90, 110, 30, 55), 'swarm', rookieOf(k % 4 !== 0)));
     flash('CẢ BẦY LIỀU CHẾT', 'Tân binh và Giấy Vo ập tới từ hai phía · giữ chúng xa đội Crane!', 2.6);
     radio('Alpha 5', 'Hai bên sườn, cả bầy! Tân binh lẫn Giấy Vo!', true);
@@ -653,12 +838,13 @@ const FINALE_PHASES = [   // Chương 12: many of them, all green, most of them 
   } },
   SAM_PHASE,
   { id: 'last', at: 0.8, maxT: 0, go(E, h) {   // everyone they have left, from every side and from above
-    huntersOn('dart', 6, '', () => _tmp.set(clamp(h.pos.x + rr(-50, 50), -70, 70), h.pos.y + rr(-3, 8), h.pos.z - rr(70, 100)).clone(), 'last', rookieOf(true));
-    huntersOn('crumple', 4, 'bổ nhào', () => _tmp.set(h.pos.x + rr(-15, 15), h.pos.y + rr(18, 26), h.pos.z - rr(50, 70)).clone(), 'last');
+    huntersOn('dart', 4, '', () => _tmp.set(clamp(h.pos.x + rr(-50, 50), -70, 70), h.pos.y + rr(-3, 8), h.pos.z - rr(70, 100)).clone(), 'last', rookieOf(true));
+    huntersOn('crumple', 3, 'bổ nhào', () => _tmp.set(h.pos.x + rr(-15, 15), h.pos.y + rr(18, 26), h.pos.z - rr(50, 70)).clone(), 'last');
     radio('Phe Đỏ (bắt sóng)', 'Ai còn bay được thì cất cánh hết! Không còn ai nữa... không còn ai nữa cả!', true);
-    sayLater(E, [[5, 'Crane 1', 'Sắp tới điểm ném! Giữ chúng tránh xa thêm vài giây!'], [10, 'Alpha 3', 'Đây là tất cả những gì chúng còn lại sao...']]);
+    sayLater(E, [[5, 'Blackboard', 'Crane sắp tới điểm ném! Giữ chúng tránh xa thêm vài giây!'], [10, 'Alpha 3', 'Đây là tất cả những gì chúng còn lại sao...']]);
   } },
-  // when the sky is finally empty: a plane takes off from our side, behind us. Wingman. He goes for one Crane
+  // when the sky is finally empty: a plane takes off from our side, behind us. Wingman. He goes for one Crane, and then
+  // Alpha 1 has to choose: bring him down as Hightower says, or go with him after the rest (chooseSide)
   { id: 'traitor', at: 0.86, maxT: 999, needClear: true, go(E, h) { startTraitor(E, h); } },
   { id: 'run', at: 0.92, maxT: 0, go() {} },   // (the bombers wait here until he's down)
 ];
@@ -674,6 +860,7 @@ function labEvents(dt) {
   updateTraitor(E, dt);
   if (escortMode === 'finale' && !E.crossed && h.pos.z < mirZ(BORDER_Z)) { E.crossed = 1; sayLater(E, [[1.5, 'Blackboard', '...Ba chiếc Hạc. Đúng bằng số người tôi từng muốn chở.']]); }   // quietly, over their chalk line
   if (E.lines) for (let i = E.lines.length - 1; i >= 0; i--) if (escortT >= E.lines[i].at) { const l = E.lines.splice(i, 1)[0]; radio(l.who, l.text, true); }
+  if (E.choice === 'join') { updateJoin(E, dt); return; }   // the route is over: the Cranes circle, and the clock runs
   const cur = PH[E.i - 1], next = PH[E.i];
   const left = cur ? flyers.filter(f => f.alive && f.wave === cur.id).length + (E.feedN || 0) : 0;
   const busy = left > 0 && E.curT < cur.maxT;
@@ -684,10 +871,10 @@ function labEvents(dt) {
   // on it, the breather after it, or the briefing still on the radio) it circles where it is
   const talking = escortT < (E.talkUntil || 0), blocked = busy || E.gap > 0 || talking || (next && next.needClear && flyers.some(f => f.alive && f.team === 'red'));
   const hold = !!next && p >= next.at && blocked;
-  if (hold && !E.hold) { E.hold = h.pos.clone(); E.holdLoud = busy && !E.traitor; if (busy) radio(h.name, `${h.name} vào vòng chờ. Dọn sạch chúng đi rồi tôi đi tiếp!`, true); }
-  else if (!hold && E.hold) { if (E.holdLoud) radio(h.name, left ? 'Không chờ được nữa, tôi phải đi tiếp!' : 'Đường sạch rồi. Crane tiếp tục hướng bay.', true); E.hold = null; }
+  if (hold && !E.hold) { E.hold = h.pos.clone(); E.holdLoud = busy && !E.traitor; if (busy) radio('Blackboard', `${h.name} vào vòng chờ. Dọn sạch đường cho nó!`, true); }
+  else if (!hold && E.hold) { if (E.holdLoud) radio('Blackboard', left ? `${h.name} hết thời gian chờ, nó tự bay tiếp!` : `Đường sạch rồi. ${h.name} tiếp tục hướng bay.`, true); E.hold = null; }
   if (next && p >= next.at && !blocked) { E.i++; E.curT = 0; E.cleared = 0; E.feedN = 0; next.go(E, h, ahead); }
-  // the bombers' own voices as they get hurt
-  for (const b of herons) for (const [lim, txt] of [[0.75, 'trúng đạn, vẫn giữ hướng bay.'], [0.5, 'hư hại cánh! Cần yểm hộ!'], [0.25, 'hư hại nặng! Không trụ được lâu nữa!']])
-    if (b.alive && b.hp / b.maxHp < lim && !E[b.name + lim]) { E[b.name + lim] = 1; radio(b.name, `${b.name} ${txt}`, true); }
+  // Blackboard calls out the bombers' damage (they're machines: they don't talk)
+  for (const b of herons) for (const [lim, txt] of [[0.75, 'trúng đạn, vẫn giữ hướng bay.'], [0.5, 'hư hại cánh! Yểm hộ nó!'], [0.25, 'hư hại nặng! Nó không trụ được lâu nữa!']])
+    if (b.alive && b.hp / b.maxHp < lim && !E[b.name + lim]) { E[b.name + lim] = 1; radio('Blackboard', `${b.name} ${txt}`, true); }
 }

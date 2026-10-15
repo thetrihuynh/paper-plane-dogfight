@@ -61,7 +61,7 @@ function setMute(m) { AU.muted = m; if (AU.master) AU.master.gain.value = m ? 0 
 // =====================================================================
 const radioQ = []; let radioT = 0; const radioCD = {};
 const WHO_COL = { 'Blackboard': '#9effa0', 'Alpha 2': '#ff8fc0', 'Alpha 3': '#6fd0ff', 'Alpha 4': '#9be37a', 'Alpha 5': '#ffb35c', 'Bravo 1': '#c9a0ff', 'Bravo 2': '#fff176', 'Bravo 3': '#80deea', 'Bravo 4': '#f48fb1', 'Bravo 5': '#a5d6a7', 'Bravo 6': '#ffcc80',
-  'Crane': '#7fd6ff', 'Crane 1': '#7fd6ff', 'Crane 2': '#7fd6ff', 'Crane 3': '#7fd6ff', 'Red Eagle': '#ff5050', 'Địch': '#ff8a80', 'Phe Đỏ (bắt sóng)': '#ff8a80', 'Bạch Nhạn': '#ff8a80', 'Hắc Nhạn': '#ff8a80', 'Alpha 1': '#ffffff', 'Hightower': '#aab4c8', 'Wingman': '#d5dde4' };
+  'Red Eagle': '#ff5050', 'Địch': '#ff8a80', 'Phe Đỏ (bắt sóng)': '#ff8a80', 'Khu Tây': '#ff8a80', 'Bạch Nhạn': '#ff8a80', 'Hắc Nhạn': '#ff8a80', 'Alpha 1': '#ffffff', 'Hightower': '#aab4c8', 'Wingman': '#d5dde4' };
 // while a conversation holds the channel (radioChain with hush), everyone else's chatter is simply dropped
 let radioHushT = 0, radioHushWho = [];
 // Chương 11 (W.bbSilent): Blackboard gives no orders at all; all she does is try to reach Wingman (those lines go out
