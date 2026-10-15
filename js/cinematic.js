@@ -140,10 +140,11 @@ const cutSlow = t => t > 13.45 && t < 14.45 ? lerp(0.22, 0.6, Math.abs(t - 13.95
 //  ENDING: Hạc Lớn's last run over the Red Faction's base, the view from high above Ô Li 1,
 //  and the Red Faction's flag burning away. Then the war is over.
 // =====================================================================
-const END_LEN = 19.5;
+const END_LEN = 22;
+const endingFires = [];   // where the finale's bombs fell: they burn through the ending
 // Ô Li 1's farewell pass: down from the orbit, low across the burning south courtyard, over the lab, right past
 // the burning flag, and up over the yard towards home.  [t, x, y, z]
-const END_PATH = [[8.5, 25, 40, -800], [10.0, 14, 22, -765], [11.5, 8, 11, -722], [13.0, 6, 21, -662], [14.5, -1.6, 14.2, FLAG_RED.z - 8], [16.0, -6, 18, -545], [17.5, -4, 30, -480], [19.5, 0, 46, -380]];
+const END_PATH = [[8.5, 25, 40, -800], [10.0, 14, 22, -765], [11.5, 8, 11, -722], [13.0, 6, 21, -662], [14.5, -1.6, 14.2, FLAG_RED.z - 8], [16.0, -6, 18, -545], [17.5, -4, 30, -480], [19.5, 0, 46, -380], [22, 0, 56, -320]];
 const endCurve = new THREE.CatmullRomCurve3(END_PATH.map(k => new THREE.Vector3(k[1], k[2], k[3])));
 const endPathAt = (t, out) => {
   let k = 0; while (k < END_PATH.length - 2 && t > END_PATH[k + 1][0]) k++;
@@ -176,8 +177,8 @@ function startEnding() {
   for (const u of groundUnits) u.alive = false;
   for (const m of missiles) { m.alive = false; scene.remove(m.mesh); } missiles.length = 0;
   flakShells.length = 0;
-  const crew = flyers.filter(f => f.alive && f.team === 'blue' && f !== P && f !== heron);
-  cut = { kind: 'ending', t: 0, boss: heron, crew, said: {}, drops: 0, fires: [], flagP: 0 };
+  const crew = flyers.filter(f => f.alive && f.team === 'blue' && f !== P && !isHeron(f));
+  cut = { kind: 'ending', t: 0, boss: heron, crew, said: {}, drops: 99, fires: [], flagP: 0 };   // the bombs have already fallen: no more drops
   P.invulnT = 99; burnFlag(0);
   document.body.classList.add('cine');
   if (!cineOn) finishEnding();
@@ -197,7 +198,8 @@ function updateEnding(dt) {
     c.fires.push(b.p.clone().setY(Math.max(1, b.p.y)));
   }
   // the base keeps burning
-  const spots = c.fires.concat(t > 2 ? END_FIRES.map(a => new THREE.Vector3(...a)) : []);
+  const spots = c.fires.concat(endingFires, t > 2 ? END_FIRES.map(a => new THREE.Vector3(...a)) : []);
+  herons.forEach((h, i) => { if (h !== heron && h.alive) { h.pos.copy(heron.pos).add(_pv.set(i === 1 ? -16 : 16, -1, 12)); h.q.copy(heron.q); } });   // the other bombers keep station on the lead
   for (const sp of spots) {
     if (Math.random() < dt * 9) puff(fire, _tmp.copy(sp).add(_pv.set(rr(-1.5, 1.5), rr(0, 1), rr(-1.5, 1.5))), _pv.set(0, rr(1, 2.5), 0), rr(0.5, 0.9), 0.5, 1.4, [0xffa53a, 0xff6a1f, 0xffd23f][(Math.random() * 3) | 0]);
     if (Math.random() < dt * 5) puff(smoke, _tmp.copy(sp).add(_pv.set(rr(-1, 1), 2, rr(-1, 1))), _pv.set(rr(-0.3, 0.3), rr(2.5, 4), rr(-0.3, 0.3)), rr(3, 5), 0.8, 3.2, [0x2b2b2b, 0x444444, 0x555555][(Math.random() * 3) | 0]);
@@ -234,11 +236,16 @@ function updateEnding(dt) {
     if (c.flagP >= 1) rivalFlag.visible = false;
   }
   const line = (k, at, who, text) => { if (t > at && !c.said[k]) { c.said[k] = 1; sayNow(who, text); } };
-  line(1, 0.4, 'Hạc Lớn', 'Thả toàn bộ bóng giấy còn lại!');
+  // and for the first time, Ô Li 1 says something: only to itself
+  line(1, 0.4, 'Hạc Lớn 1', 'Nhiệm vụ hoàn thành. Hạc Lớn quay về.');
   line(2, 4.6, 'Lan', 'Xong rồi... cuộc chiến kết thúc rồi.');
   line(3, 6.8, 'Minh', 'Nhìn từ trên này... sao chẳng thấy vui gì cả.');
+  line(6, 9.0, 'Ô Li 1', '(Bên dưới kia... cũng là học sinh trường mình.)');
+  line(7, 11.4, 'Ô Li 1', '(Mình gấp máy bay để bảo vệ Thư Viện. Còn mấy quả bom kia... bảo vệ cái gì?)');
   line(4, 15.0, 'Bảng Đen', 'Lá cờ Phe Đỏ đã cháy. Chiến tranh máy bay giấy kết thúc.');
-  line(5, 17.6, 'Bảng Đen', 'Tất cả các phi đội... về trường thôi các em.');
+  line(8, 16.8, 'Ô Li 1', '(Lá cờ cháy rồi. Sao mình không thấy mình thắng?)');
+  line(5, 18.6, 'Bảng Đen', 'Tất cả các phi đội... về trường thôi các em.');
+  line(9, 20.4, 'Ô Li 1', '(Về trường... nhưng chỗ kia cũng là trường mình mà.)');
   if (t >= END_LEN || pressed.Enter || pressed.NumpadEnter) finishEnding();
 }
 function finishEnding() {
@@ -293,7 +300,7 @@ function updateEscortCut(dt) {
   if (go > 0 && Math.random() < 0.6) for (const f of c.crew) if (f && f.alive) puff(fire, _tmp.copy(f.pos).add(_pv.set(0, 0, 0.35)), _pv.set(0, 0, 3), 0.18, 0.12, 0.04, 0xffb347);
   aim.set(0, 0, -1);
   const line = (k, at, who, text) => { if (t > at && !c.said[k]) { c.said[k] = 1; sayNow(who, text); } };
-  line(1, 0.5, 'Bảng Đen', escortMode === 'lab' ? 'Hạc Lớn cất cánh! Máy bay lớn nhất Phe Xanh từng gấp.' : 'Hạc Lớn cất cánh lần nữa! Lần này là chuyến cuối.');
+  line(1, 0.5, 'Bảng Đen', escortMode === 'lab' ? 'Hạc Lớn cất cánh! Máy bay lớn nhất Phe Xanh từng gấp.' : 'Ba chiếc Hạc Lớn cất cánh. Lần này là chuyến cuối.');
   line(2, 3.6, 'Lan', 'To thật... nhưng chậm như rùa vậy.');
   if (escortMode === 'lab') line(3, 5.0, 'Minh', 'Chậm thế này thì bọn pháo phòng không bắn trúng mất...');
   else line(3, 5.0, 'Tuấn', 'Tuấn và Hà gấp xong máy bay mới rồi! Lần này cho bọn tớ đi cùng!');
@@ -349,7 +356,7 @@ const eaglePos = (t, out) => {   // time -> point on the Catmull-Rom path throug
 };
 function updateCutscene(dt) {
   if (cut.kind === 'lab') { updateLabCut(dt); return; }
-  if (cut.kind === 'carpet') { updateCarpetCut(dt); return; }
+  if (cut.kind === 'nuke') { updateNukeCut(dt); return; }
   if (cut.kind === 'rescue') { updateRescueCut(dt); return; }
   if (cut.kind === 'ending') { updateEnding(dt); return; }
   if (cut.kind === 'escort') { updateEscortCut(dt); return; }
@@ -396,7 +403,7 @@ function updateCutscene(dt) {
 function skipCutscene() {
   const c = cut; if (!c) return;
   if (c.kind === 'lab') { endLabCut(); return; }
-  if (c.kind === 'carpet') { endCarpetCut(); return; }
+  if (c.kind === 'nuke') { endNukeCut(); return; }
   if (c.kind === 'rescue') { endRescueCut(); return; }
   if (c.kind === 'ending') { finishEnding(); return; }
   if (c.kind === 'escort') { endEscortCut(); return; }
@@ -411,7 +418,7 @@ function skipCutscene() {
 }
 function cutsceneCamera(dt) {
   if (cut.kind === 'lab') { labCutCamera(dt); return; }
-  if (cut.kind === 'carpet') { carpetCamera(dt); return; }
+  if (cut.kind === 'nuke') { nukeCamera(dt); return; }
   if (cut.kind === 'rescue') { rescueCamera(dt); return; }
   if (cut.kind === 'ending') { endingCamera(dt); return; }
   if (cut.kind === 'escort') { escortCutCamera(dt); return; }

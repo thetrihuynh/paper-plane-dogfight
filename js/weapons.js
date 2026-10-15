@@ -217,7 +217,7 @@ function missionFail(reason) {
 }
 // ---- supply crates: fly through one to reload missiles & flares ----
 const pickups = [];
-const MSL_MAX = 9, FLR_MAX = 15;
+const MSL_MAX = 14, FLR_MAX = 15;
 const PICKUP_TYPES = {
   msl:    { label: 'TÊN LỬA', hud: 'TIẾP TẾ', col: '#d62828', ring: 0xffd93b, css: '#ffd93b' },
   repair: { label: 'BĂNG KEO', hud: 'BĂNG KEO +HP', col: '#2a9d4a', ring: 0x5fd35f, css: '#7dff9a' },
@@ -258,7 +258,7 @@ function updatePickups(dt) {
     if (state === 'play' && P.alive && P.pos.distanceTo(pk.pos) < 2.3) {
       pk.alive = false; stats.pickups++;
       if (pk.type === 'msl') {
-        const gm = Math.min(3, MSL_MAX - P.msl), gf = Math.min(3, FLR_MAX - P.flares);
+        const gm = Math.min(pk.why === 'resupply' ? 5 : 3, MSL_MAX - P.msl), gf = Math.min(3, FLR_MAX - P.flares);   // the big-fight supply drops carry more
         P.msl += Math.max(0, gm); P.flares += Math.max(0, gf);
         if (P.msl > 0 && P.gunMode && !P.wpnGun) popup('TRỞ LẠI CHẾ ĐỘ TÊN LỬA', LOCKG, 1);
         popup(`TIẾP TẾ: +${Math.max(0, gm)} TÊN LỬA · +${Math.max(0, gf)} PHÁO SÁNG`, '#ffd93b', 1.8);

@@ -2,33 +2,14 @@
 // Máy Bay Giấy · Tàu Mẹ, the flying battleship (Chương 4, and the second one later on)
 // (plain script: shares the page's global scope with the other files, loaded in order by index.html)
 // Too big to dodge or turn hard: it flies slow and dead straight, high over the yard, for the Thư Viện where
-// Phe Xanh folds its planes, and carpet-bombs it on arrival. Its guns fire from turrets all round the hull, it
-// ripples missiles off its flank racks, pops flares, and keeps launching escort fighters from its belly.
+// Phe Xanh folds its planes, and bombs it on arrival. It carries no guns: it ripples missiles off its wings,
+// pops flares, and keeps launching escort fighters from its belly.
 
 const _dt = new THREE.Vector3(), _dw = new THREE.Vector3(), _dq = new THREE.Quaternion();
 // world position of a point given in the ship's own (unscaled) frame
 const shipPoint = (a, p, out) => out.set(p[0], p[1], p[2]).multiplyScalar(a.K.scale).applyQuaternion(a.q).add(a.pos);
 const LIB_TARGET = () => OBJECTIVE_DEFS.library.pos;
-// its turrets: each picks the nearest of our planes in range and hoses it down in bursts
-function shipTurrets(a, dt) {
-  const range = a.kind === 'dread' ? 46 : 34, rate = a.kind === 'dread' ? 5 : 3.5;
-  a.turT = a.turT || MOTHER_TURRETS.map(() => rr(0, 1));
-  MOTHER_TURRETS.forEach((tp, i) => {
-    a.turT[i] -= dt;
-    if (a.turT[i] > 0) return;
-    const from = shipPoint(a, tp, _dw);
-    let best = null, bd = range;
-    for (const f of flyers) if (f.alive && f.team !== a.team) { const d = f.pos.distanceTo(from); if (d < bd) { bd = d; best = f; } }
-    if (!best) { a.turT[i] = 0.4; return; }
-    const lead = _dt.copy(best.vel).multiplyScalar(bd / BULLET_SPEED).add(best.pos).sub(from).normalize();
-    lead.add(_pv.set(rr(-1, 1), rr(-1, 1), rr(-1, 1)).multiplyScalar(0.05 + bd / 900)).normalize();
-    fireBullet(a, from, lead, 1.6);
-    a.burst = (a.burst || 0) + 1;
-    a.turT[i] = a.burst % 7 === 0 ? rr(0.9, 1.6) : 1 / rate;   // bursts, with a breath between them
-    if (best === P) { P.lockedBy = a; P.lockedByT = 0.2; }
-  });
-}
-// missiles off the flank racks, at whoever is closest (Ô Li 1 first)
+// missiles off its wings, at whoever is closest (Ô Li 1 first)
 function shipMissiles(a, dt) {
   a.mslT -= dt;
   if (a.mslT > 0) return;
@@ -36,7 +17,7 @@ function shipMissiles(a, dt) {
   for (const f of flyers) if (f.alive && f.team !== a.team) { const d = f.pos.distanceTo(a.pos) * (f === P ? 0.7 : 1); if (d < bd && d > 12) { bd = d; best = f; } }
   if (!best) { a.mslT = 1; return; }
   launchMissile(a, best); a.mslLeft--;
-  a.mslT = a.kind === 'dread' ? rr(2.6, 4) : rr(4.5, 6.5);
+  a.mslT = a.kind === 'dread' ? rr(4.5, 6.5) : rr(4.5, 6.5);
   if (best === P) radioOnce('shipFox', 'Bảng Đen', 'Tàu Mẹ phóng tên lửa vào cậu! Lộn vòng, thả pháo sáng!', 10);
 }
 function shipFlares(a, dt) {
@@ -46,9 +27,9 @@ function shipFlares(a, dt) {
 // a steady stream of escort fighters from the hangar under its belly
 function shipEscorts(a, dt) {
   a.spawnT -= dt;
-  const kids = flyers.filter(f => f.alive && f.mom === a).length, cap = a.kind === 'dread' ? 6 : 4;
+  const kids = flyers.filter(f => f.alive && f.mom === a).length, cap = a.kind === 'dread' ? 3 : 4;
   if (a.spawnT > 0 || kids >= cap) return;
-  a.spawnT = a.kind === 'dread' ? 7 : 9;
+  a.spawnT = a.kind === 'dread' ? 11 : 9;
   for (let i = 0; i < 2 && kids + i < cap; i++) {
     const k = a.kind === 'dread' ? pick(['dart', 'swallow', 'dart', 'nakamura']) : 'dart';
     const d = makeFlyer(k, 'red', `${KINDS[k].label} hộ tống ${(a.kidN = (a.kidN || 0) + 1)}`); d.mom = a;
@@ -70,12 +51,12 @@ function updateDread(a, dt) {
     a.bombCD = 0.35; dropBomb(a, 2.6); shipPoint(a, [rr(-0.15, 0.15), -0.15, rr(-0.2, 0.4)], bombs[bombs.length - 1].p);
     radioOnce('shipBombs', 'Bảng Đen', 'Nó đang ném bom Thư Viện!!', 20);
   } else if (hd < 120) radioOnce('shipNear', 'Bảng Đen', `Tàu Mẹ chỉ còn cách Thư Viện ${Math.round(hd)} m! Hạ nó ngay!`, 20);
-  shipTurrets(a, dt); shipMissiles(a, dt); shipFlares(a, dt); shipEscorts(a, dt);
+  shipMissiles(a, dt); shipFlares(a, dt); shipEscorts(a, dt);
   // engine smoke when it's hurt
   if (a.hp < a.maxHp * 0.5 && Math.random() < dt * 10) puff(smoke, shipPoint(a, pick(MOTHER_ENGINES), _dw), _pv.set(0, 1, 0), 2.5, 0.6, 2.4, 0x3a3a3a);
 }
-// the second one (Chương 6) still circles and launches, but now it has the same guns and racks
-function shipWeapons(a, dt) { shipTurrets(a, dt); shipMissiles(a, dt); shipFlares(a, dt); }
+// the circling kind ('mother'): the same missiles and flares
+function shipWeapons(a, dt) { shipMissiles(a, dt); shipFlares(a, dt); }
 // down at last: a chain of explosions along the hull, and the escorts turn tail
 function shipDown(a) {
   for (let i = 0; i < 6; i++) setTimeout(() => { if (state === 'menu') return; explosion(shipPoint(a, [rr(-0.6, 0.6), rr(-0.1, 0.3), rr(-0.8, 0.9)], new THREE.Vector3()), 2.4, 1); shake = Math.min(1, shake + 0.35); }, i * 260);

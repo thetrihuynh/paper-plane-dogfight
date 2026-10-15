@@ -182,6 +182,7 @@ function drawHUD() {
       } else { hg.strokeStyle = RED; hg.lineWidth = 1.4; hg.strokeRect(p.x - s, p.y - s, s * 2, s * 2); }
       text(`${Math.round(d)}m`, p.x + s + 4, p.y + s - 4, isT ? (d < (P.gunMode ? GUN_RANGE : LOCK_RANGE) ? tc : RED) : RED, 12);
       if (isT || d < 60) text(f.name, p.x, p.y - s - 9, isT ? tc : RED, 12, 'center');
+      if (isHeron(f.target) && f.target.alive) text('▶ HẠC LỚN', p.x, p.y + s + 14, '#ffb347', 11, 'center', '800');   // it's going for the bomber
       if (isT) {
         text(P.gunMode ? (d >= GUN_RANGE ? 'NGOÀI TẦM SÚNG' : 'TRONG TẦM SÚNG') : lockedT ? 'LOCK' : can ? 'KHOÁ…' : d >= LOCK_RANGE ? 'XA QUÁ' : 'LỆCH HƯỚNG', p.x - s, p.y + s + 10, tc, 11, 'left', '800');
         // lock-on burst ring
@@ -260,6 +261,20 @@ function drawHUD() {
     if (sink && blink) { text('KÉO LÊN! PULL UP!', W / 2, wy, RED, 20, 'center', '800'); wy += 24; }
 
     { const dt = Math.min(0.05, Math.max(0, clock - popLast)); popLast = clock; drawPopups(dt); }
+    if (gameMode === 'escort' && heron && heron.alive) {   // the bomber's condition, always in view
+      const bw = herons.length > 1 ? 100 : 320;   // one bar per bomber
+      herons.forEach((b, i) => {
+        const k = b.alive ? b.hp / b.maxHp : 0, hurt = clock - b.lastHitT < 0.4, x = W / 2 - (herons.length * (bw + 12) - 12) / 2 + i * (bw + 12);
+        text(b.alive ? `${b.name.toUpperCase()} ${Math.round(k * 100)}%` : `${b.name.toUpperCase()} ✗`, x + bw / 2, 44, !b.alive ? '#8a8a8a' : hurt && blink ? '#ffb347' : '#7fd6ff', 12, 'center', '800');
+        hg.fillStyle = 'rgba(0,0,0,0.5)'; hg.fillRect(x, 54, bw, 7); hg.fillStyle = k < 0.3 ? RED : '#7fd6ff'; hg.fillRect(x, 54, bw * k, 7);
+      });
+      for (const u of groundUnits) if (u.alive && u.kind === 'sam' && u.lockT > 0 && isHeron(u.lockTgt)) {   // a SAM working its lock up on the bomber
+        const q = proj(u.pos), pct = clamp(u.lockT / 4.5, 0, 1);
+        if (q.behind || q.x < 0 || q.x > W || q.y < 0 || q.y > H) { edgeArrow(q, RED); continue; }
+        text(`SAM KHOÁ ${u.lockTgt.name.toUpperCase()} ${Math.round(pct * 100)}%`, q.x, q.y - 34, pct > 0.7 && blink ? '#ffffff' : RED, 13, 'center', '800');
+        hg.fillStyle = 'rgba(0,0,0,0.55)'; hg.fillRect(q.x - 40, q.y - 26, 80, 6); hg.fillStyle = RED; hg.fillRect(q.x - 40, q.y - 26, 80 * pct, 6);
+      }
+    }
     { const ship = flyers.find(f => f.alive && f.K.turrets);   // Tàu Mẹ: its armour bar, and how far it still is from the library
       if (ship && !flyers.some(f => f.alive && f.kind === 'ace')) {
         const d = ship.kind === 'dread' ? Math.round(Math.hypot(ship.pos.x - OBJECTIVE_DEFS.library.pos.x, ship.pos.z - OBJECTIVE_DEFS.library.pos.z)) : 0;

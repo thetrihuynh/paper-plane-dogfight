@@ -43,33 +43,22 @@ function makeCrumpleGeo() {   // a scrunched-up paper ball (kamikaze)
   g.computeVertexNormals();
   return g;
 }
-// Tàu Mẹ: a flying battleship folded from card. Armoured hull with a wedge bow, deck superstructure and bridge
-// tower, swept wings with engine pods, twin stern engines, gun turrets fore, aft and under the keel, missile racks
-// down both flanks, twin tail fins. About 2.2 long and 1.9 across at scale 1 (forward = -z).
-const MOTHER_TURRETS = [[0, 0.27, -0.36], [0, 0.27, -0.12], [-0.17, 0.15, 0.78], [0.17, 0.15, 0.78], [0, -0.16, 0.05]];   // where its guns fire from
-const MOTHER_ENGINES = [[-0.5, -0.06, 0.93], [0.5, -0.06, 0.93], [-0.12, 0, 1.06], [0.12, 0, 1.06]];
+// Tàu Mẹ: a giant "Bomber" paper plane. A broad flying wing with a sharp nose, leading edges swept back to a
+// shoulder and then out to the tips, an almost straight trailing edge, tall winglets standing up at both tips,
+// and a raised folded ridge down the middle. No guns: it fights with missiles and its escorts. About 1.6 long
+// and 2.2 across at scale 1 (forward = -z).
+const MOTHER_ENGINES = [[-0.6, 0.12, 0.42], [0.6, 0.12, 0.42], [0, 0.2, 0.2], [0, -0.1, 0.3]];   // where it smokes when hurt
 function makeMotherGeo() {
-  const parts = [], add = g => parts.push(g.toNonIndexed());
-  const B = (w, h, d, x, y, z) => add(new THREE.BoxGeometry(w, h, d).translate(x, y, z));
-  B(0.42, 0.2, 1.5, 0, 0, 0.15);                                                                  // hull
-  add(new THREE.ConeGeometry(0.3, 0.55, 4).rotateY(PI / 4).rotateX(-PI / 2).scale(1, 0.5, 1).translate(0, 0, -0.875));   // wedge bow
-  B(0.3, 0.12, 0.9, 0, 0.16, 0.15);                                                              // superstructure
-  B(0.16, 0.22, 0.22, 0, 0.33, 0.38); B(0.2, 0.05, 0.12, 0, 0.42, 0.33);                         // bridge tower + its wings
-  add(new THREE.CylinderGeometry(0.012, 0.012, 0.22, 5).translate(0, 0.55, 0.42));                // mast
-  for (const sx of [-1, 1]) {
-    const sh = new THREE.Shape(); sh.moveTo(sx * 0.2, -0.05); sh.lineTo(sx * 0.95, 0.5); sh.lineTo(sx * 0.95, 0.72); sh.lineTo(sx * 0.2, 0.72); sh.closePath();
-    add(new THREE.ExtrudeGeometry(sh, { depth: 0.04, bevelEnabled: false }).rotateX(PI / 2).translate(0, -0.02, 0));   // swept wing
-    add(new THREE.CylinderGeometry(0.09, 0.1, 0.72, 10).rotateX(PI / 2).translate(sx * 0.5, -0.06, 0.56));   // engine pod
-    add(new THREE.CylinderGeometry(0.07, 0.08, 0.3, 10).rotateX(PI / 2).translate(sx * 0.12, 0, 0.92));      // stern engine
-    B(0.06, 0.08, 0.6, sx * 0.24, 0.02, -0.12);                                                  // missile rack
-    for (let k = 0; k < 4; k++) add(new THREE.CylinderGeometry(0.018, 0.018, 0.14, 6).rotateX(PI / 2).translate(sx * 0.275, 0.02, -0.38 + k * 0.15));
-    add(new THREE.BoxGeometry(0.03, 0.3, 0.26).rotateZ(-sx * 0.25).translate(sx * 0.2, 0.22, 0.92));   // tail fin
-  }
-  for (const [x, y, z] of MOTHER_TURRETS) {   // turret domes with twin barrels
-    add(new THREE.CylinderGeometry(0.06, 0.075, 0.06, 10).translate(x, y, z));
-    for (const bx of [-0.022, 0.022]) B(0.014, 0.014, 0.18, x + bx, y + 0.01, z - 0.1);
-  }
-  const g = mergeGeometries(parts); g.computeVertexNormals(); return g;
+  const N = [0, 0.05, -1.0], S = [-0.42, 0.07, -0.08], T1 = [-1.08, 0.12, 0.34], T2 = [-1.08, 0.12, 0.6], C = [-0.24, 0.05, 0.6], R = [0, 0.04, 0.6];
+  const H = [0, 0.27, -0.08], B = [-0.2, 0.07, 0.12], RT = [0, 0.06, 0.42];   // the raised ridge: its top, its foot, its tail
+  const TW = [-1.16, 0.56, 0.72], TF = [-1.1, 0.22, 0.24];                       // winglet tip and its leading foot
+  const left = [
+    N, S, C,  S, T1, T2,  S, T2, C,  N, C, R,      // the wing
+    N, B, H,  H, B, RT,                           // ridge, left face
+    T1, TW, T2,  T1, TF, TW,                      // winglet
+  ];
+  const centre = [N, R, [0, -0.2, 0.25]];         // a shallow keel fold under the middle
+  return triGeo(left, centre);
 }
 const PLANE_GEOS = {
   dart: makePlaneGeo(),
@@ -91,7 +80,6 @@ const PLANE_GEOS = {
     [-0.3, 0.05, 0.2], [-0.32, 0.04, 0.9], [-0.08, 0.02, 0.45], [-0.3, 0.05, 0.2], [-0.08, 0.02, 0.45], [0, 0.02, 0.45],
     [0, 0.02, -1.1], [0, 0.02, 0.45], [0, -0.22, 0.3]]),
   ring: makeRingGeo(),
-  crumple: makeCrumpleGeo(),
   // Đại Bàng Đỏ: a B-2 style flying wing (swept leading edge, sawtooth trailing edge, cockpit hump)
   // whose wingtips fan out into eagle "finger" feathers
   eagle: (() => {
@@ -111,7 +99,7 @@ const PLANE_GEOS = {
   mother: makeMotherGeo(),
 };
 const PLANE_EDGES = {};
-for (const k in PLANE_GEOS) PLANE_EDGES[k] = new THREE.EdgesGeometry(PLANE_GEOS[k], k === 'ring' ? 30 : k === 'mother' ? 25 : 1);
+for (const k in PLANE_GEOS) PLANE_EDGES[k] = new THREE.EdgesGeometry(PLANE_GEOS[k], k === 'ring' ? 30 : 1);
 const planeGeo = PLANE_GEOS.dart;
 function makeTrail(color) {
   const N = 30, pos = new Float32Array(N * 3), geo = new THREE.BufferGeometry();
@@ -140,9 +128,9 @@ const KINDS = {
   ring:      { hp: 150, veq: 5.6, rates: [0.8, 1.6, 0.3], scale: 0.55, hitR: 0.75, color: 0x9b59b6, gunDmg: 3.0, gunCone: 0.13, gunRange: 26, fireRate: 3, points: 200, label: 'Vòng Ống', evade: 0.2, geo: 'ring', mslN: 2, flares: 3, ai: 'bomber', bombs: 3 },
   tape:      { hp: 80, veq: 6.8, rates: [1.0, 2.0, 0.4], scale: 0.5, hitR: 0.7, color: 0x5fd35f, gunDmg: 1.2, gunCone: 0.1, gunRange: 18, fireRate: 3, points: 180, label: 'Băng Keo', evade: 0.8, geo: 'glider', ai: 'support' },
   crumple:   { hp: 20, veq: 10, rates: [1.8, 2.5, 0.8], scale: 0.42, hitR: 0.55, color: 0xe8e2d0, gunDmg: 0, gunCone: 0, gunRange: 0, fireRate: 1, points: 80, label: 'Giấy Vo', evade: 0.3, geo: 'crumple', ai: 'ram' },
-  mother:    { hp: 900, veq: 4.5, rates: [0.4, 0.6, 0.2], scale: 5.5, hitR: 3.2, color: 0x8f97a6, edge: 0x9c1c1c, gunDmg: 2.4, gunCone: 0.16, gunRange: 26, fireRate: 4, points: 1500, label: 'Tàu Mẹ', evade: 0, geo: 'mother', ai: 'carrier', mslN: 4, flares: 6, rigid: true, tough: true, turrets: true, mslDmg: 22 },
+  mother:    { hp: 900, veq: 4.5, rates: [0.4, 0.6, 0.2], scale: 5.5, hitR: 3.2, color: 0xc8473d, edge: 0x5a0f0f, gunDmg: 2.4, gunCone: 0.16, gunRange: 26, fireRate: 4, points: 1500, label: 'Tàu Mẹ', evade: 0, geo: 'mother', ai: 'carrier', mslN: 4, flares: 6, rigid: true, tough: true, turrets: true, mslDmg: 22 },
   // the flagship Tàu Mẹ of Chương 4: huge, slow, armed to the teeth, flying dead straight for our library
-  dread:     { hp: 1800, veq: 4, rates: [0, 0, 0], scale: 12, hitR: 6.5, color: 0x8f97a6, edge: 0x9c1c1c, gunDmg: 0, gunCone: 0, gunRange: 0, fireRate: 1, points: 3000, label: 'Tàu Mẹ', evade: 0, geo: 'mother', ai: 'dread', mslN: 999, flares: 12, rigid: true, tough: true, turrets: true, mslDmg: 24, mslSpeed: 24, mslTurn: 2.1 },
+  dread:     { hp: 1100, veq: 4, rates: [0, 0, 0], scale: 12, hitR: 6.5, color: 0xc8473d, edge: 0x5a0f0f, gunDmg: 0, gunCone: 0, gunRange: 0, fireRate: 1, points: 3000, label: 'Tàu Mẹ', evade: 0, geo: 'mother', ai: 'dread', mslN: 999, flares: 8, rigid: true, tough: true, turrets: true, mslDmg: 18, mslSpeed: 22, mslTurn: 1.9 },
   elite:     { hp: 230, veq: 10.5, rates: [2.0, 3.6, 0.8], scale: 0.4, hitR: 0.5, color: 0x1e1e24, gunDmg: 3.2, gunCone: 0.1, gunRange: 32, fireRate: 9, points: 800, label: 'Song Ưng', evade: 2.2, geo: 'swallow', ai: 'elite', mslN: 4, flares: 6 },
   heron:     { hp: 480, veq: 7, rates: [0.7, 1.2, 0.3], scale: 2.0, hitR: 2.4, color: 0x3d6fd8, gunDmg: 0, gunCone: 0, gunRange: 0, fireRate: 1, label: 'Hạc Lớn', geo: 'glider', ai: 'route', flares: 6 },
   ace:    { hp: 460, veq: 11, rates: [2.1, 3.6, 0.85], scale: 0.36, hitR: 0.65, color: 0xc8102e, geo: 'eagle', gunDmg: 3.4, gunCone: 0.09, gunRange: 34, fireRate: 10, points: 2000, label: 'Đại Bàng Đỏ', evade: 2.4, mslN: 6, flares: 8, ai: 'boss' },
@@ -232,9 +220,6 @@ function makeFlyer(kind, team, name, color, edgeColor) {
   mesh.castShadow = true; g.add(mesh);
   const edges = new THREE.LineSegments(PLANE_EDGES[geo], addFlutter(new THREE.LineBasicMaterial({ color: edgeColor ?? K.edge ?? (kind === 'ace' ? 0x000000 : 0x7d8da0), transparent: true, opacity: edgeColor != null || K.edge ? 0.95 : 0.7 })));
   g.add(edges);
-  if (geo === 'mother') for (const [x, y, z] of MOTHER_ENGINES) {   // engine glow
-    const e = new THREE.Mesh(new THREE.CircleGeometry(x && Math.abs(x) > 0.3 ? 0.085 : 0.065, 12), new THREE.MeshBasicMaterial({ color: 0xffa040 })); e.position.set(x, y, z + 0.02); g.add(e);
-  }
   if (kind === 'ace') {   // dark chevrons along the wing, following the leading-edge sweep
     const st = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.07), new THREE.MeshBasicMaterial({ color: 0x1a0505, side: THREE.DoubleSide }));
     for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) { const m = st.clone(); m.rotation.set(-PI / 2, 0, sx * 0.62); m.position.set(sx * (0.38 + k * 0.28), 0.1 + k * 0.012, -0.32 + k * 0.2); g.add(m); }

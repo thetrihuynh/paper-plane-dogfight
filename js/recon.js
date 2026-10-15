@@ -156,7 +156,6 @@ const parkedMother = new THREE.Group(), PARKED = new THREE.Vector3(PITCH.x, 6.5,
   hull.scale.setScalar(s); hull.castShadow = true;
   const ribs = new THREE.LineSegments(PLANE_EDGES.mother, new THREE.LineBasicMaterial({ color: KINDS.dread.edge })); ribs.scale.setScalar(s);
   parkedMother.add(hull, ribs);
-  for (const [x, y, z] of MOTHER_ENGINES) { const e = new THREE.Mesh(new THREE.CircleGeometry(Math.abs(x) > 0.3 ? 0.085 * s : 0.065 * s, 12), new THREE.MeshBasicMaterial({ color: 0x5a3010 })); e.position.set(x * s, y * s, z * s + 0.2); parkedMother.add(e); }   // engines cold
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {   // the launch cradle
     const st = new THREE.Mesh(new THREE.BoxGeometry(0.5, 6.5, 0.5), MAT.metal); st.position.set(sx * 2.2, -3.5, sz * 5); parkedMother.add(st);
   }

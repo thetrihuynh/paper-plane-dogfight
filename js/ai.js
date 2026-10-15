@@ -238,10 +238,11 @@ function updateAI(a, dt) {
     a.thinkT = rr(1.5, 3);
     let best = null, bd = 1e9;
     for (const o of flyers) if (o.alive && o.team !== a.team) {
-      let d = o.pos.distanceTo(a.pos); if (o === P) d *= a.K.ai === 'ram' ? 0.3 : 0.6; if (o === heron) d *= 0.35;
+      let d = o.pos.distanceTo(a.pos); if (o === P) d *= a.K.ai === 'ram' ? 0.3 : 0.6; if (isHeron(o)) d *= 0.35;
       if (d < bd) { bd = d; best = o; }
     }
     a.target = best;
+    if (a.huntHeron) a.target = a.huntHeron.alive ? a.huntHeron : (herons.find(h => h.alive) || best);   // the hunters only want a bomber
   }
   const t = a.target;
   let dist = 1e9;
