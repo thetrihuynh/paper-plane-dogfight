@@ -16,7 +16,7 @@ let P = null;
 const ALLIES = [{ name: 'Alpha 2', color: 0xff8fc0, off: -9 }, { name: 'Alpha 3', color: 0x6fd0ff, off: 9 }];
 // Wingman: the old hand who taught Alpha 1 to fly. Not one of the squadron: he turns up when he's needed
 // (the chase home in Chương 3, the push south in Chương 7, Song Nhạn in Chương 9) and is gone again after.
-// He once flew with Đại Bàng Đỏ; nobody says so, but it shows.
+// He once flew with Red Eagle; nobody says so, but it shows.
 const WINGMAN = { name: 'Wingman', color: 0xb8c2cc };
 function makeWingman() {
   const f = makeFlyer('ally', 'blue', WINGMAN.name, WINGMAN.color); f.guest = true;
@@ -27,14 +27,21 @@ function makeWingman() {
 // Chương 11: two old classmates on opposite sides of the line, talking across the fight. A few lines when the fight
 // starts and as it wears on, and one when either of them flies something the other recognises. One exchange at a time.
 const BANTER = {
-  hello: [['Đại Bàng Đỏ', '...Cậu cũng ở đây à, bạn già.'], ['Wingman', 'Tôi cũng chẳng muốn đâu. Quay về đi, vẫn còn kịp.']],
-  hp75: [['Đại Bàng Đỏ', 'Hồi đó giữa sân đâu có vạch phấn nào, phải không?'], ['Wingman', 'Hồi đó chưa ai trên cao cần đến nó.']],
-  hp50: [['Wingman', 'Về đi. Cậu đâu cần rơi vì một vạch phấn.'], ['Đại Bàng Đỏ', 'Còn cậu, vẫn bay cho những người đã kẻ nó.']],
-  hp25: [['Đại Bàng Đỏ', 'Cậu vẫn bay cho Blackboard à?'], ['Wingman', 'Tôi bay vì mấy cậu lính mới này thôi. Vài tuần nữa là tôi nghỉ rồi.'], ['Đại Bàng Đỏ', 'Ngày xưa ba đứa mình đâu cần ai ra lệnh mới biết bay về đâu.']],
-  spin: [['Wingman', 'Vẫn cú lộn hai vòng đó... bao nhiêu năm rồi vẫn không đổi.'], ['Đại Bàng Đỏ', 'Ha, điều này làm ta nhớ tới hồi còn học chung đấy.'], ['Wingman', 'Chúng ta có ký ức khác nhau về hồi đi học đấy, ông bạn à.']],
-  zoom: [['Đại Bàng Đỏ', 'Bị kẹp giữa hai chiếc thì leo cao. Ai dạy tôi điều đó nhỉ?'], ['Wingman', 'Tôi dạy cậu để cùng bay, không phải để bay ngược chiều nhau.']],
-  reverse: [['Wingman', 'Lộn ngược qua đầu đối thủ... hồi trước cả sân cờ vỗ tay mỗi lần cậu làm thế.'], ['Đại Bàng Đỏ', 'Hồi trước sân cờ chỉ có một lá cờ.']],
-  tail: [['Đại Bàng Đỏ', 'Cậu vẫn bám đuôi khéo như ngày nào.'], ['Wingman', 'Ngày đó tôi bám đuôi cậu là để che cho cậu.']],
+  hello: [['Red Eagle', '...Cậu cũng ở đây à, bạn già.'], ['Wingman', 'Tôi cũng chẳng muốn đâu, Red. Quay về đi, vẫn còn kịp.']],
+  hp75: [['Red Eagle', 'Hồi đó giữa sân đâu có vạch phấn nào, phải không?'], ['Wingman', 'Hồi đó chưa ai trên cao cần đến nó.']],
+  hp50: [['Wingman', 'Về đi, Red. Cậu đâu cần rơi vì một vạch phấn.'], ['Red Eagle', 'Vạch phấn là lệnh. Tôi chưa từng cãi lệnh, cậu biết mà.']],
+  hp25: [['Red Eagle', 'Cậu vẫn bay cho Blackboard à?'], ['Wingman', 'Tôi bay vì mấy cậu lính mới này thôi. Vài tuần nữa là tôi nghỉ rồi.'], ['Wingman', 'Ngày xưa ba đứa mình đâu cần ai ra lệnh mới biết bay về đâu.'], ['Red Eagle', 'Ngày xưa cậu cũng chẳng bao giờ nghe lệnh. Một trong hai ta phải nghe chứ.']],
+  spin: [['Wingman', 'Vẫn cú lộn hai vòng đó... bao nhiêu năm rồi vẫn không đổi.'], ['Red Eagle', 'Ha, điều này làm ta nhớ tới hồi còn học chung đấy.'], ['Wingman', 'Chúng ta có ký ức khác nhau về hồi đi học đấy, ông bạn à.']],
+  zoom: [['Red Eagle', 'Bị kẹp giữa hai chiếc thì leo cao. Ai dạy tôi điều đó nhỉ?'], ['Wingman', 'Tôi dạy cậu để cùng bay, không phải để bay ngược chiều nhau.']],
+  reverse: [['Wingman', 'Lộn ngược qua đầu đối thủ... hồi trước cả sân cờ vỗ tay mỗi lần cậu làm thế.'], ['Red Eagle', 'Hồi trước sân cờ chỉ có một lá cờ.']],
+  // Blackboard (she was the third of them) tries to talk them out of it; both cut her off, and keep talking to each other
+  cutoff: [['Blackboard', 'Wingman, Red... nghe tôi. Hai cậu dừng lại đi. Hôm nay không ai phải giao chiến cả.'],
+           ['Red Eagle', '...Xin lỗi. Red Eagle, out.'], ['Wingman', 'Xin lỗi, Blackboard. Wingman out.'],
+           // off her channel, just the two of them: the old argument
+           ['Wingman', 'Cậu làm thế là Black buồn đấy!'], ['Red Eagle', '...Nhiệm vụ của cậu là làm cô ấy hạnh phúc. Cậu quên rồi à?'],
+           ['Wingman', 'Cậu thì lúc nào cũng nghĩa vụ với mệnh lệnh nhỉ?'], ['Red Eagle', 'Bởi vậy tôi luôn ghét cái tính bốc đồng của cậu đấy, Wingman à!']],
+  plea: [['Blackboard', 'Wingman? Wingman, trả lời tôi!'], ['Blackboard', '...Hai người các cậu thực sự muốn tiêu diệt nhau sao?']],
+  tail: [['Red Eagle', 'Cậu vẫn bám đuôi khéo như ngày nào.'], ['Wingman', 'Ngày đó tôi bám đuôi cậu là để che cho cậu.']],
 };
 function banterOn() { const e = flyers.find(f => f.alive && f.kind === 'ace'); return e && gameMode !== 'counter' && !cut && state === 'play' && wingmanUp() && !e.fallen ? e : null; }
 function banter(e, key) {
@@ -42,7 +49,7 @@ function banter(e, key) {
   if (B.said[key] || B.cd > 0) return false;
   B.said[key] = 1; B.cd = 16; radioChain(BANTER[key], true); return true;
 }
-// Đại Bàng Đỏ gives the white plane its due: when Alpha 1 slips one of his missiles, hurts him, or holds his tail.
+// Red Eagle gives the white plane its due: when Alpha 1 slips one of his missiles, hurts him, or holds his tail.
 // Calm, a little amused, and every so often a hint of who taught it to fly
 const EAGLE_PRAISE = {
   dodge: ['Né đẹp lắm, lính mới.', 'Hừm. Không tệ.', 'Lại hụt. Cậu bay chẳng giống lính mới chút nào.', 'Cú lộn đó... tôi biết ai dạy cậu rồi.'],
@@ -55,13 +62,15 @@ function eaglePraise(e, kind) {
   const pool = EAGLE_PRAISE[kind].filter(s => !B.used[s]);
   if (clock < B.cd || !pool.length) return;
   const s = pick(pool); B.used[s] = 1; B.cd = clock + 18;
-  radio('Đại Bàng Đỏ', s);
+  radio('Red Eagle', s);
 }
 function eagleSkill(a, key) { if (banterOn() === a) banter(a, key); }   // called by his AI when he flies one of his moves
 function eagleBanter(dt) {
   const e = banterOn(); if (!e) return;
   const B = e.bt ||= { cd: 0, said: {}, t: 0, tailT: 0 }; B.t += dt; B.cd -= dt;
   if (B.t > 6) banter(e, 'hello');
+  if (B.said.hello && B.t > 22) banter(e, 'cutoff');
+  if (B.said.cutoff && B.t > 50) banter(e, 'plea');   // nobody answers
   const hp = e.hp / e.maxHp;
   for (const [k, lim] of [['hp75', 0.75], ['hp50', 0.5], ['hp25', 0.25]]) if (hp < lim && B.said.hello) banter(e, k);
   // Wingman sitting on his tail for a moment
@@ -257,7 +266,7 @@ function setupMission(chapter, single) {
   popups.length = 0;
   gaps.forEach(g => { g.inside = false; g.lastT = -99; });
   cine.t = 0; cineCD = 0; document.body.classList.remove('cine');
-  radioQ.length = 0; radioT = 0; radioHushT = 0; for (const k in radioCD) delete radioCD[k];
+  radioQ.length = 0; radioT = 0; radioHushT = 0; for (const k in radioCD) delete radioCD[k]; clearRadioLog(); beatsSaid.clear();
   // later chapters: the back-yard fights start over the back yard
   if (WAVES[chapter].area === 'back') { P.pos.set(0, 12, -60); orient(P, FWD); aim.set(0, 0, -1); flyers.filter(f => f.team === 'blue' && f !== P).forEach((f, i) => f.pos.set(i ? 6 : -6, 12, -50)); }
   $('menu').classList.add('hidden'); $('result').classList.add('hidden'); $('chapters').classList.add('hidden'); $('objective').classList.remove('hidden');
@@ -300,7 +309,7 @@ const BOSS_INTRO = {
   elite: ['SONG NHẠN', 'Hắc Nhạn & Bạch Nhạn'],
   mother: ['TÀU MẸ II', 'Chiếc chiến hạm bay thứ hai'],
   dread: ['TÀU MẸ', 'Chiến hạm bay của Phe Đỏ · đích đến: Thư Viện'],
-  ace: ['ĐẠI BÀNG ĐỎ', ''],   // no title: the cinematics have already shown who he is
+  ace: ['RED EAGLE', ''],   // no title: the cinematics have already shown who he is
 };
 const skyCur = { ...PALETTES.morning }, _c1 = new THREE.Color(), _c2 = new THREE.Color();
 let skyTo = PALETTES.morning, windOn = false;
@@ -373,7 +382,7 @@ function spawnWave(i) {
   setObjectives(W.defend);
   let n = 0;
   for (const [kind, count] of W.spawn) for (let k = 0; k < count; k++, n++) {
-    const f = makeFlyer(kind, 'red', kind === 'ace' ? 'Đại Bàng Đỏ' : kind === 'elite' ? ['Hắc Nhạn', 'Bạch Nhạn'][k % 2] : `${KINDS[kind].label} ${k + 1}`, kind === 'elite' ? [0x1e1e24, 0xf4f4f4][k % 2] : undefined);
+    const f = makeFlyer(kind, 'red', kind === 'ace' ? 'Red Eagle' : kind === 'elite' ? ['Hắc Nhạn', 'Bạch Nhạn'][k % 2] : `${KINDS[kind].label} ${k + 1}`, kind === 'elite' ? [0x1e1e24, 0xf4f4f4][k % 2] : undefined);
     f.pos.copy(findSpawn(30, 80, W.area));
     orient(f, _ax.subVectors(P.pos, f.pos));
     if (kind === 'dread') { f.pos.set(0, 30, SCHOOL.zS + 30); orient(f, _ax.set(0.001, 0, 1)); f.mslT = 4; f.spawnT = 8; }   // takes off from their courtyard
@@ -399,6 +408,7 @@ function findSpawn(minD, maxD, area) {
   return new THREE.Vector3(0, 16, back ? -95 : area === 'rival' ? -705 : -400);
 }
 let resupplyT = 0;
+const beatsSaid = new Set();
 function updateWaves(dt) {
   eagleBanter(dt);
   for (let i = allyReturns.length - 1; i >= 0; i--) {
@@ -417,6 +427,12 @@ function updateWaves(dt) {
     if (f.alive && state === 'play') bossIntro(f, ...BOSS_INTRO[f.kind]);
   }
   const enemies = flyers.filter(f => f.alive && f.team === 'red');
+  // mid-fight conversations (W.beats: [enemies left, lines]): played once each, and only if everyone speaking is still flying
+  if (waveState === 'active' && WAVES[wave] && WAVES[wave].beats) WAVES[wave].beats.forEach(([left, lines], k) => {
+    if (enemies.length > left || beatsSaid.has(wave + ':' + k)) return;
+    beatsSaid.add(wave + ':' + k);
+    if (lines.every(([w]) => !ALLIES.some(a => a.name === w) || flyers.some(f => f.alive && f.name === w))) lines.forEach(([w, t]) => radio(w, t));   // queued behind what's on air, in order
+  });
   if (waveState === 'wait') {
     waveT -= dt;
     if (waveT <= 0) spawnWave(++wave);
@@ -460,7 +476,7 @@ function damage(f, amt, src) {
     if (f.pHurt >= 40 && f.hp > amt) { f.pHurt = 0; eaglePraise(f, 'hit'); }   // (not on the shot that brings him down)
   }
   if (f === P && P.shieldT > 0) { amt *= 0.3; if (P.shieldMesh) P.shieldMesh.material.opacity = 0.5; }
-  if (gameMode === 'counter') {   // Chương 7: nobody brings Đại Bàng Đỏ down today, and he's merciless but not instant
+  if (gameMode === 'counter') {   // Chương 7: nobody brings Red Eagle down today, and he's merciless but not instant
     if (f.kind === 'ace') { if (amt > 0) burst(f.pos, 2, [f.colorHex, 0xdddddd], 3, 0.3, 0.3); f.hp = Math.max(f.maxHp * 0.4, f.hp - amt * 0.6); f.lastHitBy = src; f.lastHitT = clock; return; }   // six on one is a fair fight to him: the hits land and the paper tears, but he doesn't go down
     if (src && src.kind === 'ace' && f === P) amt *= 0.5;
     if (f.plotArmor) amt = Math.min(amt, Math.max(0, f.hp - f.maxHp * 0.15));
@@ -526,7 +542,7 @@ function destroy(f, src, crashed = false) {
       flash(crashed ? 'ĐỊCH ĐÂM RƠI!' : 'BẮN HẠ!', `${f.name} · +${pts}${P.combo > 1 ? ` · CHUỖI ×${mult}` : ''}`, 1.4);
       if (P.combo > 1) { popup(`CHUỖI ${P.combo} · ×${mult}`, '#ff9f1a', 1.6); if (AU.ctx) tone(600 + P.combo * 120, 1400 + P.combo * 150, 0.25, 0.08, 'triangle'); }
       if (f.kind === 'ace' && f.fallen) { /* the farewell already played (startEagleFall) */ }
-      else if (f.kind === 'ace') { radio('Blackboard', 'Splash Red Eagle! Đại Bàng Đỏ đã rơi! Tuyệt vời, Alpha 1!', true); radioChain([['Đại Bàng Đỏ', 'Mấy quả bom đó... xin các anh đừng thả. Bên dưới đó cũng là giấy của các anh.'], ['Đại Bàng Đỏ', 'Nói với cậu ấy... tôi đã giữ lời. Tôi chưa từng bắn cậu ấy.']]); }
+      else if (f.kind === 'ace') { radio('Blackboard', 'Splash Red Eagle! Hắn rơi rồi! Tuyệt vời, Alpha 1!', true); radioChain([['Red Eagle', 'Mấy quả bom đó... xin các anh đừng thả. Bên dưới đó cũng là giấy của các anh.'], ['Red Eagle', 'Nói với cậu ấy... tôi đã giữ lời. Tôi chưa từng bắn cậu ấy.']]); }
       else if (f.kind === 'elite') { const mate = flyers.find(x => x.alive && x.kind === 'elite'); radio(mate ? mateName() : 'Blackboard', mate ? `Splash ${f.name}! ${mate.name} đang lao thẳng vào Alpha 1!` : 'Song Nhạn đã rơi cả hai! Alpha 1, xác nhận át chủ bài!', true); if (!mate && wingmanUp()) radio('Wingman', 'Cả hai chiếc... Khá lắm, lính mới. Tôi nói thật đấy.'); }
       else if (Math.random() < 0.6) { const [w, t] = pick(KILL_LINES); radio(w, t); }
     } else if (crashed) radio('Blackboard', `${f.name} tự đâm vào địa hình!`);

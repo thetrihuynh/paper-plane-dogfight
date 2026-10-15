@@ -1,5 +1,5 @@
 'use strict';
-// Máy Bay Giấy · Chương 7: Phản công khu Tây, and the first sight of Đại Bàng Đỏ
+// Máy Bay Giấy · Chương 7: Phản công khu Tây, and the first sight of Red Eagle
 // (plain script: shares the page's global scope with the other files, loaded in order by index.html)
 // Flushed with the bomb's success, the whole squadron pours into their half and sweeps their fighters away. With victory in sight, a red shape
 // drops out of the sky, cuts two of ours down in one pass, and keeps on killing. Ordered back, Alpha 1 runs for
@@ -55,7 +55,7 @@ function updateCounter(dt) {
     }
     if (CT.phase === 'retreat' && P.pos.z > RED_LINE + 4) { startEagleHold(); return; }
     $('objective').textContent = CT.phase === 'retreat' ? `RÚT LUI! Bay về qua vạch ranh giới · còn ${Math.max(0, Math.round(RED_LINE + 4 - P.pos.z))} m · mất ${CT.lost} máy bay`
-      : `⚠ ĐẠI BÀNG ĐỎ · mất ${CT.lost} máy bay`;
+      : `⚠ RED EAGLE · mất ${CT.lost} máy bay`;
   }
 }
 // our wingmen falling back to the north courtyard
@@ -71,7 +71,7 @@ function startEagleArrive() {
   const blues = blueOthers(), centre = blues.reduce((s, f) => s.add(f.pos), P.pos.clone()).divideScalar(blues.length + 1);
   for (const f of flyers) if (f.alive && f.team === 'red') f.flee = true;   // their stragglers get out of his way
   const victims = blues.filter(f => f.temp).sort((a, b) => a.pos.distanceTo(centre) - b.pos.distanceTo(centre)).slice(0, 1);   // one, to show what he is
-  const e = makeFlyer('ace', 'red', 'Đại Bàng Đỏ'); e.leashZ = RED_LINE; e.counter = true;
+  const e = makeFlyer('ace', 'red', 'Red Eagle'); e.leashZ = RED_LINE; e.counter = true;
   const T1 = 2.6, T2 = 3.4;
   const at = (f, t) => f.pos.clone().addScaledVector(f.vel.lengthSq() > 1 ? f.vel : _ea.set(0, 0, -9), t);
   const start = centre.clone().add(_pv.set(30, 38, -110));
@@ -104,14 +104,14 @@ function updateEagleArrive(dt) {
     if (k.v.alive && t > k.at - 0.5 && e.gunT <= 0) { e.gunT = 0.04; const d = _tmp2.subVectors(k.v.pos, e.pos).normalize(); fireBullet(e, _tmp.copy(e.pos).addScaledVector(d, 1), d, 0); }
     if (k.v.alive && t >= k.at) { destroy(k.v, e); CT.lost++; shake = Math.min(0.8, shake + 0.4); burst(k.v.pos, 50, [k.v.colorHex, 0xffffff], 6, 1.6, 1); }
   }
-  if (t > (wingmanUp() ? 7.9 : 4.2) && !c.said.title) { c.said.title = 1; flash('⚠ ĐẠI BÀNG ĐỎ', '', 3); if (AU.ctx) { tone(110, 82, 1.4, 0.16, 'sawtooth'); noiseHit(AU.ctx.currentTime, 140, 0.5, 1.2); } }
+  if (t > (wingmanUp() ? 7.9 : 4.2) && !c.said.title) { c.said.title = 1; flash('⚠ RED EAGLE', '', 3); if (AU.ctx) { tone(110, 82, 1.4, 0.16, 'sawtooth'); noiseHit(AU.ctx.currentTime, 140, 0.5, 1.2); } }
   const line = (n, at, who, text) => { if (t > at && !c.said[n]) { c.said[n] = 1; sayNow(who, text); } };
   line(1, 0.3, 'Blackboard', 'Khoan... radar bắt một tín hiệu lạ. Trên cao, phía tây. Tốc độ rất lớn!');
   if (c.victims[0]) line(2, 1.6, c.victims[0].name, 'Cái gì kia—');
   line(3, 3.8, 'Alpha 2', c.victims[0] ? `${c.victims[0].name} rơi rồi?! Chỉ một lượt?!` : 'Cái gì vừa lướt qua?!');
   line(4, 5.0, 'Alpha 3', 'Blackboard, cái gì vậy?! Ai vừa bay qua?!');
   line(5, 6.2, 'Blackboard', 'Không có dữ liệu... radar chưa từng thấy chiếc này.');
-  if (wingmanUp()) line(6, 7.4, 'Wingman', '...Red Eagle.');
+  if (wingmanUp()) line(6, 7.4, 'Wingman', '...Red.');   // the old name: only he and Blackboard still use it
   if (t >= c.len || pressed.Enter || pressed.NumpadEnter) endEagleArrive();
 }
 function endEagleArrive() {
@@ -119,7 +119,7 @@ function endEagleArrive() {
   for (const k of c.kills) if (k.v.alive) { destroy(k.v, c.e); CT.lost++; }
   arrivePos(c, c.len, c.e.pos); c.e.speed = 11; c.e.mode = 'attack'; c.e.preyT = 0;
   P.invulnT = 1; P.speed = 9; camPos.copy(P.pos).add(_pv.set(0, 0.5, 2.5)); camAimS.copy(aim);
-  radio('Đại Bàng Đỏ', 'Đây là bầu trời của Phe Đỏ. Mời các anh quay về.', true);   // calm, courteous, and that's all he says for a while
+  radio('Red Eagle', 'Đây là bầu trời của Phe Đỏ. Mời các anh quay về.', true);   // calm, courteous, and that's all he says for a while
   if (wingmanUp()) { radio('Alpha 2', 'Wingman, anh biết hắn?'); radio('Blackboard', 'Tập trung. Giữ đội hình, đừng ai tách ra.'); }
   CT.phase = 'massacre'; CT.t = 0; CT.killCD = 9; CT.idle = 0; CT.man = null; CT.lostM = 0;
   for (const f of blueOthers()) f.target = c.e;   // everyone goes for him
@@ -138,7 +138,7 @@ function eagleArriveCamera(dt) {
 
 // ---- the end: we run for home; at their own border line he stops. If Wingman is with us, he drops back and the
 //      two of them fly the line together, wing to wing, for a few seconds; then Wingman lights out for home and
-//      Đại Bàng Đỏ turns south. Without Wingman: he circles once on his side of the line and turns away ----
+//      Red Eagle turns south. Without Wingman: he circles once on his side of the line and turns away ----
 // the pair's timeline: they meet, he speaks (close on him), Wingman answers (close on Wingman), they split
 const HOLD_JOIN = 2.4, HOLD_EAGLE = 3.8, HOLD_WING = 9.8, HOLD_SPLIT = 13.6, PAIR_V = 4.2;
 function startEagleHold() {
@@ -192,15 +192,15 @@ function updateEagleHold(dt) {
   line(1, 0.8, 'Alpha 2', 'Hắn... không truy kích nữa?');
   if (c.w) {
     line(2, 1.0, 'Alpha 3', 'Khoan, Wingman! Anh quay lại làm gì?!');
-    line(3, HOLD_EAGLE + 0.4, 'Đại Bàng Đỏ', 'Cậu đừng quay lại đây nữa. Lần sau tôi sẽ không tha cho bất kỳ máy bay nào vượt qua lằn ranh đâu, kể cả cậu!');
+    line(3, HOLD_EAGLE + 0.4, 'Red Eagle', 'Cậu đừng quay lại đây nữa. Lần sau tôi sẽ không tha cho bất kỳ máy bay nào vượt qua lằn ranh đâu, kể cả cậu!');
     line(4, HOLD_WING + 0.5, 'Wingman', 'Chúng ta hãy còn gặp lại, bạn già ạ!');
-    line(7, HOLD_WING + 2.4, 'Đại Bàng Đỏ', 'Gửi lời chào Blackboard. Bảng đen vẫn còn hình ba con chim tụi mình vẽ đấy.');
+    line(7, HOLD_WING + 2.4, 'Red Eagle', 'Gửi lời chào Blackboard. Bảng đen vẫn còn hình ba con chim tụi mình vẽ đấy.');
     line(5, HOLD_SPLIT + 2.2, 'Alpha 3', '...Bạn già?');
     line(6, HOLD_SPLIT + 3.8, 'Blackboard', `Ta mất ${CT.lost} máy bay. Tất cả, RTB.`);
   } else {
     line(2, 2.8, 'Alpha 3', 'Red Eagle dừng ngay ở vạch ranh giới. Nhìn kìa, cánh hắn đang bốc khói.');
     line(3, 5.0, 'Blackboard', 'Hắn cũng trúng đạn không nhẹ. Hắn không truy đuổi ta... hắn chỉ giữ bầu trời của Phe Đỏ.');
-    line(5, 6.6, 'Đại Bàng Đỏ', 'Xin đừng bước qua vạch phấn này lần nữa.');
+    line(5, 6.6, 'Red Eagle', 'Xin đừng bước qua vạch phấn này lần nữa.');
     line(4, 8.8, 'Blackboard', `Ta mất ${CT.lost} máy bay. Tất cả, RTB.`);
   }
   if (t >= c.len || pressed.Enter || pressed.NumpadEnter) endEagleHold();
@@ -211,7 +211,7 @@ function endEagleHold() {
   for (const f of flyers) f.retreat = false;
   if (c.w && c.w.alive) { c.w.pos.copy(P.pos).add(_pv.set(4, 1.5, 8)); orient(c.w, _tmp.set(0.001, 0, 1)); c.w.speed = 9; }   // back with us, saying nothing
   P.invulnT = 1; P.speed = 9; orient(P, _tmp.set(0.001, 0, 1)); aim.set(0, 0, 1); camPos.copy(P.pos).add(_pv.set(0, 0.5, -2.5)); camAimS.copy(aim);
-  flash('RÚT LUI THÀNH CÔNG', `Mất ${CT.lost} máy bay · Đại Bàng Đỏ ở lại bên kia vạch ranh giới`, 3);
+  flash('RÚT LUI THÀNH CÔNG', `Mất ${CT.lost} máy bay · Red Eagle ở lại bên kia vạch ranh giới`, 3);
   endCounter(); waveState = 'active';   // the normal flow ends the chapter
 }
 function eagleHoldCamera(dt) {
@@ -275,7 +275,7 @@ function eagleDuel(dt) {
   e.scripted = true; CT.idle = 0;
   if (kind === 'reversal') {
     radio(prey.name, 'Hắn kéo ngóc— mất dấu rồi!', true);
-    startCine('pass', { subject: e, dir: fwdOf(e, _du).clone(), dur: 1.6, ts: 0.35, cd: 1, label: 'ĐẠI BÀNG ĐỎ LỘN NGƯỢC RA SAU LƯNG!' });
+    startCine('pass', { subject: e, dir: fwdOf(e, _du).clone(), dur: 1.6, ts: 0.35, cd: 1, label: 'RED EAGLE LỘN NGƯỢC RA SAU LƯNG!' });
   } else {
     radio(prey.name, 'Đối đầu! Hắn lao thẳng vào tôi—!', true);
     startCine('pass', { subject: e, dir: fwdOf(e, _du).clone(), dur: 1.4, ts: 0.35, cd: 1, label: 'ĐỐI ĐẦU TRỰC DIỆN!' });

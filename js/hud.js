@@ -284,7 +284,7 @@ function drawHUD() {
     { const boss = flyers.find(f => f.alive && f.kind === 'ace');
       if (boss) {
         const near = flyers.filter(o => o.alive && o.team === 'blue' && o.pos.distanceTo(boss.pos) < 40).length, ok = near >= 2;
-        text('ĐẠI BÀNG ĐỎ', W / 2, 44, ok ? RED : '#c9c9c9', 13, 'center', '800');
+        text('RED EAGLE', W / 2, 44, ok ? RED : '#c9c9c9', 13, 'center', '800');
         hg.fillStyle = 'rgba(0,0,0,0.5)'; hg.fillRect(W / 2 - 120, 54, 240, 6); hg.fillStyle = ok ? RED : '#8a8a8a'; hg.fillRect(W / 2 - 120, 54, 240 * boss.hp / boss.maxHp, 6);
         // he is on your six: a heartbeat and a red pulse, no words
         const v = _tmp.subVectors(P.pos, boss.pos), dd = v.length();

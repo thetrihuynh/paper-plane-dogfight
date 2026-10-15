@@ -140,11 +140,11 @@ const cutSlow = t => t > 13.45 && t < 14.45 ? lerp(0.22, 0.6, Math.abs(t - 13.95
 //  ENDING: Hạc Lớn's last run over the Red Faction's base, the view from high above Alpha 1,
 //  and the Red Faction's flag burning away. Then the war is over.
 // =====================================================================
-const END_LEN = 34;
+const END_LEN = 75;   // a safety cap: the ending really ends once its last line has been read
 const endingFires = [];   // where the finale's bombs fell: they burn through the ending
 // Alpha 1's farewell pass: down from the orbit, low across the burning south courtyard, over the lab, right past
 // the burning flag, and up over the yard towards home.  [t, x, y, z]
-const END_PATH = [[8.5, 25, 40, -800], [10.0, 14, 22, -765], [11.5, 8, 11, -722], [13.0, 6, 21, -662], [14.5, -1.6, 14.2, FLAG_RED.z - 8], [16.0, -6, 18, -545], [17.5, -4, 30, -480], [19.5, 0, 46, -380], [22, 0, 56, -320], [34, 0, 92, -120]];
+const END_PATH = [[8.5, 25, 40, -800], [10.0, 14, 22, -765], [11.5, 8, 11, -722], [13.0, 6, 21, -662], [14.5, -1.6, 14.2, FLAG_RED.z - 8], [16.0, -6, 18, -545], [17.5, -4, 30, -480], [19.5, 0, 46, -380], [22, 0, 56, -320], [34, 0, 92, -120], [75, 0, 100, -60]];
 const endCurve = new THREE.CatmullRomCurve3(END_PATH.map(k => new THREE.Vector3(k[1], k[2], k[3])));
 const endPathAt = (t, out) => {
   let k = 0; while (k < END_PATH.length - 2 && t > END_PATH[k + 1][0]) k++;
@@ -235,21 +235,20 @@ function updateEnding(dt) {
     }
     if (c.flagP >= 1) rivalFlag.visible = false;
   }
-  const line = (k, at, who, text) => { if (t > at && !c.said[k]) { c.said[k] = 1; sayNow(who, text); } };
-  // and for the first time, Alpha 1 says something: only to itself
+  // the lines wait for each other (c.free), so each one stays up long enough to read; the ending runs until the last is said
+  const line = (k, at, who, text) => { if (t > at && t >= (c.free || 0) && !c.said[k]) { c.said[k] = 1; sayNow(who, text); c.free = t + readTime(text) * 0.8; return true; } };
   line(1, 0.4, 'Crane 1', 'Nhiệm vụ hoàn thành. Crane, RTB.');
   line(2, 4.6, 'Alpha 2', 'Xong rồi... cuộc chiến kết thúc rồi.');
   line(3, 7.0, 'Alpha 3', 'Nhìn từ trên này... sao chẳng thấy vui gì cả.');
-  line(4, 12.8, 'Blackboard', 'Lá cờ Phe Đỏ đã cháy. Chiến tranh máy bay giấy kết thúc.');
+  line(4, 12.8, 'Blackboard', 'Lá cờ Phe Đỏ đã cháy. Chiến tranh kết thúc. Tất cả... về trường thôi.');
   line(6, 15.4, 'Alpha 1', '(Một mảnh cờ cháy bay ngang qua cánh. Giấy kẻ ô... giống hệt giấy của mình.)');
-  line(5, 18.4, 'Blackboard', 'Tất cả các phi đội... RTB. Về trường thôi.');
-  line(9, 20.2, 'Alpha 1', '(Hai phe... mà gấp từ cùng một xấp giấy.)');
-  if (t > 21.5) towerStrings.visible = true;
-  line(10, 22.4, 'Alpha 1', '(Xa ngoài tường rào, hai toà tháp vẫn sáng đèn. Một xanh. Một đỏ.)');
-  line(11, 25.6, 'Phe Đỏ (bắt sóng)', '...Hightower gọi các đơn vị còn lại. Chỉ thị mới sẽ được gửi tới.');
-  line(12, 28.4, 'Alpha 1', '(Phe Đỏ cũng nhận chỉ thị từ Hightower. Vạch phấn, hai lá cờ, cả cuộc chiến... chỉ là những sợi dây.)');
-  line(13, 31.6, 'Alpha 1', '(Trên hai toà tháp ấy, chưa ai từng gấp một chiếc máy bay. Chưa ai từng bay.)');
-  if (t >= END_LEN || pressed.Enter || pressed.NumpadEnter) finishEnding();
+  line(5, 18.4, 'Blackboard', 'Blackboard gọi Wingman, báo cáo vị trí— ...À. Phải rồi.');   // habit: there's nobody on that channel any more
+  if (line(10, 21, 'Alpha 1', '(Xa ngoài tường rào, hai toà tháp vẫn sáng đèn. Một xanh. Một đỏ.)')) c.towerT = t;
+  if (c.towerT != null && t > c.towerT + 0.5) towerStrings.visible = true;
+  line(11, 21, 'Phe Đỏ (bắt sóng)', '...Hightower gọi các đơn vị còn lại. Chờ chỉ thị mới.');
+  line(12, 21, 'Alpha 1', '(Bên kia cũng nghe lệnh từ Hightower. Vạch phấn, hai lá cờ... chỉ là những sợi dây.)');
+  line(13, 21, 'Alpha 1', '(Trên hai toà tháp ấy, chưa ai từng gấp một chiếc máy bay.)');
+  if ((c.said[13] && t >= c.free + 2.5) || t >= END_LEN || pressed.Enter || pressed.NumpadEnter) finishEnding();
 }
 function finishEnding() {
   if (cut && cut.kind === 'ending') { burnFlag(1); rivalFlag.visible = false; }
@@ -262,8 +261,8 @@ function endingCamera(dt) {
   if (t < 4.2) { shot = 1; pos.set(16, 4, -735); look.copy(h).lerp(_tmp.set(0, 4, -712), 0.35); fov = 58; }   // low in their courtyard, the bomber roaring over
   else if (t < 8.5) {   // high above, behind Alpha 1, looking down on the burning school
     shot = 2; pos.copy(P.pos).addScaledVector(fwdOf(P, _tmp2), -7).add(_pv.set(0, 3.5, 0)); look.set(0, 0, -690); fov = 60;
-  } else if (t >= 21) {   // 4: pull far back and up: the two Hightowers, and the strings running from them into the yard
-    shot = 4; const u = clamp((t - 21) / 12, 0, 1), e = u * u * (3 - 2 * u);
+  } else if (cut.towerT != null) {   // 4: pull far back and up: the two Hightowers, and the strings running from them into the yard
+    shot = 4; const u = clamp((t - cut.towerT) / 14, 0, 1), e = u * u * (3 - 2 * u);
     pos.set(lerp(117, 228, e), lerp(90, 150, e), lerp(-278, -162, e)); look.set(0, 80, -400); fov = 72;   // broadside to the line between the towers, so both stay in frame
   } else {   // Alpha 1's view: tight behind the plane as it skims the ruins and climbs away
     shot = 3; const fw = fwdOf(P, _tmp2);
@@ -358,8 +357,8 @@ function sayNow(who, text) { radioQ.length = 0; radioQ.push({ who, text }); radi
 const EAGLE_TALK = [
   ['Blackboard', 'Radar bắt một tín hiệu... hướng mười hai giờ, ngay trong nắng.', 1.2],
   ['Alpha 3', 'Red Eagle vượt vạch ranh giới?! Chính hắn từng nói không ai được qua lằn ranh mà!'],
-  ['Đại Bàng Đỏ', 'Tôi biết. Hôm nay tôi là người phá lời hứa đó.'],
-  ['Wingman', '...Là cậu ta thật.'],
+  ['Red Eagle', 'Tôi biết. Nhưng lệnh đã ban xuống. Hôm nay tôi phải phá lời hứa đó.'],
+  ['Wingman', '...Là Red thật.'],
   ['Alpha 1', 'Anh quen hắn?'],
   ['Wingman', 'Từ hồi giữa sân còn chưa có vạch phấn nào... và ngoài kia còn chưa mọc lên hai cái tháp đó.'],
   ['Wingman', 'Nghe này, lính mới: đừng bao giờ đối đầu trực diện với cậu ta. Cậu ta sẽ—'],
@@ -444,7 +443,7 @@ function updateCutscene(dt) {
     if (c.close) { b.pos.set(0, CUT_Y + 8 - 1.6 * (1 - e), -560 + 6 * t); b.vel.set(0, 0, 6); b.speed = 6; }
     else { b.pos.set(0, CUT_Y + 8, cz - 190); b.vel.set(0, 0, -8); b.speed = 8; }
     orient(b, _tmp.set(0.001, 0, 1));
-    if (i === 2 && !c.said.card) { c.said.card = 1; flash('⚠ ĐẠI BÀNG ĐỎ', '', 2.6); if (AU.ctx) { tone(110, 82, 1.4, 0.16, 'sawtooth'); noiseHit(AU.ctx.currentTime, 140, 0.5, 1.2); } }
+    if (i === 2 && !c.said.card) { c.said.card = 1; flash('⚠ RED EAGLE', '', 2.6); if (AU.ctx) { tone(110, 82, 1.4, 0.16, 'sawtooth'); noiseHit(AU.ctx.currentTime, 140, 0.5, 1.2); } }
     if (i === EAGLE_TALK.length - 1 && t - c.lSaid > 2.2) {   // cut off mid-sentence: he goes
       c.D = t; sayNow('Blackboard', 'Hắn tăng tốc! Break, break!'); whoosh(); shake = 0.4;
       if (AU.ctx) tone(180, 900, 0.9, 0.09, 'sawtooth');
@@ -471,7 +470,7 @@ function updateCutscene(dt) {
   // dialogue
   const line = (k, at, who, text) => { if (ot > at && !c.said[k]) { c.said[k] = 1; sayNow(who, text); } };
   line(5, 7.2, 'Alpha 4', 'Alpha 4 trúng đạn! Rách cả hai cánh, phải hạ cánh khẩn cấp!');
-  line(10, 8.6, 'Đại Bàng Đỏ', 'Các anh về đi. Tôi chỉ cần mấy chiếc Hạc.');
+  line(10, 8.6, 'Red Eagle', 'Các anh về đi. Tôi chỉ cần mấy chiếc Hạc.');
   line(6, 10.8, 'Alpha 2', 'Alpha 5 cũng phải hạ cánh... Hắn bắn rách cánh, mà không bắn rơi?');
   line(7, 12.3, 'Blackboard', 'Hắn quay lại! Alpha 1, hắn đối đầu trực diện!');
   if (ot > 13.95 && !c.said.pass) {   // the shave: wind blast, a shudder, paper flutter
@@ -499,7 +498,7 @@ function skipCutscene() {
   cut = null; document.body.classList.remove('cine');
   radio('Blackboard', 'Alpha 1, 2, 3: chỉ còn ba chiếc. Giữ đội hình, đừng tách ra!', true);
   radio('Alpha 2', 'Khép vòng vây! Hắn leo cao thì bật siêu thanh truy kích!');
-  radio('Đại Bàng Đỏ', 'Một quả đã đủ xoá Phòng Thí Nghiệm. Ba quả... các anh định xoá luôn cả khu Tây sao?', true);   // heard first
+  radio('Red Eagle', 'Một quả đã đủ xoá Phòng Thí Nghiệm. Ba quả... các anh định xoá luôn cả khu Tây sao?', true);   // heard first
 }
 function cutsceneCamera(dt) {
   if (cut.kind === 'lab') { labCutCamera(dt); return; }
@@ -563,20 +562,20 @@ function talk(c, t, lines) {
   return c.li - 1;
 }
 
-// ---- Chương 11, the end: Đại Bàng Đỏ is beaten. He glides in a wide, slow circle high over the yard (above every
+// ---- Chương 11, the end: Red Eagle is beaten. He glides in a wide, slow circle high over the yard (above every
 //      roof, so nothing gets in the way), torn and tired; Wingman slides in on his outer wing and hears him out,
 //      and asks him to land. He won't. He says goodbye, rolls over and lets the plane fall, and Wingman watches.
 const FALL_R = 28, FALL_V = 4.5;
 const FALL_LINES = [
-  ['Đại Bàng Đỏ', 'Mấy quả bom đó... xin các anh đừng thả. Bên dưới đó cũng là giấy của các anh.', 0.8],
+  ['Red Eagle', 'Mấy quả bom đó... xin các anh đừng thả. Bên dưới đó cũng là giấy của các anh.', 0.8],
   ['Wingman', 'Tôi nghe rồi, bạn già.'],
-  ['Wingman', 'Đáp xuống đi. Đầu hàng đi. Hôm nay không ai phải rơi nữa.'],
-  ['Đại Bàng Đỏ', 'Cậu biết tôi mà. Đại Bàng không đáp xuống bên này lằn ranh.'],
-  ['Đại Bàng Đỏ', 'Mà lằn ranh đó đâu phải hai đứa mình kẻ. Ngẩng lên mà xem... đèn trên đó chưa bao giờ tắt.'],
-  ['Đại Bàng Đỏ', 'Nhớ không? Ba đứa mình từng hẹn sẽ cùng bay qua khỏi bức tường rào kia.'],
-  ['Wingman', 'Cậu bay cao hơn mây. Tôi dạy bọn nhỏ bay. Còn cậu ấy gấp một con Hạc đủ to chở cả ba.'],
-  ['Đại Bàng Đỏ', 'Cuối cùng cậu ấy cũng gấp được rồi... chỉ là chở thứ khác.'],
-  ['Đại Bàng Đỏ', 'Tạm biệt, bạn già. Bay nốt tới ngày được nghỉ hưu nhé. Nhắn cậu ấy... tôi không giận.'],
+  ['Wingman', 'Đáp xuống đi, Red. Đầu hàng đi. Hôm nay không ai phải rơi nữa.'],
+  ['Red Eagle', 'Cậu biết tôi mà. Red Eagle không đáp xuống bên này lằn ranh.'],
+  ['Red Eagle', 'Mà lằn ranh đó đâu phải hai đứa mình kẻ. Ngẩng lên mà xem... đèn trên đó chưa bao giờ tắt.'],
+  ['Red Eagle', 'Nhớ không? Ba đứa mình từng hẹn sẽ cùng bay qua khỏi bức tường rào kia.'],
+  ['Wingman', 'Cậu bay cao hơn mây. Tôi dạy bọn nhỏ bay. Còn cô ấy gấp một con Hạc đủ to chở cả ba.'],
+  ['Red Eagle', 'Cuối cùng cô ấy cũng gấp được rồi... chỉ là chở thứ khác.'],
+  ['Red Eagle', 'Tạm biệt, bạn già. Bay nốt tới ngày được nghỉ hưu nhé. Nhắn cô ấy... tôi không giận.'],
 ];
 function startEagleFall(e) {
   const w = wingmanUp(), blues = flyers.filter(f => f.alive && f.team === 'blue' && f !== P && f !== w);
@@ -629,7 +628,7 @@ function updateEagleFall(dt) {
   c.spk = i >= 0 && t - c.lSaid < readTime(FALL_LINES[i][1]) * 0.85 + 0.6 ? FALL_LINES[i][0] : null;
   if (i === FALL_LINES.length - 1 && c.fallT === Infinity && t - c.lSaid > readTime(FALL_LINES[i][1]) * 0.7) c.fallT = t;   // the goodbye said: he lets go
   if (t > c.fallT + 2.6 && !c.said.bb) { c.said.bb = 1; sayNow('Blackboard', 'Red Eagle... đã rơi.'); }
-  if (t > c.fallT + 5.4 && !c.said.bb2) { c.said.bb2 = 1; sayNow('Blackboard', '...Cậu ấy vẫn luôn thích bay lúc hoàng hôn.'); }   // off-script, and he knows it
+  if (t > c.fallT + 5.4 && !c.said.bb2) { c.said.bb2 = 1; sayNow('Blackboard', '...Red vẫn luôn thích bay lúc hoàng hôn.'); }   // off-script, and she knows it
   if (t >= c.fallT + 8.6 || pressed.Enter || pressed.NumpadEnter) endEagleFall();
 }
 function endEagleFall() {
@@ -646,7 +645,7 @@ function eagleFallCamera(dt) {
   // close-ups sit just ahead of the speaker looking back, the other one over his shoulder
   if (t > c.fallT) { _cd.copy(w.pos).addScaledVector(fwdOf(w, _tmp), -1.5).addScaledVector(out, 0.3).add(_pv.set(0, 0.6, 0)); _cl.copy(e.pos); fov = 50; }   // over Wingman's shoulder, watching him fall
   else if (c.spk === 'Wingman') { _cd.copy(w.pos).addScaledVector(fe, 1.5).addScaledVector(out, 0.9).add(_pv.set(0, 0.28, 0)); _cl.copy(w.pos); }   // Wingman, from outside the turn
-  else if (c.spk === 'Đại Bàng Đỏ') { _cd.copy(e.pos).addScaledVector(fe, 1.6).addScaledVector(out, -0.95).add(_pv.set(0, 0.3, 0)); _cl.copy(e.pos); }   // him, from inside the turn
+  else if (c.spk === 'Red Eagle') { _cd.copy(e.pos).addScaledVector(fe, 1.6).addScaledVector(out, -0.95).add(_pv.set(0, 0.3, 0)); _cl.copy(e.pos); }   // him, from inside the turn
   else { const mid = _tmp.addVectors(e.pos, w.pos).multiplyScalar(0.5); _cd.copy(mid).addScaledVector(fe, 5).addScaledVector(out, -1.5).add(_pv.set(0, 1.2, 0)); _cl.copy(mid); fov = 46; }   // the two of them
   camera.position.copy(_cd);
   camera.up.set(0, 1, 0); camera.lookAt(_cl);

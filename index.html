@@ -19,8 +19,16 @@
   #greyout { position: fixed; inset: 0; pointer-events: none; opacity: 0; z-index: 3; background: #808080; mix-blend-mode: saturation; }
   #vignette { position: fixed; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(200,0,0,.75) 100%); }
   #objective { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); color: #9effa0; font-size: 18px; font-weight: 700; text-shadow: 0 0 6px rgba(0,0,0,.8); text-align: center; pointer-events: none; letter-spacing: .5px; }
-  #radio { position: fixed; left: 20px; bottom: 150px; max-width: min(520px, 60vw); padding: 8px 14px; background: rgba(5,25,15,.72); border-left: 4px solid #9effa0; color: #e9ffe9; font-size: 17px; line-height: 1.35; pointer-events: none; transition: opacity .3s; opacity: 0; border-radius: 4px; }
+  #radio { position: fixed; left: 20px; bottom: 150px; max-width: min(520px, 60vw); padding: 8px 14px; background: rgba(5,25,15,.72); border-left: 4px solid #9effa0; color: #e9ffe9; font-size: 19px; line-height: 1.4; text-shadow: 0 1px 2px rgba(0,0,0,.6); pointer-events: none; transition: opacity .3s; opacity: 0; border-radius: 4px; }
   #radio b { display: block; font-size: 14px; letter-spacing: 1px; }
+  /* the last couple of lines stay up above the current one, dimmed, so a line missed mid-fight can still be read */
+  #radioLog { position: fixed; left: 20px; bottom: 150px; max-width: min(520px, 60vw); pointer-events: none; display: flex; flex-direction: column; gap: 4px; }
+  #radioLog div { padding: 4px 12px; background: rgba(5,25,15,.5); border-left: 3px solid #9effa0; color: #cfe8cf; font-size: 14px; line-height: 1.3; border-radius: 4px; opacity: .75; transition: opacity .6s; }
+  #radioLog div b { font-size: 11px; letter-spacing: 1px; margin-right: 6px; }
+  /* in a cutscene the radio becomes subtitles: big, centred, just above the letterbox */
+  body.cine #radio { left: 50%; transform: translateX(-50%); bottom: calc(10vh + 18px); max-width: min(900px, 86vw); text-align: center; font-size: 23px; background: rgba(0,0,0,.55); border-left: none; z-index: 6; }
+  body.cine #radio b { font-size: 15px; }
+  body.cine #radioLog { display: none; }
   #big { position: fixed; left: 50%; top: 30%; transform: translate(-50%,-50%); font-size: 64px; font-weight: 800; color: #fff; text-shadow: 0 4px 0 #b3141c, 0 8px 18px rgba(0,0,0,.45); pointer-events: none; transition: opacity .3s; opacity: 0; white-space: nowrap; text-align: center; line-height: 1; }
   #big small { display: block; font-size: 26px; color: #ffe066; text-shadow: 0 2px 0 #7a3b00; margin-top: 6px; }
 
@@ -93,6 +101,7 @@
 <div id="blackout"></div>
 <div class="lb" id="lbTop"></div><div class="lb" id="lbBot"></div>
 <div id="objective" class="hidden"></div>
+<div id="radioLog"></div>
 <div id="radio"><b id="radioWho"></b><span id="radioText"></span></div>
 <div id="big"></div>
 
@@ -188,7 +197,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 window.THREE = THREE; window.mergeGeometries = mergeGeometries;
 const FILES = [ "js/core.js", "js/world.js", "js/effects.js", "js/aircraft.js", "js/weapons.js", "js/escort.js", "js/recon.js", "js/dread.js", "js/counter.js", "js/audio.js", "js/input.js", "js/game.js", "js/chapters/ch01.js", "js/chapters/ch02.js", "js/chapters/ch03.js", "js/chapters/ch04.js", "js/chapters/ch05.js", "js/chapters/ch06.js", "js/chapters/ch07.js", "js/chapters/ch08.js", "js/chapters/ch09.js", "js/chapters/ch10.js", "js/chapters/ch11.js", "js/chapters/ch12.js", "js/player.js", "js/cinematic.js", "js/ai.js", "js/camera.js", "js/hud.js", "js/main.js" ];
-const V = '20261017r';   // bump when the files change, so browsers don't run stale cached copies
+const V = '20261017s';   // bump when the files change, so browsers don't run stale cached copies
 let loaded = 0;   // the loading screen's bar fills as the files arrive; main.js takes it down once the scene is ready
 for (const f of FILES) {
   const s = document.createElement('script'); s.src = f + '?v=' + V; s.async = false;

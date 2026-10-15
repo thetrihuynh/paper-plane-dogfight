@@ -61,14 +61,14 @@ function setMute(m) { AU.muted = m; if (AU.master) AU.master.gain.value = m ? 0 
 // =====================================================================
 const radioQ = []; let radioT = 0; const radioCD = {};
 const WHO_COL = { 'Blackboard': '#9effa0', 'Alpha 2': '#ff8fc0', 'Alpha 3': '#6fd0ff', 'Alpha 4': '#9be37a', 'Alpha 5': '#ffb35c', 'Bravo 1': '#c9a0ff', 'Bravo 2': '#fff176', 'Bravo 3': '#80deea', 'Bravo 4': '#f48fb1', 'Bravo 5': '#a5d6a7', 'Bravo 6': '#ffcc80',
-  'Crane': '#7fd6ff', 'Crane 1': '#7fd6ff', 'Crane 2': '#7fd6ff', 'Crane 3': '#7fd6ff', 'Đại Bàng Đỏ': '#ff5050', 'Địch': '#ff8a80', 'Phe Đỏ (bắt sóng)': '#ff8a80', 'Bạch Nhạn': '#ff8a80', 'Hắc Nhạn': '#ff8a80', 'Alpha 1': '#ffffff', 'Wingman': '#d5dde4' };
+  'Crane': '#7fd6ff', 'Crane 1': '#7fd6ff', 'Crane 2': '#7fd6ff', 'Crane 3': '#7fd6ff', 'Red Eagle': '#ff5050', 'Địch': '#ff8a80', 'Phe Đỏ (bắt sóng)': '#ff8a80', 'Bạch Nhạn': '#ff8a80', 'Hắc Nhạn': '#ff8a80', 'Alpha 1': '#ffffff', 'Wingman': '#d5dde4' };
 // while a conversation holds the channel (radioChain with hush), everyone else's chatter is simply dropped
 let radioHushT = 0, radioHushWho = [];
 function radio(who, text, prio = false) {
   if (radioHushT > 0 && !radioHushWho.includes(who)) return;
   if (prio) radioQ.unshift({ who, text }); else radioQ.push({ who, text }); if (radioQ.length > 10) radioQ.length = 10;
 }
-const readTime = text => 2.6 + text.length * 0.035;   // how long a line stays up (updateRadio)
+const readTime = text => 3 + text.length * 0.055;   // how long a line stays up (updateRadio): ~18 chars/s, readable while flying
 // a short exchange that must play next, in order, without anything cutting in between. With hush, it also cuts off
 // the line on air and keeps everyone else off the channel until it's over
 function radioChain(lines, hush = false) {
@@ -82,13 +82,25 @@ function updateRadio(dt) {
   if (radioT <= 0) {
     if (radioQ.length) {
       const m = radioQ.shift();
+      if (el.style.opacity === '1') logRadio(document.getElementById('radioWho').textContent, document.getElementById('radioText').textContent, el.style.borderLeftColor);
       document.getElementById('radioWho').textContent = m.who.toUpperCase();
       document.getElementById('radioWho').style.color = WHO_COL[m.who] || '#9effa0';
       el.style.borderLeftColor = WHO_COL[m.who] || '#9effa0';
       document.getElementById('radioText').textContent = m.text;
-      el.style.opacity = 1; radioT = 2.6 + m.text.length * 0.035; radioBeep();
-    } else el.style.opacity = 0;
+      el.style.opacity = 1; radioT = readTime(m.text); radioBeep();
+    } else { if (el.style.opacity === '1') logRadio(document.getElementById('radioWho').textContent, document.getElementById('radioText').textContent, el.style.borderLeftColor); el.style.opacity = 0; }
   }
+  // the log sits just above the live line; older entries fade out after a while
+  const log = document.getElementById('radioLog');
+  log.style.bottom = (150 + (el.style.opacity === '1' ? el.offsetHeight + 6 : 0)) + 'px';
+  for (const d of [...log.children]) if (clock > d._until) d.remove(); else if (clock > d._until - 1) d.style.opacity = 0;
 }
+function logRadio(who, text, col) {   // keep the last two lines readable after they leave the live box
+  const log = document.getElementById('radioLog'), d = document.createElement('div');
+  d.style.borderLeftColor = col; d._until = clock + 9;
+  const b = document.createElement('b'); b.textContent = who; b.style.color = col; d.append(b, text);
+  log.append(d); while (log.children.length > 2) log.firstChild.remove();
+}
+function clearRadioLog() { document.getElementById('radioLog').replaceChildren(); }
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const KILL_LINES = [['Alpha 2', 'Splash one! Đẹp lắm, Alpha 1!'], ['Alpha 3', 'Xác nhận hạ một. Rơi như lá bàng!'], ['Blackboard', 'Blackboard xác nhận: splash one.'], ['Alpha 2', 'Bắn đẹp, Alpha 1!'], ['Alpha 3', 'Good kill!']];

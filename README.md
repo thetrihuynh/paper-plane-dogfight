@@ -8,7 +8,7 @@ Mở `index.html` bằng trình duyệt (cần mạng để tải three.js từ 
 
 ## Tính năng
 
-- 12 chương truyện nối tiếp (Phe Xanh đấu Phe Đỏ): gió mùa, bảo vệ sân trường khỏi bom nước, sương mù, Tàu Mẹ, đêm trăng, Song Nhạn, trận 3 đấu 1 với Đại Bàng Đỏ, và màn Phản công hộ tống Hạc Lớn, có cảnh phim mở đầu và kết thúc
+- 12 chương truyện nối tiếp (Phe Xanh đấu Phe Đỏ): gió mùa, bảo vệ sân trường khỏi bom nước, sương mù, Tàu Mẹ, đêm trăng, Song Nhạn, trận 3 đấu 1 với Red Eagle, và màn Phản công hộ tống Hạc Lớn, có cảnh phim mở đầu và kết thúc
 - Xuất kích chơi liền 12 chương, hoặc chọn chơi riêng từng chương
 - Xưởng gấp máy bay: 7 kiểu gấp có thật (Phi Tiêu, Suzanne, Nakamura, Nhào Lộn, Chim Én, Bumerang, Vòng Ống), tự chọn màu giấy và màu viền
 - Chế độ siêu thanh (cánh gập lại), né tên lửa lăn vòng, súng với vòng ngắm đón đầu, tên lửa khoá mục tiêu
@@ -48,7 +48,7 @@ Mở thẳng `index.html` là chơi được, không cần máy chủ. Trang n�
 | `js/game.js` | trạng thái game, luồng chương, kết quả, bầu trời |
 | `js/chapters/ch01.js` … `ch12.js` | **mỗi chương một file**: truyện, địch, bầu trời, lời thoại |
 | `js/player.js` | điều khiển người chơi |
-| `js/cinematic.js` | camera điện ảnh, cảnh phim Đại Bàng Đỏ, Hạc Lớn, cảnh kết |
+| `js/cinematic.js` | camera điện ảnh, cảnh phim Red Eagle, Hạc Lớn, cảnh kết |
 | `js/ai.js` | AI địch và đồng đội, kỹ năng trùm |
 | `js/camera.js` · `js/hud.js` · `js/main.js` | camera · HUD, radar · vòng lặp chính |
 

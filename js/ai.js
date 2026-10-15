@@ -47,7 +47,7 @@ function eagleSpinStep(a, dt) {
   if (Math.random() < 0.7) { const ang = clock * 14; _tmp.copy(a.pos).addScaledVector(rt, Math.cos(ang) * 1.1).addScaledVector(up, Math.sin(ang) * 1.1).addScaledVector(fw, -0.6); puff(fire, _tmp, _pv.copy(fw).multiplyScalar(-2), 0.5, 0.18, 0.06, 0xffd27a); }
 }
 
-// Đại Bàng Đỏ (3 vs 1): faster than all of you and turns harder. He hunts the weakest of your trio,
+// Red Eagle (3 vs 1): faster than all of you and turns harder. He hunts the weakest of your trio,
 // and whenever two of you close in on him he zooms up out of the sandwich, then dives back on someone.
 function bossTactics(a, t, fwd, dist, dt) {
   const blues = flyers.filter(o => o.alive && o.team === 'blue');
@@ -372,7 +372,7 @@ function updateAI(a, dt) {
   if (a.forceCrash) { a.forceCrashT -= dt; if (a.forceCrashT <= 0) a.forceCrash = null; else _des.subVectors(a.forceCrash, a.pos).normalize(); }
   // terrain avoidance (look ahead)
   let danger = !a.forceCrash && a.pos.y < 1.3;
-  const boss = a.kind === 'ace' || a.kind === 'elite' || a.K.tough;   // tough ones read the terrain further ahead and glance off walls
+  const boss = a.kind === 'ace' || a.kind === 'elite' || a.K.tough || a.guest;   // tough ones (and Wingman) read the terrain further ahead and glance off walls
   const look = boss ? [0.25, 0.5, 0.8, 1.2, 1.7] : [0.3, 0.75, 1.3], lm = boss ? 1.6 : 0.9;   // aces read the terrain further ahead
   if (!danger && !a.forceCrash) for (const tl of look) { _tmp.copy(a.vel).multiplyScalar(tl).add(a.pos); if (_tmp.y < 1.3 || pointBlocked(_tmp, lm)) { danger = true; break; } }
   if (danger) { _tmp.set(fwd.x, 0, fwd.z); if (_tmp.lengthSq() < 0.01) _tmp.set(0, 0, -1); _tmp.normalize().multiplyScalar(0.35); _des.set(_tmp.x, 1, _tmp.z).normalize(); }
@@ -399,7 +399,8 @@ function updateAI(a, dt) {
     a.pos.addScaledVector(a.vel, -dt * 2); collideSphere(a.pos, 0.7);   // step back and get pushed clear of the wall/tree
     orient(a, _tmp.copy(fwdOf(a, _tmp2)).setY(0).normalize().addScaledVector(UP, 1.2));
     if (clock - (a.glanceT || -9) > 1) {   // one scrape = one hit, however many frames it lasts
-      a.glanceT = clock; a.speed *= 0.6; a.hp -= 25; a.lastHitT = clock;
+      a.glanceT = clock; a.speed *= 0.6; a.lastHitT = clock;
+      a.hp = a.kind === 'ace' || a.guest ? Math.max(1, a.hp - 25) : a.hp - 25;   // a scrape never finishes him or Wingman: their story ends in the farewell, not against a tree
       burst(a.pos, 14, [a.colorHex, 0xffffff], 3, 1, 1); popup(`${a.name.toUpperCase()} VA QUỆT! -25`, '#ffb36b', 1);
       if (a.hp <= 0) { crash(a); return; }
     }

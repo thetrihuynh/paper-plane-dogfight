@@ -80,7 +80,7 @@ const PLANE_GEOS = {
     [-0.3, 0.05, 0.2], [-0.32, 0.04, 0.9], [-0.08, 0.02, 0.45], [-0.3, 0.05, 0.2], [-0.08, 0.02, 0.45], [0, 0.02, 0.45],
     [0, 0.02, -1.1], [0, 0.02, 0.45], [0, -0.22, 0.3]]),
   ring: makeRingGeo(),
-  // Đại Bàng Đỏ: a B-2 style flying wing (swept leading edge, sawtooth trailing edge, cockpit hump)
+  // Red Eagle: a B-2 style flying wing (swept leading edge, sawtooth trailing edge, cockpit hump)
   // whose wingtips fan out into eagle "finger" feathers
   eagle: (() => {
     const N = [0, 0.06, -0.9], M = [-0.45, 0.07, 0.1], T = [-1.5, 0.12, 0.33];
@@ -161,7 +161,7 @@ const KINDS = {
   dread:     { hp: 1100, veq: 4, rates: [0, 0, 0], scale: 12, hitR: 6.5, color: 0xc8473d, edge: 0x5a0f0f, gunDmg: 0, gunCone: 0, gunRange: 0, fireRate: 1, points: 3000, label: 'Tàu Mẹ', evade: 0, geo: 'mother', ai: 'dread', mslN: 999, flares: 8, rigid: true, tough: true, turrets: true, mslDmg: 18, mslSpeed: 22, mslTurn: 1.9 },
   elite:     { hp: 230, veq: 10.5, rates: [2.0, 3.6, 0.8], scale: 0.4, hitR: 0.5, color: 0x1e1e24, gunDmg: 3.2, gunCone: 0.1, gunRange: 32, fireRate: 9, points: 800, label: 'Song Nhạn', evade: 2.2, geo: 'swallow', ai: 'elite', mslN: 4, flares: 6 },
   heron:     { hp: 480, veq: 7, rates: [0.7, 1.2, 0.3], scale: 2.0, hitR: 2.4, color: 0x3d6fd8, gunDmg: 0, gunCone: 0, gunRange: 0, fireRate: 1, label: 'Hạc Lớn', geo: 'glider', ai: 'route', flares: 6 },
-  ace:    { hp: 460, veq: 11, rates: [2.1, 3.6, 0.85], scale: 0.36, hitR: 0.65, color: 0xc8102e, geo: 'eagle', gunDmg: 3.4, gunCone: 0.09, gunRange: 34, fireRate: 10, points: 2000, label: 'Đại Bàng Đỏ', evade: 2.4, mslN: 6, flares: 8, ai: 'boss' },
+  ace:    { hp: 460, veq: 11, rates: [2.1, 3.6, 0.85], scale: 0.36, hitR: 0.65, color: 0xc8102e, geo: 'eagle', gunDmg: 3.4, gunCone: 0.09, gunRange: 34, fireRate: 10, points: 2000, label: 'Red Eagle', evade: 2.4, mslN: 6, flares: 8, ai: 'boss' },
 };
 // player's folding designs (hangar): each tweaks the base player plane
 const PLAYER_DESIGNS = {
