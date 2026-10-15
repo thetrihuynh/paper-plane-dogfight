@@ -9,6 +9,7 @@ function animateWorld(dt) {
   fans.forEach((f, i) => f.rotation.y += dt * (7 + i * 0.4));
   labDish.rotation.y += dt * 1.6;   // the radar on the lab roof never stops sweeping
   labBeacon.visible = Math.floor(clock * (gameMode === 'recon' && RC.detected ? 6 : 2.5)) % 2 === 0;
+  for (const t of TOWERS) t.beacon.visible = (clock % 1.6) < 0.25;   // the two Hightowers blink as one
   const pa = flagGeo.attributes.position.array;
   for (let i = 0; i < pa.length; i += 3) { const x = flagBase[i]; pa[i + 2] = Math.sin(x * 1.7 - clock * 5.5 + flagBase[i + 1] * 0.5) * 0.22 * (x / 4.2); }
   flagGeo.attributes.position.needsUpdate = true; flagGeo.computeVertexNormals();
@@ -48,6 +49,7 @@ function autoQuality(realDt) {
 }
 function frameInner(now) {
   let dt = clamp((now - last) / 1000, 0, 0.05); last = now;
+  if (loading) { for (const k in pressed) delete pressed[k]; return; }   // nothing moves behind the loading screen
   if (paused) { for (const k in pressed) delete pressed[k]; renderer.render(scene, camera); return; }
   const realDt = dt;
   autoQuality(realDt);
@@ -135,6 +137,7 @@ function frameInner(now) {
   updateConfetti(dt);
   updatePuffs(smoke, dt, 0.6);
   updatePuffs(fire, dt, 1.0);
+  updateRuins(dt);
   shake = Math.max(0, shake - dt * 1.5);
   hitMarkT -= dt;
   dmgFlash = Math.max(0, dmgFlash - dt * 1.2);
@@ -186,6 +189,7 @@ function frameInner(now) {
 }
 setupScene();
 requestAnimationFrame(frame);
+(document.fonts ? document.fonts.ready : Promise.resolve()).then(warmUp).then(() => { $('loadBar').style.width = '100%'; hideLoading(); });
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();

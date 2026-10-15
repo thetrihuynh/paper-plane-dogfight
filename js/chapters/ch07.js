@@ -1,6 +1,6 @@
 'use strict';
-// Chương 7: Giữ sân sau
+// Chương 7: Phản công khu Tây (riding high after the bomb, we go for their sky, and meet Đại Bàng Đỏ; see js/counter.js)
 WAVES.push(
-{ title: 'Chương 7: Giữ sân Bắc', story: 'Mất cả hai Tàu Mẹ lẫn Phòng Thí Nghiệm, Phe Đỏ chuyển sang đánh lén: chúng vòng qua các dãy lớp, lẻn vào sân Bắc phía sau, nhắm vào căn tin, thư viện và sân khấu chuẩn bị cho lễ khai giảng.', sky: 'noon', defend: ['canteen', 'roofC', 'stage'], area: 'back', spawn: [['ring', 4], ['swallow', 2], ['tape', 1]],
-    radio: [['Bảng Đen', 'Vòng Ống lẻn vào sân Bắc, nhắm vào căn tin, thư viện và sân khấu khai giảng! Bay qua cổng vòm Nhà Hiệu Bộ về chặn ngay!'], ['Lan', 'Có Băng Keo vá cho bọn ném bom, hạ nó trước kẻo đánh mãi không xong!']] }
+{ title: 'Chương 7: Phản công khu Tây', story: 'Phòng Thí Nghiệm đã thành tro, Tàu Mẹ II bị chôn vùi. Cả khu Đông mở tiệc. Chỉ thị từ trên tháp xuống, Blackboard truyền lại: thừa thắng xông lên, toàn bộ phi đội sang khu Tây, quét sạch chút không quân còn lại của Phe Đỏ. Ai cũng chắc thắng.', sky: 'noon',
+    counter: true, flight: ['Alpha 2', 'Alpha 3', 'Wingman'], spawn: [], radio: [] }
 );

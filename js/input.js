@@ -34,6 +34,7 @@ addEventListener('keydown', (e) => {
   keys[e.code] = true;
   if (['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
   if (e.code === 'Enter' && state === 'menu') startGame();
+  if (e.code === 'Escape' && state === 'menu') showMenuPage('menuMain');   // back out of the chapter list
   if (e.code === 'KeyN') mapZoom = (mapZoom + 1) % RADAR_RANGES.length;
   if (e.code === 'KeyH') { hudMode = (hudMode + 1) % 3; localStorage.setItem('pp_hud', hudMode); flash('', HUD_NAMES[hudMode], 0.9); }
   if (e.code === 'KeyM') { setMute(!AU.muted); flash(AU.muted ? '🔇' : '🔊', '', 0.8); }

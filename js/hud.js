@@ -213,7 +213,7 @@ function drawHUD() {
     } else {
       hg.strokeStyle = BLU; hg.lineWidth = 1.5;
       hg.beginPath(); hg.moveTo(p.x - 8, p.y - 8); hg.lineTo(p.x, p.y); hg.lineTo(p.x + 8, p.y - 8); hg.stroke();
-      text(`${f.name} ${Math.round(d)}`, p.x, p.y - 16, BLU, 12, 'center');
+      text(`${f.name.toUpperCase()} ${Math.round(d)}`, p.x, p.y - 16, BLU, 12, 'center');
     }
   }
   // guide line from the pipper to a lockable target while acquiring
@@ -469,7 +469,7 @@ function drawMinimap() {
       const sz = f.K.ai === 'carrier' || f.kind === 'ace' || f.kind === 'elite' ? 6.5 : 4.8;
       hg.beginPath(); hg.moveTo(p.x, p.y - sz); hg.lineTo(p.x + sz, p.y); hg.lineTo(p.x, p.y + sz); hg.lineTo(p.x - sz, p.y); hg.closePath();
       if (isT && P.lockP >= 1) hg.fill(); else hg.stroke();
-      if (f.kind === 'ace' || f.kind === 'elite') text(f.kind === 'elite' ? (f.name === 'Hắc Ưng' ? 'H' : 'B') : '★', p.x, p.y - 11, RED, 10, 'center', '800');
+      if (f.kind === 'ace' || f.kind === 'elite') text(f.kind === 'elite' ? (f.name === 'Hắc Nhạn' ? 'H' : 'B') : '★', p.x, p.y - 11, RED, 10, 'center', '800');
     } else { hg.beginPath(); hg.arc(p.x, p.y, 4.2, 0, PI * 2); hg.stroke(); }
     // height relative to you, in metres
     const dy = Math.round(f.pos.y - P.pos.y);
@@ -496,7 +496,7 @@ function drawMinimap() {
   hg.strokeStyle = G; hg.lineWidth = 1.5; hg.beginPath(); hg.arc(cx, cy, rad, 0, PI * 2); hg.stroke();
   hg.strokeStyle = GR + '0.7)'; hg.lineWidth = 1;
   for (let i = 0; i < 12; i++) { const a = i / 12 * PI * 2 - hd, l = i % 3 === 0 ? 7 : 4; hg.beginPath(); hg.moveTo(cx + Math.sin(a) * rad, cy - Math.cos(a) * rad); hg.lineTo(cx + Math.sin(a) * (rad - l), cy - Math.cos(a) * (rad - l)); hg.stroke(); }
-  { const a = -hd; text('N', cx + Math.sin(a) * (rad + 9), cy - Math.cos(a) * (rad + 9), YEL, 11, 'center', '800'); }
+  { const a = PI / 2 - hd; text('N', cx + Math.sin(a) * (rad + 9), cy - Math.cos(a) * (rad + 9), YEL, 11, 'center', '800'); }
   hg.beginPath(); hg.moveTo(cx, cy - rad - 1); hg.lineTo(cx - 5, cy - rad - 8); hg.lineTo(cx + 5, cy - rad - 8); hg.closePath(); hg.fillStyle = G; hg.fill();
   text(`RADAR ${range}m [N]`, x0, y0 - 12, G, 11, 'left', '800');
   const nHost = flyers.filter(f => f.alive && f.team === 'red').length;
@@ -552,7 +552,7 @@ function drawFighterHUD(fwd) {
   hx /= hl; hz /= hl;
   const rhx = -hz, rhz = hx;
   const pitchDeg = Math.asin(clamp(fwd.y, -1, 1)) * 180 / PI;
-  const heading = ((Math.atan2(hx, -hz) * 180 / PI) + 360) % 360;
+  const heading = ((Math.atan2(hx, -hz) * 180 / PI) + 270 + 360) % 360;   // the yard runs west (Phe Đỏ, -z) to east (Phe Xanh, +z): north is +x
   const full = hudMode === 1;
   const bw = full ? Math.min(W * 0.24, 320) : Math.min(W * 0.18, 230), bh = full ? Math.min(H * 0.3, 290) : Math.min(H * 0.2, 170);
   hg.save();

@@ -97,7 +97,7 @@ function launchMissile(f, target) {
   missiles.push(m);
   launchSound(f === P ? 1 : clamp(1 - f.pos.distanceTo(P.pos) / 150, 0.1, 1));
   if (f === P) stats.msl++;
-  if (target === P) radioOnce('mslWarn', 'Bảng Đen', 'Tên lửa đang bám theo cậu! Bẻ lái gắt hoặc thả pháo sáng (V)!', 12);
+  if (target === P) radioOnce('mslWarn', 'Blackboard', 'Alpha 1, missile bám đuôi! Break gắt hoặc thả pháo sáng (V)!', 12);
   return m;
 }
 function explodeMissile(m) {
@@ -105,7 +105,7 @@ function explodeMissile(m) {
   explosion(m.p, 0.8, 0.8);
   let killed = null;
   for (const f of flyers) {
-    if (!f.alive || f.team === m.team) continue;
+    if (!f.alive || f.team === m.team || f === m.spare) continue;
     const d = f.pos.distanceTo(m.p);
     if (d < 1.2 + f.K.hitR) { damage(f, m.dmg * (d < 0.6 + f.K.hitR ? 1 : 0.5), m.owner); if (!f.alive && m.owner === P) killed = f; }
   }
@@ -145,7 +145,7 @@ function updateMissiles(dt) {
     if (Math.random() < 0.5) puff(fire, _pv.copy(m.p).addScaledVector(m.dir, -0.25), _md.set(0, 0, 0), 0.08, 0.09, 0.04, 0xffc040);
     if (m.life <= 0 || (m.armed <= 0 && pointBlocked(m.p))) { explodeMissile(m); continue; }
     // proximity fuse against any enemy
-    for (const f of flyers) if (f.alive && f.team !== m.team && m.armed <= 0 && f.pos.distanceToSquared(m.p) < (0.5 + f.K.hitR * 0.5) ** 2) { explodeMissile(m); break; }
+    for (const f of flyers) if (f.alive && f.team !== m.team && f !== m.spare && m.armed <= 0 && f.pos.distanceToSquared(m.p) < (0.5 + f.K.hitR * 0.5) ** 2) { explodeMissile(m); break; }
   }
   for (let i = missiles.length - 1; i >= 0; i--) if (!missiles[i].alive) missiles.splice(i, 1);
 }
@@ -196,7 +196,7 @@ function updateBombs(dt) {
       b.alive = false; splash(b.p, true); hit.hp -= 34;
       popup(`${hit.name.toUpperCase()} TRÚNG BOM NƯỚC!`, '#7fb8ff', 1.4);
       if (hit.hp <= 0) objectiveLost(hit);
-      else radioOnce('objHit' + hit.key, 'Bảng Đen', `${hit.name} đang bị ném bom! Chặn Vòng Ống lại!`, 8);
+      else radioOnce('objHit' + hit.key, 'Blackboard', `${hit.name} đang bị ném bom! Chặn Vòng Ống lại!`, 8);
     } else if (b.p.y < 0.2 || pointBlocked(b.p)) { b.alive = false; splash(b.p, false); }
     if (!b.alive) scene.remove(b.mesh);
   }
@@ -206,7 +206,7 @@ function objectiveLost(o) {
   stats.objLost++;
   o.alive = false; o.hp = 0; splash(o.pos, true); splash(_tmp.copy(o.pos).add(_pv.set(1.5, 0, 1)), true);
   flash('', `${o.name} đã bị phá huỷ!`, 1.8);
-  radio('Bảng Đen', `${o.name} ướt sũng rồi! Bảo vệ những chỗ còn lại!`, true);
+  radio('Blackboard', `${o.name} ướt sũng, mất rồi! Bảo vệ các mục tiêu còn lại!`, true);
   if (state === 'play' && o.key === 'library') missionFail('Tàu Mẹ đã ném bom Thư Viện, xưởng gấp máy bay của Phe Xanh…');
   else if (state === 'play' && objectives.every(x => !x.alive)) missionFail('Sân trường đã bị ném bom nước tơi bời…');
 }
@@ -278,7 +278,7 @@ function updatePickups(dt) {
     if (P.supplyT >= (P.msl === 0 ? 4 : 10)) {
       P.supplyT = 0;
       spawnPickup(findSpawn(25, 60), 'drop');
-      radio('Bảng Đen', 'Đã thả hộp tiếp tế tên lửa! Theo cột sáng vàng mà bay xuyên qua hộp.', true);
+      radio('Blackboard', 'Hộp tiếp tế tên lửa đã thả. Theo cột sáng vàng, bay xuyên qua để nạp.', true);
     }
   } else P.supplyT = 0;
 }

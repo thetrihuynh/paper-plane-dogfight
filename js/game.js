@@ -13,7 +13,49 @@ const popups = [];   // small floating score texts on the HUD
 function popup(text, color = '#fff', dur = 1.2) { popups.push({ text, color, t: dur, dur }); if (popups.length > 4) popups.shift(); }
 let camMode = 0;
 let P = null;
-const ALLIES = [{ name: 'Lan', color: 0xff8fc0, off: -9 }, { name: 'Minh', color: 0x6fd0ff, off: 9 }];
+const ALLIES = [{ name: 'Alpha 2', color: 0xff8fc0, off: -9 }, { name: 'Alpha 3', color: 0x6fd0ff, off: 9 }];
+// Wingman: the old hand who taught Alpha 1 to fly. Not one of the squadron: he turns up when he's needed
+// (the chase home in Chương 3, the push south in Chương 7, Song Nhạn in Chương 9) and is gone again after.
+// He once flew with Đại Bàng Đỏ; nobody says so, but it shows.
+const WINGMAN = { name: 'Wingman', color: 0xb8c2cc };
+function makeWingman() {
+  const f = makeFlyer('ally', 'blue', WINGMAN.name, WINGMAN.color); f.guest = true;
+  f.K = { ...f.K, veq: 8.4, rates: [1.7, 3.0, 0.65], gunDmg: 2.6, gunCone: 0.1, gunRange: 30, fireRate: 7, evade: 1.8 };
+  f.hp = f.maxHp = 300; f.mslLeft = 2; f.flares = 4; f.noReturn = true;
+  return f;
+}
+// Chương 11: two old classmates on opposite sides of the line, talking across the fight. A few lines when the fight
+// starts and as it wears on, and one when either of them flies something the other recognises. One exchange at a time.
+const BANTER = {
+  hello: [['Đại Bàng Đỏ', '...Cậu cũng ở đây à, bạn già.'], ['Wingman', 'Tôi cũng chẳng muốn đâu. Quay về đi, vẫn còn kịp.']],
+  hp75: [['Đại Bàng Đỏ', 'Hồi đó giữa sân đâu có vạch phấn nào, phải không?'], ['Wingman', 'Hồi đó chẳng ai nghĩ sẽ cần đến nó.']],
+  hp50: [['Wingman', 'Về đi. Cậu đâu cần rơi vì một vạch phấn.'], ['Đại Bàng Đỏ', 'Còn cậu, vẫn bay cho những người đã kẻ nó.']],
+  hp25: [['Đại Bàng Đỏ', 'Cậu vẫn bay cho Blackboard à?'], ['Wingman', 'Tôi bay vì mấy cậu lính mới này thôi. Vài tuần nữa là tôi nghỉ rồi.']],
+  spin: [['Wingman', 'Vẫn cú lộn hai vòng đó... bao nhiêu năm rồi vẫn không đổi.'], ['Đại Bàng Đỏ', 'Ha, điều này làm ta nhớ tới hồi còn học chung đấy.'], ['Wingman', 'Chúng ta có ký ức khác nhau về hồi đi học đấy, ông bạn à.']],
+  zoom: [['Đại Bàng Đỏ', 'Bị kẹp giữa hai chiếc thì leo cao. Ai dạy tôi điều đó nhỉ?'], ['Wingman', 'Tôi dạy cậu để cùng bay, không phải để bay ngược chiều nhau.']],
+  reverse: [['Wingman', 'Lộn ngược qua đầu đối thủ... hồi trước cả sân cờ vỗ tay mỗi lần cậu làm thế.'], ['Đại Bàng Đỏ', 'Hồi trước sân cờ chỉ có một lá cờ.']],
+  tail: [['Đại Bàng Đỏ', 'Cậu vẫn bám đuôi khéo như ngày nào.'], ['Wingman', 'Ngày đó tôi bám đuôi cậu là để che cho cậu.']],
+};
+function banterOn() { const e = flyers.find(f => f.alive && f.kind === 'ace'); return e && gameMode !== 'counter' && !cut && state === 'play' && wingmanUp() && !e.fallen ? e : null; }
+function banter(e, key) {
+  const B = e.bt ||= { cd: 0, said: {}, t: 0, tailT: 0 };
+  if (B.said[key] || B.cd > 0) return false;
+  B.said[key] = 1; B.cd = 16; radioChain(BANTER[key], true); return true;
+}
+function eagleSkill(a, key) { if (banterOn() === a) banter(a, key); }   // called by his AI when he flies one of his moves
+function eagleBanter(dt) {
+  const e = banterOn(); if (!e) return;
+  const B = e.bt ||= { cd: 0, said: {}, t: 0, tailT: 0 }; B.t += dt; B.cd -= dt;
+  if (B.t > 6) banter(e, 'hello');
+  const hp = e.hp / e.maxHp;
+  for (const [k, lim] of [['hp75', 0.75], ['hp50', 0.5], ['hp25', 0.25]]) if (hp < lim && B.said.hello) banter(e, k);
+  // Wingman sitting on his tail for a moment
+  const w = wingmanUp(), v = _tmp.subVectors(e.pos, w.pos), d = v.length();
+  B.tailT = d < 26 && v.dot(fwdOf(w, _tmp2)) > 0.88 * d ? B.tailT + dt : 0;
+  if (B.tailT > 1.2) banter(e, 'tail');
+}
+const wingmanUp = () => flyers.find(f => f.alive && f.name === WINGMAN.name);
+const mateName = () => wingmanUp() ? WINGMAN.name : 'Alpha 2';   // who calls the fight beside Alpha 1
 
 // ---- hangar: live 360° preview of the player's plane ----
 const hangar = (() => {
@@ -90,8 +132,14 @@ $('chapterBtn').onclick = () => {
     b.querySelector('button').onclick = () => startGame(i, true);
     box.appendChild(b);
   });
-  $('chapters').classList.toggle('hidden');
+  showMenuPage('chapters');
 };
+$('chapterBack').onclick = () => showMenuPage('menuMain');
+// the menu has two pages on the same overlay: main (title, hangar, settings) and the chapter list
+function showMenuPage(id) {
+  $('menuMain').classList.toggle('hidden', id !== 'menuMain');
+  $('chapters').classList.toggle('hidden', id !== 'chapters');
+}
 $('menuBtn').onclick = () => toMenu();
 $('quitBtn').onclick = () => { togglePause(); toMenu(); };
 $('resumeBtn').onclick = (e) => { e.stopPropagation(); togglePause(); };
@@ -119,12 +167,22 @@ function clearWorldEntities() {
   bullets.forEach(b => b.alive = false);
   confetti.forEach(q => q.life = 0);
   smoke.list.forEach(q => q.life = 0); fire.list.forEach(q => q.life = 0);
+  restoreSouth();   // the finale knocked their half of the school down
 }
-function orient(f, dir) { f.q.setFromUnitVectors(FWD, _pv.copy(dir).normalize()); }
+// point a plane along dir. The shortest rotation from FWD is fine for most headings, but turning the nose back north
+// with any climb or dive in it goes over the top and leaves the plane on its back; then build it level instead
+// (wings flat, up as close to the sky as the heading allows). Straight up or down keeps the shortest rotation
+const _oX = new THREE.Vector3(), _oY = new THREE.Vector3(), _oZ = new THREE.Vector3(), _oM = new THREE.Matrix4();
+function orient(f, dir) {
+  _pv.copy(dir).normalize(); f.q.setFromUnitVectors(FWD, _pv);
+  if (Math.abs(_pv.y) > 0.9 || _oY.set(0, 1, 0).applyQuaternion(f.q).y >= 0) return;
+  _oZ.copy(_pv).negate(); _oX.crossVectors(UP, _oZ).normalize(); _oY.crossVectors(_oZ, _oX);
+  f.q.setFromRotationMatrix(_oM.makeBasis(_oX, _oY, _oZ));
+}
 
 function setupScene() {
   clearWorldEntities();
-  P = makeFlyer(playerKind(), 'blue', 'Ô Li 1', custom.color, custom.edge);
+  P = makeFlyer(playerKind(), 'blue', 'Alpha 1', custom.color, custom.edge);
   P.isPlayer = true; P.msl = MSL_PER_WAVE; P.pylons = [0, 0]; P.heat = 0; P.overheat = false; P.flares = FLR_PER_WAVE; P.flareCD = 0; P.lockedByT = 0; P.sonic = false; P.sonicHeat = 0; P.boomDone = false; P.wpnGun = false; P.gunMode = false; P.rapidT = 0; P.shieldT = 0;
   P.shieldMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(1.9, 1), new THREE.MeshBasicMaterial({ color: 0x6fd0ff, transparent: true, opacity: 0.22, wireframe: true, depthWrite: false }));
   P.shieldMesh.visible = false; P.obj.add(P.shieldMesh);
@@ -138,39 +196,73 @@ function setupScene() {
   aim.set(0, 0, -1);
 }
 
-function startGame(chapter = 0, single = false) {
+// ---- Loading screen ----
+// covers the page while the files load, and again while a mission is being built,
+// so the player never sees a half-set-up world or the hitch of shaders compiling on the first frame
+let loading = true;
+function showLoading(text) {
+  loading = true;
+  $('loadTxt').textContent = text; $('loadBar').style.width = '0';
+  $('loading').classList.remove('hidden', 'fade');
+}
+function hideLoading() {
+  loading = false;
+  $('loading').classList.add('fade');
+  setTimeout(() => { if (!loading) $('loading').classList.add('hidden'); }, 350);
+}
+const afterPaint = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));   // let the overlay show before the heavy work
+async function warmUp() {   // compile every shader the scene needs now instead of mid-flight
+  try { if (renderer.compileAsync) await renderer.compileAsync(scene, camera); else renderer.compile(scene, camera); } catch (e) {}
+  renderer.render(scene, camera);
+  await afterPaint();
+}
+
+async function startGame(chapter = 0, single = false) {
+  if (loading) return;
+  initAudio(); lockPointer();   // both need the click/keypress itself, so they go before any await
+  showLoading('Đang chuẩn bị nhiệm vụ...');
+  await afterPaint();
+  $('loadBar').style.width = '40%';
+  setupMission(chapter, single);
+  $('loadBar').style.width = '80%';
+  await warmUp();
+  $('loadBar').style.width = '100%';
+  hideLoading();
+  if (state === 'play') lockPointer();   // in case Esc was pressed while it loaded
+}
+function setupMission(chapter, single) {
   playMode = single ? 'chapter' : 'campaign'; startChapter = chapter;
-  initAudio();
   if (paused) togglePause();
-  endEscortWorld(); endReconWorld();
+  endEscortWorld(); endReconWorld(); endCounter();
   setLabRuined(chapter > WAVES.findIndex(w => w.escort === 'lab'));   // after Chương 6 their lab is rubble
   setupScene();
   skyTo = PALETTES.morning; windOn = 0; pendingIntro = null; allyReturns.length = 0; cut = null; benched.length = 0;
-  wave = chapter - 1; waveState = 'wait'; waveT = WAVES[chapter] && WAVES[chapter].recon ? 1.5 : chapter ? 6 : 4; score = 0; kills = 0; missionTime = 0; endT = 0;
+  wave = chapter - 1; waveState = 'wait'; waveT = 0; score = 0; kills = 0; missionTime = 0; endT = 0;
   Object.assign(stats, { shots: 0, hits: 0, msl: 0, dmg: 0, passes: 0, evades: 0, skim: 0, bestCombo: 0, booms: 0, pickups: 0, courses: 0, objLost: 0, sonicDmg: 0, ground: 0 });
   popups.length = 0;
   gaps.forEach(g => { g.inside = false; g.lastT = -99; });
   cine.t = 0; cineCD = 0; document.body.classList.remove('cine');
-  radioQ.length = 0; radioT = 0; for (const k in radioCD) delete radioCD[k];
-  if (!chapter) {
-    radio('Bảng Đen', 'Đây là đài chỉ huy Bảng Đen. Phi đội Ô Li vừa thành lập, chào mừng Ô Li 1 lên trời!');
-    radio('Lan', 'Ô Li 2 đây! Hôm nay cậu bay một mình, tụi tớ ở dưới sân cổ vũ nhé!');
-    radio('Bảng Đen', 'Nhắc lại: không bay ra khỏi khuôn viên trường. Ra xa quá các em sẽ choáng và mất kiểm soát!');
-  } else {
-    radio('Bảng Đen', `Phi đội Ô Li, cất cánh! ${WAVES[chapter].title}.`);
-    skyTo = PALETTES[WAVES[chapter].sky] || PALETTES.morning;   // start under that chapter's sky
-    // later chapters: the back-yard fights start over the back yard
-    if (WAVES[chapter].area === 'back') { P.pos.set(0, 12, -60); orient(P, FWD); aim.set(0, 0, -1); flyers.filter(f => f.team === 'blue' && f !== P).forEach((f, i) => f.pos.set(i ? 6 : -6, 12, -50)); }
-  }
+  radioQ.length = 0; radioT = 0; radioHushT = 0; for (const k in radioCD) delete radioCD[k];
+  // later chapters: the back-yard fights start over the back yard
+  if (WAVES[chapter].area === 'back') { P.pos.set(0, 12, -60); orient(P, FWD); aim.set(0, 0, -1); flyers.filter(f => f.team === 'blue' && f !== P).forEach((f, i) => f.pos.set(i ? 6 : -6, 12, -50)); }
   $('menu').classList.add('hidden'); $('result').classList.add('hidden'); $('chapters').classList.add('hidden'); $('objective').classList.remove('hidden');
-  if (chapter) showStory(chapter);
   state = 'play';
-  lockPointer();
+  // the chapter's scenario is built right here, behind the loading screen, so the player drops straight into it
+  // (its start spot, wind, enemies, sky) instead of flying round the yard until it kicks in
+  skyTo = PALETTES[WAVES[chapter].sky] || PALETTES.morning;   // the chapter's sky (its scenario may still change it)
+  spawnWave(++wave);
+  if (!chapter) [   // the very first take-off gets the welcome before the tutorial's first instruction
+    ['Blackboard', 'Nhắc lại: không rời khuôn viên trường. Ra quá xa sẽ choáng và mất kiểm soát.'],
+    ['Alpha 2', 'Alpha 2 đây. Hôm nay Alpha 1 bay một mình, chúng tôi theo dõi từ mặt đất!'],
+    ['Blackboard', 'Đây là Blackboard, đài chỉ huy. Phi đội Alpha vừa thành lập. Alpha 1, chào mừng lên trời!'],
+  ].forEach(([w, t]) => radio(w, t, true));
+  updateSky(99);   // already under the chapter's sky, not fading into it
+  if (!cut) { camFwd.copy(fwdOf(P, _fw)); camAimS.copy(aim); camPos.copy(P.pos).addScaledVector(camAimS, -2.2); updateCamera(1); }   // camera already behind the plane, no swoop in from the menu view
 }
 function toMenu() {
-  state = 'menu'; skyTo = PALETTES.morning; windOn = false; endEscortWorld(); endReconWorld(); setLabRuined(false);
+  state = 'menu'; skyTo = PALETTES.morning; windOn = false; endEscortWorld(); endReconWorld(); endCounter(); setLabRuined(false);
   if (document.pointerLockElement) document.exitPointerLock();
-  $('result').classList.add('hidden'); $('objective').classList.add('hidden'); $('menu').classList.remove('hidden');
+  $('result').classList.add('hidden'); $('objective').classList.add('hidden'); $('menu').classList.remove('hidden'); showMenuPage('menuMain');
   setupScene();
 }
 
@@ -190,7 +282,7 @@ const PALETTES = {
 for (const k in PALETTES) { PALETTES[k].fn ??= 140; PALETTES[k].ff ??= 620; }
 const WAVES = [];   // filled by js/chapters/ch01.js ... ch12.js (one story chapter per file)
 const BOSS_INTRO = {
-  elite: ['SONG ƯNG', 'Hắc Ưng & Bạch Ưng'],
+  elite: ['SONG NHẠN', 'Hắc Nhạn & Bạch Nhạn'],
   mother: ['TÀU MẸ II', 'Chiếc chiến hạm bay thứ hai'],
   dread: ['TÀU MẸ', 'Chiến hạm bay của Phe Đỏ · đích đến: Thư Viện'],
   ace: ['ĐẠI BÀNG ĐỎ', 'Át chủ bài của Phe Đỏ'],
@@ -238,11 +330,16 @@ function addReinforcements(W) {
 }
 function setFlight(W) {
   if (W.flight) {
-    for (const f of [...flyers]) if (f.alive && f.kind === 'ally' && !W.flight.includes(f.name)) { benched.push(f.name); removeFlyer(f); }
-    for (const n of W.flight) if (!flyers.some(f => f.alive && f.name === n)) { const a = ALLIES.find(x => x.name === n); if (a) { const f = makeFlyer('ally', 'blue', a.name, a.color); f.pos.copy(P.pos).add(_pv.set(-6, 1, 6)); orient(f, fwdOf(P, _tmp)); } }
-  } else while (benched.length) {   // they're back for the next chapter
+    for (const f of [...flyers]) if (f.alive && f.kind === 'ally' && !W.flight.includes(f.name)) { if (!f.guest) benched.push(f.name); removeFlyer(f); }
+    for (const n of W.flight) if (!flyers.some(f => f.alive && f.name === n)) {
+      if (n === WINGMAN.name) { const f = makeWingman(); f.pos.copy(P.pos).add(_pv.set(6, 1, 6)); orient(f, fwdOf(P, _tmp)); continue; }
+      const a = ALLIES.find(x => x.name === n); if (a) { const f = makeFlyer('ally', 'blue', a.name, a.color); f.pos.copy(P.pos).add(_pv.set(-6, 1, 6)); orient(f, fwdOf(P, _tmp)); } }
+  } else {
+    for (const f of [...flyers]) if (f.alive && f.guest) removeFlyer(f);   // Wingman only flies the chapters that need him
+  }
+  if (!W.flight) while (benched.length) {   // they're back for the next chapter
     const n = benched.pop(), a = ALLIES.find(x => x.name === n);
-    if (a && !flyers.some(f => f.alive && f.name === n)) { const f = makeFlyer('ally', 'blue', a.name, a.color); f.pos.copy(P.pos).add(_pv.set(6, 1, 8)); orient(f, fwdOf(P, _tmp)); radio(a.name, `${a.name} quay lại đội hình đây!`); }
+    if (a && !flyers.some(f => f.alive && f.name === n)) { const f = makeFlyer('ally', 'blue', a.name, a.color); f.pos.copy(P.pos).add(_pv.set(6, 1, 8)); orient(f, fwdOf(P, _tmp)); radio(a.name, `${a.name} trở lại đội hình!`); }
   }
 }
 function spawnWave(i) {
@@ -253,6 +350,7 @@ function spawnWave(i) {
   showStory(i);
   if (W.escort) { startEscort(W.escort); return; }
   if (W.recon) { startRecon(W.recon); return; }
+  if (W.counter) { startCounter(); return; }
   waveState = 'active';
   flash(W.title, 'Bắn hạ tất cả máy bay địch', 2.4);
   if (!W.cutscene) W.radio.forEach(([w, t]) => radio(w, t));   // with a cutscene, the chatter comes after it
@@ -260,16 +358,17 @@ function spawnWave(i) {
   setObjectives(W.defend);
   let n = 0;
   for (const [kind, count] of W.spawn) for (let k = 0; k < count; k++, n++) {
-    const f = makeFlyer(kind, 'red', kind === 'ace' ? 'Đại Bàng Đỏ' : kind === 'elite' ? ['Hắc Ưng', 'Bạch Ưng'][k % 2] : `${KINDS[kind].label} ${k + 1}`, kind === 'elite' ? [0x1e1e24, 0xf4f4f4][k % 2] : undefined);
+    const f = makeFlyer(kind, 'red', kind === 'ace' ? 'Đại Bàng Đỏ' : kind === 'elite' ? ['Hắc Nhạn', 'Bạch Nhạn'][k % 2] : `${KINDS[kind].label} ${k + 1}`, kind === 'elite' ? [0x1e1e24, 0xf4f4f4][k % 2] : undefined);
     f.pos.copy(findSpawn(30, 80, W.area));
     orient(f, _ax.subVectors(P.pos, f.pos));
     if (kind === 'dread') { f.pos.set(0, 30, SCHOOL.zS + 30); orient(f, _ax.set(0.001, 0, 1)); f.mslT = 4; f.spawnT = 8; }   // takes off from their courtyard
     else if (W.spawn.some(s => s[0] === 'dread')) { f.pos.set(rr(-30, 30), rr(18, 26), SCHOOL.zS + rr(40, 90)); orient(f, _ax.set(0.001, 0, 1)); }   // its escorts, in formation round it
     f.speed = f.K.veq;
+    if (kind === 'ace') { f.rage = 1; f.phase = 1; f.mslLeft += 2; f.flares += 6; }   // no rage phases: he flies at full strength, the same, from the first pass to the last
     if (W.cutscene === 'eagle' && kind === 'ace') startEagleCutscene(f);
     else if (W.boss === kind && !W.cutscene) pendingIntro = { f, t: 1.4 };   // let the level title read first
   }
-  if (W.cutscene === 'twins') { const tw = flyers.filter(f => f.alive && f.kind === 'elite'); startTwinsCut(tw.find(f => f.name === 'Bạch Ưng'), tw.find(f => f.name === 'Hắc Ưng')); }
+  if (W.cutscene === 'twins') { const tw = flyers.filter(f => f.alive && f.kind === 'elite'); startTwinsCut(tw.find(f => f.name === 'Bạch Nhạn'), tw.find(f => f.name === 'Hắc Nhạn')); }
 }
 let pendingIntro = null;
 const allyReturns = [];   // wingmen re-folding a plane after being shot down in the boss fight
@@ -286,16 +385,18 @@ function findSpawn(minD, maxD, area) {
 }
 let resupplyT = 0;
 function updateWaves(dt) {
+  eagleBanter(dt);
   for (let i = allyReturns.length - 1; i >= 0; i--) {
     const r = allyReturns[i]; r.t -= dt;
     if (r.t > 0) continue;
     allyReturns.splice(i, 1);
     if (state !== 'play') continue;
     const f = makeFlyer('ally', 'blue', r.name, r.color); f.pos.copy(P.pos).add(_pv.set(rr(-8, 8), 4, 10)); f.pos.y = Math.max(f.pos.y, 6); orient(f, fwdOf(P, _tmp)); f.speed = 8;
-    radio(r.name, 'Tớ gấp xong máy bay mới rồi, quay lại đây!', true);
+    radio(r.name, `${r.name} đã có máy bay mới, trở lại đội hình!`, true);
   }
   if (gameMode === 'escort') { updateEscort(dt); return; }
   if (gameMode === 'recon') { updateRecon(dt); return; }
+  if (gameMode === 'counter') { updateCounter(dt); return; }
   if (pendingIntro && (pendingIntro.t -= dt) <= 0) {
     const { f } = pendingIntro; pendingIntro = null;
     if (f.alive && state === 'play') bossIntro(f, ...BOSS_INTRO[f.kind]);
@@ -320,9 +421,9 @@ function updateWaves(dt) {
       P.hp = Math.min(P.maxHp, P.hp + 40); P.flares = Math.max(P.flares, FLR_PER_WAVE); P.msl = Math.max(P.msl, MSL_PER_WAVE);
       flash('KHU VỰC AN TOÀN', `Đã vá giấy (+40 HP) · nạp đủ ${MSL_PER_WAVE} tên lửa, ${FLR_PER_WAVE} pháo sáng`, 2.2);
       { const nx = WAVES[wave + 1];
-        radio('Bảng Đen', nx.escort === 'lab' ? 'Chuẩn bị nhiệm vụ đặc biệt: lần đầu tiên, Hạc Lớn sẽ cất cánh.' : nx.escort ? 'Đại Bàng Đỏ đã rơi, không quân của chúng tan tác rồi! Chuẩn bị phản công: hộ tống Hạc Lớn sang khu Phe Đỏ!'
-          : nx.boss ? 'Tốt! Radar bắt được một tín hiệu rất mạnh... chuẩn bị tinh thần!'
-          : pick(['Làm tốt lắm. Đừng thả lỏng, còn đợt nữa đang đến.', 'Gọn gàng! Radar lại thấy máy bay lạ, kiểu gấp khác hẳn.', 'Tốt lắm! Khu Nam vừa gấp thêm một lứa mới.'])); }
+        radio('Blackboard', nx.escort === 'lab' ? 'Chuẩn bị nhiệm vụ đặc biệt: lần đầu tiên, Hạc Lớn sẽ cất cánh.' : nx.escort ? 'Red Eagle đã bị hạ, không quân Phe Đỏ tan rã. Chuẩn bị phản công: hộ tống Hạc Lớn sang khu Đỏ!'
+          : nx.boss ? 'Radar bắt một tín hiệu rất mạnh... tất cả, sẵn sàng chiến đấu!'
+          : pick(['Khu vực sạch. Đừng thả lỏng, đợt tiếp theo đang đến.', 'Gọn gàng! Radar thấy contact mới, kiểu gấp lạ.', 'Làm tốt. Khu Tây vừa phóng thêm một lứa mới.'])); }
     }
   }
   const objTxt = objectives.length ? ` · Bảo vệ: ${objectives.map(o => o.alive ? `${o.name} ${Math.max(0, Math.round(o.hp))}%` : `${o.name} ✗`).join(', ')}` : '';
@@ -335,7 +436,16 @@ function damage(f, amt, src) {
   if (f === P && P.invulnT > 0) return;
   if (cut && f === cut.boss) return;   // untouchable while his entrance plays
   if (cut && cut.kind === 'nuke' && f.team === 'blue') return;   // nothing touches the bomb run
+  if (src && src.kind === 'ace' && f.name === WINGMAN.name) {   // he won't fire on his old wingman
+    if (gameMode === 'counter') radioOnce('eagleSpares', 'Alpha 3', 'Lạ thật... hắn lướt ngay qua mũi Wingman mà không bắn một viên nào.', 60);
+    return;
+  }
   if (f === P && P.shieldT > 0) { amt *= 0.3; if (P.shieldMesh) P.shieldMesh.material.opacity = 0.5; }
+  if (gameMode === 'counter') {   // Chương 7: nobody brings Đại Bàng Đỏ down today, and he's merciless but not instant
+    if (f.kind === 'ace') { if (amt > 0) burst(f.pos, 2, [f.colorHex, 0xdddddd], 3, 0.3, 0.3); f.hp = Math.max(f.maxHp * 0.4, f.hp - amt * 0.6); f.lastHitBy = src; f.lastHitT = clock; return; }   // six on one is a fair fight to him: the hits land and the paper tears, but he doesn't go down
+    if (src && src.kind === 'ace' && f === P) amt *= 0.5;
+    if (f.plotArmor) amt = Math.min(amt, Math.max(0, f.hp - f.maxHp * 0.15));
+  }
   if (f.kind === 'ace' && f.team === 'red') {
     // "giáp giấy kép": one plane alone barely scratches him; two close together tear through, three even better
     const near = flyers.filter(o => o.alive && o.team === 'blue' && o.pos.distanceTo(f.pos) < 40).length;
@@ -344,8 +454,8 @@ function damage(f, amt, src) {
       burst(f.pos, 3, [0x9a9a9a, 0xdddddd], 3, 0.3, 0.3);
       if (AU.ctx && clock - (f.tinkT || -9) > 0.12) { f.tinkT = clock; tone(2400, 1800, 0.05, 0.05, 'triangle'); }
       if (near < 2 && clock - (f.lastSoloHitT || -99) > 0.5) { f.lastSoloHitT = clock; f.soloHits = (f.soloHits || 0) + 1; }
-      if (f.soloHits > 12) radioOnce('armourSolo', 'Minh', 'Đạn của một mình cậu cứ bật ra khỏi cánh hắn! Đợi bọn tớ áp sát cùng!', 40);
-    } else if (src && src.team === 'blue' && near >= 2) radioOnce('armourPair', 'Lan', 'Cùng bắn thì xuyên được! Giấy hắn rách rồi, áp sát vào!', 40);
+      if (f.soloHits > 12) radioOnce('armourSolo', 'Alpha 3', 'Alpha 1, đạn một chiếc không xuyên nổi! Chờ chúng tôi áp sát cùng bắn!', 40);
+    } else if (src && src.team === 'blue' && near >= 2) radioOnce('armourPair', 'Alpha 2', 'Cùng bắn thì xuyên được! Giấy hắn rách rồi, ép sát!', 40);
   }
   const hp0 = f.hp;
   f.hp -= amt; f.lastHitBy = src; f.lastHitT = clock;
@@ -366,22 +476,11 @@ function damage(f, amt, src) {
   if (f === P) {
     stats.dmg += amt; dmgFlash = Math.min(1, dmgFlash + amt / 22); shake = Math.min(0.7, shake + amt / 35); P.lastDmgT = clock;
     hurtSound();
-    if (src && src.team === 'red' && P.hp > 0) radioOnce('tail', pick(['Lan', 'Minh', 'Bảng Đen']), 'Ô Li 1, cậu đang bị bắn! Lắc đuôi ra!', 14);
+    if (src && src.team === 'red' && P.hp > 0) radioOnce('tail', pick(['Alpha 2', 'Alpha 3', 'Blackboard']), 'Alpha 1, trúng đạn từ phía sau! Break, break!', 14);
   }
   if (src === P && f !== P) hitMarkT = 0.15;
-  if (f.kind === 'ace' && f.alive && f.hp > 0) {
-    const ph = f.hp < f.maxHp * 0.33 ? 2 : f.hp < f.maxHp * 0.66 ? 1 : 0;
-    if (ph > (f.phase || 0)) {
-      f.phase = ph; f.mslLeft += 1; f.flares += 2; f.mslT = Math.min(f.mslT, 2);
-      f.flares += 2; f.rage = ph;
-      const sub = ph === 1 ? 'Nạp thêm tên lửa · bay nhanh hơn' : 'Khoá tên lửa cực nhanh · liều mạng';
-      if (!underPursuit() && cine.t <= 0) bossIntro(f, ph === 1 ? 'ĐẠI BÀNG ĐỎ NỔI GIẬN!' : 'ĐẠI BÀNG ĐỎ LIỀU MẠNG!', sub, 1.8);
-      else flash(ph === 1 ? 'ĐẠI BÀNG ĐỎ NỔI GIẬN!' : 'ĐẠI BÀNG ĐỎ LIỀU MẠNG!', sub, 2.2);
-      radio(ph === 1 ? 'Minh' : 'Bảng Đen', ph === 1 ? 'Hắn... còn nhanh hơn lúc nãy!' : 'Hắn đang liều mạng! Giữ vòng vây, đừng để hắn thoát!', true);   // the Red Eagle himself never speaks
-      shake = Math.min(0.8, shake + 0.4);
-    }
-  }
-  if (f.kind === 'ace' && f.hp < f.maxHp * 0.35) radioOnce('aceLow', 'Lan', 'Cánh hắn rách rồi! Cố lên, sắp được rồi!', 999);
+  if (f.kind === 'ace' && f.hp < f.maxHp * 0.35) radioOnce('aceLow', 'Alpha 2', 'Red Eagle hư hại nặng! Ép tiếp, sắp hạ được rồi!', 999);
+  if (f.hp <= 0 && f.kind === 'ace' && f.team === 'red' && gameMode !== 'counter' && !f.fallen && wingmanUp() && state === 'play') { f.hp = 1; f.fallen = true; f.lastHitBy = src; startEagleFall(f); return; }
   if (f.hp <= 0) destroy(f, src);
 }
 function destroy(f, src, crashed = false) {
@@ -407,13 +506,14 @@ function destroy(f, src, crashed = false) {
       score += pts; kills++;
       flash(crashed ? 'ĐỊCH ĐÂM RƠI!' : 'BẮN HẠ!', `${f.name} · +${pts}${P.combo > 1 ? ` · CHUỖI ×${mult}` : ''}`, 1.4);
       if (P.combo > 1) { popup(`CHUỖI ${P.combo} · ×${mult}`, '#ff9f1a', 1.6); if (AU.ctx) tone(600 + P.combo * 120, 1400 + P.combo * 150, 0.25, 0.08, 'triangle'); }
-      if (f.kind === 'ace') radio('Bảng Đen', 'Đại Bàng Đỏ đã bị bắn hạ! Tuyệt vời, Ô Li 1!', true);
-      else if (f.kind === 'elite') { const mate = flyers.find(x => x.alive && x.kind === 'elite'); radio(mate ? 'Lan' : 'Bảng Đen', mate ? `${f.name} rơi rồi! ${mate.name} đang lao thẳng tới chỗ cậu!` : 'Cả hai con Ưng đã rơi! Cậu là át chủ bài thật sự!', true); }
+      if (f.kind === 'ace' && f.fallen) { /* the farewell already played (startEagleFall) */ }
+      else if (f.kind === 'ace') { radio('Blackboard', 'Splash Red Eagle! Đại Bàng Đỏ đã rơi! Tuyệt vời, Alpha 1!', true); radioChain([['Đại Bàng Đỏ', 'Mấy quả bom đó... xin các anh đừng thả. Bên dưới đó cũng là giấy của các anh.'], ['Đại Bàng Đỏ', 'Nói với cậu ấy... tôi đã giữ lời. Tôi chưa từng bắn cậu ấy.']]); }
+      else if (f.kind === 'elite') { const mate = flyers.find(x => x.alive && x.kind === 'elite'); radio(mate ? mateName() : 'Blackboard', mate ? `Splash ${f.name}! ${mate.name} đang lao thẳng vào Alpha 1!` : 'Song Nhạn đã rơi cả hai! Alpha 1, xác nhận át chủ bài!', true); if (!mate && wingmanUp()) radio('Wingman', 'Cả hai chiếc... Khá lắm, lính mới. Tôi nói thật đấy.'); }
       else if (Math.random() < 0.6) { const [w, t] = pick(KILL_LINES); radio(w, t); }
-    } else if (crashed) radio('Bảng Đen', `${f.name} tự đâm vào chướng ngại vật!`);
-    else if (src && src.team === 'blue' && !(cut && cut.kind === 'rescue')) radio(src.name, pick(['Hạ được một chiếc!', 'Trúng rồi!', 'Một chiếc nữa xuống đất!']));   // the rescue has its own lines
+    } else if (crashed) radio('Blackboard', `${f.name} tự đâm vào địa hình!`);
+    else if (src && src.team === 'blue' && !(cut && cut.kind === 'rescue')) radio(src.name, pick(['Splash one!', 'Trúng! Hạ một chiếc!', 'Thêm một bandit xuống đất!']));   // the rescue has its own lines
   } else if (f.team === 'blue') {
-    radio('Bảng Đen', `${f.name} đã rơi! ${f.name}, cậu ổn chứ?`, true);
+    radio('Blackboard', `${f.name} rơi! ${f.name}, báo cáo tình trạng!`, true);
     if (f.kind === 'ally' && !f.noReturn && flyers.some(o => o.alive && o.kind === 'ace')) { allyReturns.push({ name: f.name, color: f.colorHex, t: 15 }); popup(`${f.name} RƠI · GẤP LẠI MÁY BAY, 15s NỮA QUAY LẠI`, YEL, 2); }
   }
 }
@@ -421,18 +521,18 @@ function crash(f) { destroy(f, f.lastHitBy, true); }
 function playerDown() {
   state = 'dead'; endT = 0;
   if (document.pointerLockElement) document.exitPointerLock();
-  radio('Bảng Đen', 'Ô Li 1 đã rơi! Ô Li 1, trả lời đi!', true);
+  radio('Blackboard', 'Alpha 1 rơi! Alpha 1, Blackboard gọi, trả lời!', true);
   flash('MÁY BAY BỊ HẠ', '', 2.5);
 }
 function chapterComplete() {
   state = 'won'; endT = 0;
   const last = wave >= WAVES.length - 1;
-  radio('Bảng Đen', last ? 'Cuộc chiến máy bay giấy kết thúc! Về lớp thôi các em!' : 'Chương này xong rồi! Nghỉ một chút, Phe Đỏ chưa chịu thua đâu.', true);
+  radio('Blackboard', last ? 'Cuộc chiến kết thúc. Tất cả phi đội, RTB. Về tổ thôi!' : 'Nhiệm vụ hoàn thành. Tất cả, RTB. Phe Đỏ chưa chịu thua đâu.', true);
   flash('CHƯƠNG HOÀN THÀNH', WAVES[wave].title, 3);
 }
 function missionComplete() {
   state = 'won'; endT = 0;
-  if (gameMode !== 'escort') radio('Bảng Đen', 'Cuộc chiến máy bay giấy kết thúc! Về lớp thôi các em!', true);
+  if (gameMode !== 'escort') radio('Blackboard', 'Cuộc chiến kết thúc. Tất cả phi đội, RTB. Về tổ thôi!', true);
   if (gameMode === 'escort') { flash('CHIẾN TRANH KẾT THÚC', 'Nhưng ai mới là người chiến thắng?', 3.5); return; }   // a quiet end, no confetti
   flash('NHIỆM VỤ HOÀN THÀNH', 'Mission Accomplished', 3);
   for (let i = 0; i < 4; i++) setTimeout(() => burst(P.pos.clone().add(new THREE.Vector3(rr(-6, 6), rr(2, 6), rr(-6, 6))), 60, [0xff4757, 0xffd93b, 0x2ed573, 0x1e90ff, 0xffffff], 12, 3, 4), i * 350);
@@ -450,7 +550,7 @@ function showResult(won) {
   const hasNext = single && won && wave < WAVES.length - 1;
   $('nextBtn').classList.toggle('hidden', !hasNext);
   if (hasNext) $('nextBtn').textContent = `CHƯƠNG ${wave + 2} ▶`;
-  $('resSub').textContent = won && single && wave < WAVES.length - 1 ? (WAVES[wave + 1].story || '') : won ? 'Chiến tranh máy bay giấy kết thúc. Khu Nam chỉ còn tro giấy... và một câu hỏi chưa ai trả lời.' : (P.failReason || 'Máy bay giấy của bạn đã bị xé nát…');
+  $('resSub').textContent = won && single && wave < WAVES.length - 1 ? (WAVES[wave + 1].story || '') : won ? 'Chiến tranh máy bay giấy kết thúc. Khu Tây chỉ còn tro giấy... và một câu hỏi chưa ai trả lời.' : (P.failReason || 'Máy bay giấy của bạn đã bị xé nát…');
   const rows = [['Thời gian', fmt(missionTime)], ['Số địch bắn hạ', kills], ['Độ chính xác súng', acc + '%'], ['Tên lửa đã bắn', stats.msl], ['Pha luồn lách', stats.passes], ['Né tên lửa hoàn hảo', stats.evades], ['Chuỗi hạ dài nhất', stats.bestCombo], ['Lướt sát đất', stats.skim], ['Phá bức tường âm thanh', stats.booms], ['Giấy rách vì siêu thanh', Math.round(stats.sonicDmg)], ...(gameMode === 'escort' ? [['Phòng không bị phá', stats.ground], ['Hạc Lớn còn lại', heron ? Math.max(0, Math.round(heron.hp)) + ' / ' + heron.maxHp : '—']] : []), ['Vật phẩm đã nhặt', stats.pickups], ['Đường bay vòng hoàn hảo', stats.courses], ['Sát thương nhận', Math.round(stats.dmg)],
     ['Điểm hạ địch', score], ['Thưởng thời gian', timeBonus], ['Thưởng độ bền', hpBonus], ['TỔNG ĐIỂM', total]];
   // personal best & medals

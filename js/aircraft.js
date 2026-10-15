@@ -98,21 +98,49 @@ const PLANE_GEOS = {
   })(),
   mother: makeMotherGeo(),
 };
-const PLANE_EDGES = {};
+const PLANE_EDGES = {}, PLANE_SPAN = {};   // span = half wingspan, so the red-team wingtip ink sits right on every design
+for (const k in PLANE_GEOS) { PLANE_GEOS[k].computeBoundingBox(); const b = PLANE_GEOS[k].boundingBox; PLANE_SPAN[k] = Math.max(-b.min.x, b.max.x); }
 for (const k in PLANE_GEOS) PLANE_EDGES[k] = new THREE.EdgesGeometry(PLANE_GEOS[k], k === 'ring' ? 30 : 1);
 const planeGeo = PLANE_GEOS.dart;
-function makeTrail(color) {
-  const N = 30, pos = new Float32Array(N * 3), geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.45 }));
+// wingtip vapour: a ribbon, not a line. It always turns its face to the camera, starts thin at the wingtip and
+// spreads out behind, soft across its width (trailTex) and thinning away to nothing at the tail (vertex alpha)
+const trailTex = (() => {
+  const cv = document.createElement('canvas'); cv.width = 64; cv.height = 4; const g = cv.getContext('2d');
+  const gr = g.createLinearGradient(0, 0, 64, 0);
+  gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.3, 'rgba(255,255,255,0.55)'); gr.addColorStop(0.5, 'rgba(255,255,255,1)'); gr.addColorStop(0.7, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 4);
+  return new THREE.CanvasTexture(cv);
+})();
+function makeTrail(color, opacity = 0.45) {
+  const N = 40, pos = new Float32Array(N * 3), geo = new THREE.BufferGeometry();
+  const vp = new Float32Array(N * 6), uv = new Float32Array(N * 4), col = new Float32Array(N * 8), idx = [];
+  for (let i = 0; i < N; i++) {
+    const k = i / (N - 1), a = Math.min(1, k / 0.06) * Math.pow(1 - k, 1.6);   // fades in just off the wingtip, out at the tail
+    uv.set([0, k, 1, k], i * 4); col.set([1, 1, 1, a, 1, 1, 1, a], i * 8);
+    if (i < N - 1) idx.push(2 * i, 2 * i + 1, 2 * i + 2, 2 * i + 1, 2 * i + 3, 2 * i + 2);
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(vp, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 4)); geo.setIndex(idx);
+  const line = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, map: trailTex, vertexColors: true, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide }));
   line.frustumCulled = false; scene.add(line);
-  return { line, pos, N, init: false };
+  return { line, pos, N, init: false, vp };
 }
-const _tip = new THREE.Vector3();
+const _tip = new THREE.Vector3(), _tA = new THREE.Vector3(), _tT = new THREE.Vector3(), _tC = new THREE.Vector3();
 function updTrail(tr, obj, x, z = 0.6) {
   _tip.set(x, 0.15, z); obj.localToWorld(_tip);
   if (!tr.init) { for (let i = 0; i < tr.N; i++) tr.pos.set([_tip.x, _tip.y, _tip.z], i * 3); tr.init = true; }
   tr.pos.copyWithin(3, 0, (tr.N - 1) * 3); tr.pos[0] = _tip.x; tr.pos[1] = _tip.y; tr.pos[2] = _tip.z;
+  // build the ribbon round the history: across = tangent x (to camera), wider the older the point
+  const P3 = tr.pos, V = tr.vp, N = tr.N, sc = obj.scale.x || 0.4;
+  for (let i = 0; i < N; i++) {
+    const i0 = Math.max(0, i - 1) * 3, i1 = Math.min(N - 1, i + 1) * 3, j = i * 3;
+    _tT.set(P3[i0] - P3[i1], P3[i0 + 1] - P3[i1 + 1], P3[i0 + 2] - P3[i1 + 2]);
+    _tA.set(P3[j], P3[j + 1], P3[j + 2]); _tC.subVectors(camera.position, _tA);
+    _tT.cross(_tC); if (_tT.lengthSq() < 1e-10) _tT.set(0, 1, 0);
+    _tT.normalize().multiplyScalar((0.05 + 0.7 * (i / (N - 1))) * sc * 0.5);
+    V[j * 2] = _tA.x - _tT.x; V[j * 2 + 1] = _tA.y - _tT.y; V[j * 2 + 2] = _tA.z - _tT.z;
+    V[j * 2 + 3] = _tA.x + _tT.x; V[j * 2 + 4] = _tA.y + _tT.y; V[j * 2 + 5] = _tA.z + _tT.z;
+  }
   tr.line.geometry.attributes.position.needsUpdate = true;
 }
 
@@ -131,7 +159,7 @@ const KINDS = {
   mother:    { hp: 900, veq: 4.5, rates: [0.4, 0.6, 0.2], scale: 5.5, hitR: 3.2, color: 0xc8473d, edge: 0x5a0f0f, gunDmg: 2.4, gunCone: 0.16, gunRange: 26, fireRate: 4, points: 1500, label: 'Tàu Mẹ', evade: 0, geo: 'mother', ai: 'carrier', mslN: 4, flares: 6, rigid: true, tough: true, turrets: true, mslDmg: 22 },
   // the flagship Tàu Mẹ of Chương 4: huge, slow, armed to the teeth, flying dead straight for our library
   dread:     { hp: 1100, veq: 4, rates: [0, 0, 0], scale: 12, hitR: 6.5, color: 0xc8473d, edge: 0x5a0f0f, gunDmg: 0, gunCone: 0, gunRange: 0, fireRate: 1, points: 3000, label: 'Tàu Mẹ', evade: 0, geo: 'mother', ai: 'dread', mslN: 999, flares: 8, rigid: true, tough: true, turrets: true, mslDmg: 18, mslSpeed: 22, mslTurn: 1.9 },
-  elite:     { hp: 230, veq: 10.5, rates: [2.0, 3.6, 0.8], scale: 0.4, hitR: 0.5, color: 0x1e1e24, gunDmg: 3.2, gunCone: 0.1, gunRange: 32, fireRate: 9, points: 800, label: 'Song Ưng', evade: 2.2, geo: 'swallow', ai: 'elite', mslN: 4, flares: 6 },
+  elite:     { hp: 230, veq: 10.5, rates: [2.0, 3.6, 0.8], scale: 0.4, hitR: 0.5, color: 0x1e1e24, gunDmg: 3.2, gunCone: 0.1, gunRange: 32, fireRate: 9, points: 800, label: 'Song Nhạn', evade: 2.2, geo: 'swallow', ai: 'elite', mslN: 4, flares: 6 },
   heron:     { hp: 480, veq: 7, rates: [0.7, 1.2, 0.3], scale: 2.0, hitR: 2.4, color: 0x3d6fd8, gunDmg: 0, gunCone: 0, gunRange: 0, fireRate: 1, label: 'Hạc Lớn', geo: 'glider', ai: 'route', flares: 6 },
   ace:    { hp: 460, veq: 11, rates: [2.1, 3.6, 0.85], scale: 0.36, hitR: 0.65, color: 0xc8102e, geo: 'eagle', gunDmg: 3.4, gunCone: 0.09, gunRange: 34, fireRate: 10, points: 2000, label: 'Đại Bàng Đỏ', evade: 2.4, mslN: 6, flares: 8, ai: 'boss' },
 };
@@ -158,7 +186,7 @@ const flyers = [];
 // uFl / uBend: x = left wing (-x), y = right wing (+x)
 function addFlutter(mat) {
   const u = mat.userData.fl = { uFl: { value: new THREE.Vector2() }, uBend: { value: new THREE.Vector2() }, uT: { value: 0 }, uSweep: { value: 0 }, uFold: { value: new THREE.Vector2() },
-    uTear: { value: new THREE.Vector2() }, uSeed: { value: 0 } };
+    uTear: { value: new THREE.Vector2() }, uSeed: { value: 0 }, uMark: { value: 0 }, uSpan: { value: 1 } };
   mat.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, u);
     sh.vertexShader = 'uniform vec2 uFl; uniform vec2 uBend; uniform float uT; uniform float uSweep; uniform vec2 uFold; uniform vec2 uTear;\nvarying vec3 vTearP;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
@@ -185,11 +213,19 @@ function addFlutter(mat) {
       transformed.y += max(fd, 0.0) * 0.05 * abs(position.x);`);
     // torn paper: ragged rips eaten in from the trailing edge & wingtip, plus round bullet holes,
     // each with a darker crumpled rim. uTear = how torn each wing is (0..~0.85)
-    sh.fragmentShader = `uniform vec2 uTear; uniform float uSeed; varying vec3 vTearP;
+    sh.fragmentShader = `uniform vec2 uTear; uniform float uSeed; uniform float uMark; uniform float uSpan; varying vec3 vTearP;
       float tHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float tNoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         return mix(mix(tHash(i), tHash(i + vec2(1, 0)), f.x), mix(tHash(i + vec2(0, 1)), tHash(i + vec2(1, 1)), f.x), f.y); }
       ` + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+      if (uMark > 0.5) {   // Phe Đỏ insignia: wingtips dipped in red ink behind a black band, plus a red stripe down the spine
+        float ax = abs(vTearP.x) / uSpan;
+        float tip = smoothstep(0.69, 0.7, ax);
+        float band = smoothstep(0.6, 0.61, ax) * (1.0 - tip);
+        float spine = 1.0 - smoothstep(0.035, 0.045, ax);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.62, 0.004, 0.025), max(tip, spine));
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.015), band);
+      }
       {
         float side = vTearP.x < 0.0 ? 0.0 : 1.0;
         float d = mix(uTear.x, uTear.y, side);
@@ -218,19 +254,20 @@ function makeFlyer(kind, team, name, color, edgeColor) {
   const geo = K.geo || 'dart';
   const mesh = new THREE.Mesh(PLANE_GEOS[geo], addFlutter(new THREE.MeshLambertMaterial({ color: c, map: paperTex, side: THREE.DoubleSide })));
   mesh.castShadow = true; g.add(mesh);
-  const edges = new THREE.LineSegments(PLANE_EDGES[geo], addFlutter(new THREE.LineBasicMaterial({ color: edgeColor ?? K.edge ?? (kind === 'ace' ? 0x000000 : 0x7d8da0), transparent: true, opacity: edgeColor != null || K.edge ? 0.95 : 0.7 })));
+  // Phe Đỏ planes wear the team marking (red wingtips, red spine, dark-red creases, red smoke trails) so they read at a glance in a dogfight;
+  // the giant ships are unmistakable already and keep their own look
+  const marked = team === 'red' && !K.rigid;
+  const edgeDef = kind === 'ace' ? 0x000000 : marked ? 0x5a0f0f : 0x7d8da0;
+  const edges = new THREE.LineSegments(PLANE_EDGES[geo], addFlutter(new THREE.LineBasicMaterial({ color: edgeColor ?? K.edge ?? edgeDef, transparent: true, opacity: edgeColor != null || K.edge || marked ? 0.95 : 0.7 })));
   g.add(edges);
-  if (kind === 'ace') {   // dark chevrons along the wing, following the leading-edge sweep
-    const st = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.07), new THREE.MeshBasicMaterial({ color: 0x1a0505, side: THREE.DoubleSide }));
-    for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) { const m = st.clone(); m.rotation.set(-PI / 2, 0, sx * 0.62); m.position.set(sx * (0.38 + k * 0.28), 0.1 + k * 0.012, -0.32 + k * 0.2); g.add(m); }
-  }
+  if (marked) { const u = mesh.material.userData.fl; u.uMark.value = 1; u.uSpan.value = PLANE_SPAN[geo]; }
   g.scale.setScalar(K.scale);
   scene.add(g);
   const f = {
     kind, K, team, name, colorHex: c, css: '#' + new THREE.Color(c).getHexString(),
     obj: g, pos: g.position, q: g.quaternion, vel: new THREE.Vector3(), speed: K.veq, throttle: 0.6,
     hp: K.hp, maxHp: K.hp, alive: true, falling: false, spin: new THREE.Vector3(),
-    trails: [makeTrail(c), makeTrail(c)], gunT: 0, gunSide: 1, mslT: rr(4, 7), mslLeft: K.mslN || 0, lockT: 0, bombs: K.bombs || 0, bombCD: 0, spawnT: 6, sweep: 0, flares: K.flares || 0,
+    trails: marked ? [makeTrail(0xe0141e, 0.65), makeTrail(0xe0141e, 0.65)] : [makeTrail(c), makeTrail(c)], gunT: 0, gunSide: 1, mslT: rr(4, 7), mslLeft: K.mslN || 0, lockT: 0, bombs: K.bombs || 0, bombCD: 0, spawnT: 6, sweep: 0, flares: K.flares || 0,
     target: null, mode: 'attack', modeT: 0, thinkT: 0, evadeDir: new THREE.Vector3(), wander: rr(0, 10),
     flU: [mesh.material.userData.fl, edges.material.userData.fl], flutter: 0,
     lastHitBy: null, lastHitT: -99, smokeT: 0, curl: Math.random() < 0.5 ? -1 : 1,

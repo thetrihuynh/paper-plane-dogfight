@@ -60,11 +60,24 @@ function setMute(m) { AU.muted = m; if (AU.master) AU.master.gain.value = m ? 0 
 //  Radio chatter
 // =====================================================================
 const radioQ = []; let radioT = 0; const radioCD = {};
-const WHO_COL = { 'Bảng Đen': '#9effa0', 'Lan': '#ff8fc0', 'Minh': '#6fd0ff', 'Tuấn': '#9be37a', 'Hà': '#ffb35c', 'Hạc Lớn': '#7fd6ff', 'Đại Bàng Đỏ': '#ff5050', 'Địch': '#ff8a80', 'Ô Li 1': '#ffffff' };
-function radio(who, text, prio = false) { if (prio) radioQ.unshift({ who, text }); else radioQ.push({ who, text }); if (radioQ.length > 5) radioQ.length = 5; }
+const WHO_COL = { 'Blackboard': '#9effa0', 'Alpha 2': '#ff8fc0', 'Alpha 3': '#6fd0ff', 'Alpha 4': '#9be37a', 'Alpha 5': '#ffb35c', 'Bravo 1': '#c9a0ff', 'Bravo 2': '#fff176', 'Bravo 3': '#80deea', 'Bravo 4': '#f48fb1', 'Bravo 5': '#a5d6a7', 'Bravo 6': '#ffcc80',
+  'Crane': '#7fd6ff', 'Crane 1': '#7fd6ff', 'Crane 2': '#7fd6ff', 'Crane 3': '#7fd6ff', 'Đại Bàng Đỏ': '#ff5050', 'Địch': '#ff8a80', 'Phe Đỏ (bắt sóng)': '#ff8a80', 'Bạch Nhạn': '#ff8a80', 'Hắc Nhạn': '#ff8a80', 'Alpha 1': '#ffffff', 'Wingman': '#d5dde4' };
+// while a conversation holds the channel (radioChain with hush), everyone else's chatter is simply dropped
+let radioHushT = 0, radioHushWho = [];
+function radio(who, text, prio = false) {
+  if (radioHushT > 0 && !radioHushWho.includes(who)) return;
+  if (prio) radioQ.unshift({ who, text }); else radioQ.push({ who, text }); if (radioQ.length > 10) radioQ.length = 10;
+}
+const readTime = text => 2.6 + text.length * 0.035;   // how long a line stays up (updateRadio)
+// a short exchange that must play next, in order, without anything cutting in between. With hush, it also cuts off
+// the line on air and keeps everyone else off the channel until it's over
+function radioChain(lines, hush = false) {
+  radioQ.unshift(...lines.map(([who, text]) => ({ who, text }))); if (radioQ.length > 10) radioQ.length = 10;
+  if (hush) { radioT = Math.min(radioT, 0.15); radioHushWho = lines.map(l => l[0]); radioHushT = 0.15 + lines.reduce((s, l) => s + readTime(l[1]), 0); }
+}
 function radioOnce(key, who, text, cd = 15) { if ((radioCD[key] || -99) > clock) return; radioCD[key] = clock + cd; radio(who, text, true); }
 function updateRadio(dt) {
-  radioT -= dt;
+  radioT -= dt; radioHushT -= dt;
   const el = document.getElementById('radio');
   if (radioT <= 0) {
     if (radioQ.length) {
@@ -78,4 +91,4 @@ function updateRadio(dt) {
   }
 }
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
-const KILL_LINES = [['Lan', 'Đẹp lắm, Ô Li 1!'], ['Minh', 'Rơi như lá bàng mùa thu!'], ['Bảng Đen', 'Mục tiêu bị hạ.'], ['Lan', 'Bắn hay quá!'], ['Minh', 'Gấp lại đi, gấp lại đi!']];
+const KILL_LINES = [['Alpha 2', 'Splash one! Đẹp lắm, Alpha 1!'], ['Alpha 3', 'Xác nhận hạ một. Rơi như lá bàng!'], ['Blackboard', 'Blackboard xác nhận: splash one.'], ['Alpha 2', 'Bắn đẹp, Alpha 1!'], ['Alpha 3', 'Good kill!']];

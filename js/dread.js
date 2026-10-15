@@ -9,7 +9,7 @@ const _dt = new THREE.Vector3(), _dw = new THREE.Vector3(), _dq = new THREE.Quat
 // world position of a point given in the ship's own (unscaled) frame
 const shipPoint = (a, p, out) => out.set(p[0], p[1], p[2]).multiplyScalar(a.K.scale).applyQuaternion(a.q).add(a.pos);
 const LIB_TARGET = () => OBJECTIVE_DEFS.library.pos;
-// missiles off its wings, at whoever is closest (Ô Li 1 first)
+// missiles off its wings, at whoever is closest (Alpha 1 first)
 function shipMissiles(a, dt) {
   a.mslT -= dt;
   if (a.mslT > 0) return;
@@ -18,7 +18,7 @@ function shipMissiles(a, dt) {
   if (!best) { a.mslT = 1; return; }
   launchMissile(a, best); a.mslLeft--;
   a.mslT = a.kind === 'dread' ? rr(4.5, 6.5) : rr(4.5, 6.5);
-  if (best === P) radioOnce('shipFox', 'Bảng Đen', 'Tàu Mẹ phóng tên lửa vào cậu! Lộn vòng, thả pháo sáng!', 10);
+  if (best === P) radioOnce('shipFox', 'Blackboard', 'Alpha 1, missile từ Tàu Mẹ! Lộn vòng, pháo sáng!', 10);
 }
 function shipFlares(a, dt) {
   a.flareCD = (a.flareCD || 0) - dt;
@@ -35,7 +35,7 @@ function shipEscorts(a, dt) {
     const d = makeFlyer(k, 'red', `${KINDS[k].label} hộ tống ${(a.kidN = (a.kidN || 0) + 1)}`); d.mom = a;
     shipPoint(a, [i ? 0.25 : -0.25, -0.2, 0.2], d.pos); orient(d, fwdOf(a, _dt).setY(-0.15)); d.speed = 10;
   }
-  radioOnce('shipKids', 'Bảng Đen', 'Tàu Mẹ lại thả thêm tiêm kích hộ tống!', 14);
+  radioOnce('shipKids', 'Blackboard', 'Tàu Mẹ phóng thêm tiêm kích hộ tống!', 14);
 }
 function updateDread(a, dt) {
   const lib = LIB_TARGET();
@@ -49,8 +49,8 @@ function updateDread(a, dt) {
   a.bombCD = (a.bombCD || 0) - dt;
   if (hd < 20 && a.bombCD <= 0) {
     a.bombCD = 0.35; dropBomb(a, 2.6); shipPoint(a, [rr(-0.15, 0.15), -0.15, rr(-0.2, 0.4)], bombs[bombs.length - 1].p);
-    radioOnce('shipBombs', 'Bảng Đen', 'Nó đang ném bom Thư Viện!!', 20);
-  } else if (hd < 120) radioOnce('shipNear', 'Bảng Đen', `Tàu Mẹ chỉ còn cách Thư Viện ${Math.round(hd)} m! Hạ nó ngay!`, 20);
+    radioOnce('shipBombs', 'Blackboard', 'Tàu Mẹ đang ném bom Thư Viện! Hạ nó ngay!', 20);
+  } else if (hd < 120) radioOnce('shipNear', 'Blackboard', `Tàu Mẹ cách Thư Viện ${Math.round(hd)} mét! Tập trung hoả lực!`, 20);
   shipMissiles(a, dt); shipFlares(a, dt); shipEscorts(a, dt);
   // engine smoke when it's hurt
   if (a.hp < a.maxHp * 0.5 && Math.random() < dt * 10) puff(smoke, shipPoint(a, pick(MOTHER_ENGINES), _dw), _pv.set(0, 1, 0), 2.5, 0.6, 2.4, 0x3a3a3a);
@@ -63,7 +63,7 @@ function shipDown(a) {
   burst(a.pos, 120, [0x8f97a6, 0xffffff, 0x9c1c1c, 0xf4f1e6], 14, 3, 3);
   for (const f of flyers) if (f.alive && f.team === a.team && f !== a) f.flee = true;   // the whole escort turns tail
   flash('TÀU MẸ ĐÃ BỊ HẠ!', 'Hộ tống của nó tháo chạy', 3);
-  radio('Bảng Đen', a.kind === 'dread' ? 'Tàu Mẹ rơi rồi! Thư Viện an toàn! Các em làm được rồi!' : 'Chiếc Tàu Mẹ thứ hai cũng rơi rồi!', true);
+  radio('Blackboard', a.kind === 'dread' ? 'Splash Tàu Mẹ! Thư Viện an toàn. Làm tốt lắm, Alpha!' : 'Splash Tàu Mẹ thứ hai!', true);
 }
 // a fleeing escort: full throttle for their own gate, gone once it's out
 function updateFlee(a, dt) {

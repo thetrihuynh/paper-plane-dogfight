@@ -1,6 +1,6 @@
 'use strict';
-// Chương 9: Song Ưng
+// Chương 9: Song Nhạn
 WAVES.push(
-{ title: 'Chương 9: Song Ưng', cutscene: 'twins', flight: ['Lan'], story: 'Minh ở lại trực sân trường; chỉ Ô Li 1 và Lan bay tuần tra buổi chiều. Radar bắt được một tín hiệu lạ từ khu Nam.', sky: 'sunset', boss: 'elite', spawn: [['elite', 2]],
-    radio: [['Bảng Đen', 'Hai chiếc, hai đứa các em. Ô Li 1, Lan: giữ sát nhau!']] }
+{ title: 'Chương 9: Song Nhạn', cutscene: 'twins', flight: ['Wingman'], story: 'Sau đêm trăng, cả phi đội Alpha nằm lại xưởng gấp vá cánh. Chỉ còn Alpha 1 bay tuần tra buổi chiều, và Wingman, người đã dạy Alpha 1 bay, bị điều đi kèm dù chỉ còn vài tuần nữa là được nghỉ hưu. Radar bắt được một tín hiệu lạ từ khu Tây.', sky: 'sunset', boss: 'elite', spawn: [['elite', 2]],
+    radio: [['Bạch Nhạn', 'Chiếc máy bay trắng kia là chiếc đã bay xuyên Phòng Thí Nghiệm. Hắc Nhạn, để chiếc đó cho tôi.'], ['Wingman', 'Lại Song Nhạn... Chiếc trước mũi cậu là mồi, đừng đuổi. Chiếc đen sẽ vòng ra sau đuôi cậu, để nó cho tôi.'], ['Blackboard', 'Hai đấu hai. Alpha 1, Wingman: giữ đội hình, đừng tách ra!']] }
 );

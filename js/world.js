@@ -365,8 +365,8 @@ function gateWall(z, out, beamMat, lines, bg) {   // out: which way is outside (
   solid(-8.4, 8.6, z - 0.4, 8.4, 11.2, z + 0.4, beamMat);
   put(new THREE.PlaneGeometry(16.4, 2.5), signMat(signTex(lines, { w: 1024, h: 160, bg, border: '#ffd93b' })), 0, 9.9, z + out * 0.42, { ry: out > 0 ? 0 : PI, cast: false });
 }
-gateWall(SCHOOL.zN, 1, MAT.blue, [{ t: 'TRƯỜNG THCS GIẤY BAY', size: 120 }, { t: '★ Cổng Bắc · Khu Phe Xanh ★', size: 60, c: '#ffffff' }], '#1d4fa3');
-gateWall(SCHOOL.zS, -1, MAT.red, [{ t: 'TRƯỜNG THCS GIẤY BAY', size: 120 }, { t: '★ Cổng Nam · Khu Phe Đỏ ★', size: 60, c: '#ffffff' }], '#b20d24');
+gateWall(SCHOOL.zN, 1, MAT.blue, [{ t: 'TRƯỜNG THCS GIẤY BAY', size: 120 }, { t: '★ Cổng Đông · Khu Phe Xanh ★', size: 60, c: '#ffffff' }], '#1d4fa3');
+gateWall(SCHOOL.zS, -1, MAT.red, [{ t: 'TRƯỜNG THCS GIẤY BAY', size: 120 }, { t: '★ Cổng Tây · Khu Phe Đỏ ★', size: 60, c: '#ffffff' }], '#b20d24');
 
 // ---- outside the front gate: the bánh mì cart and parked scooters ----
 student(15, -10, -PI / 2, 'vendor');
@@ -416,6 +416,58 @@ const houseMesh = instances(new THREE.BoxGeometry(1, 1, 1), lam(0xffffff, { map:
 put(new THREE.CylinderGeometry(0.6, 0.6, 26, 10), MAT.concrete, -160, 13, -400);
 put(new THREE.CylinderGeometry(5, 4, 6, 18), lam(0xd9d4c4), -160, 29, -400);
 addBox(-165, 0, -405, -155, 32, -395);
+
+// ---- Hightower: two glass towers far outside the walls, one blue behind the east side, one red behind the west.
+//      Both sides take their orders from "Hightower"; nobody up there has ever folded a plane. In the ending the
+//      strings show: every line runs from the two crowns down into the yard.
+const towerLit = Array.from({ length: 32 * 8 }, () => Math.random() < 0.22);   // which windows have their lights on
+const towerTex = canvasTex(128, 512, (g, w, h) => {
+  g.fillStyle = '#9aa3ad'; g.fillRect(0, 0, w, h);
+  towerLit.forEach((lit, i) => { g.fillStyle = lit ? '#fff3c4' : Math.random() < 0.5 ? '#5d6670' : '#6d7782'; g.fillRect((i % 8) * 16 + 2, (i >> 3) * 16 + 3, 12, 10); });
+}, true);
+const towerGlowTex = canvasTex(128, 512, (g, w, h) => {   // only the lit windows glow
+  g.fillStyle = '#000'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff';
+  towerLit.forEach((lit, i) => { if (lit) g.fillRect((i % 8) * 16 + 2, (i >> 3) * 16 + 3, 12, 10); });
+}, true);
+const towerStrings = new THREE.Group(); towerStrings.visible = false; scene.add(towerStrings);
+const TOWERS = [];
+function hightower(x, z, col, signBg) {
+  const tint = new THREE.Color(col).lerp(new THREE.Color(0xffffff), 0.35).getHex();
+  const tierMat = (w, h) => lam(tint, { map: rep(towerTex, w / 6, h / 30), emissive: col, emissiveMap: rep(towerGlowTex, w / 6, h / 30), emissiveIntensity: 0.55 });
+  solid(x - 18, 0, z - 18, x + 18, 14, z + 18, lam(0x6c7178));   // podium
+  let y = 14;
+  for (const [w, h] of [[24, 70], [19, 55], [14, 38]]) {   // three setbacks, each with a coloured band on top
+    solid(x - w / 2, y, z - w / 2, x + w / 2, y + h, z + w / 2, tierMat(w, h));
+    solid(x - w / 2 - 0.6, y + h, z - w / 2 - 0.6, x + w / 2 + 0.6, y + h + 1.6, z + w / 2 + 0.6, lam(col, { emissive: col, emissiveIntensity: 0.4 }));
+    y += h + 1.6;
+  }
+  const crown = y;   // ~182: well above the clouds
+  put(new THREE.CylinderGeometry(4, 7, 8, 4), lam(0x3b3f45), x, crown + 4, z, { ry: PI / 4 });
+  put(new THREE.CylinderGeometry(0.35, 0.6, 24, 6), MAT.metal, x, crown + 20, z);
+  const beacon = put(new THREE.SphereGeometry(1.1, 10, 8), new THREE.MeshBasicMaterial({ color: col, fog: false }), x, crown + 32.5, z, { cast: false });
+  addBox(x - 12, 14, z - 12, x + 12, crown + 32, z + 12);
+  // the name, lit, on all four faces of the top tier
+  const sign = signMat(signTex([{ t: 'HIGHTOWER', size: 130 }], { w: 1024, h: 180, bg: signBg, fg: '#ffffff', border: '#ffffff' }));
+  for (let k = 0; k < 4; k++) {
+    const a = k * PI / 2, r = 7.05;
+    put(new THREE.PlaneGeometry(12, 2.1), sign, x + Math.sin(a) * r, crown - 6, z + Math.cos(a) * r, { ry: a, cast: false });
+  }
+  const t = { x, z, crown, col, beacon };
+  TOWERS.push(t);
+  return t;
+}
+const TOWER_BLUE = hightower(-240, -170, 0x2f6fd8, '#1d4fa3'), TOWER_RED = hightower(240, mirZ(-170), 0xd83a3a, '#b20d24');
+function towerString(tw, to) {
+  const a = new THREE.Vector3(tw.x + rr(-6, 6), tw.crown + rr(0, 6), tw.z + rr(-6, 6)), pts = [];
+  for (let i = 0; i <= 20; i++) { const u = i / 20; pts.push(new THREE.Vector3().lerpVectors(a, to, u).add(new THREE.Vector3(0, -Math.sin(u * PI) * 6, 0))); }
+  towerStrings.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: tw.col, transparent: true, opacity: 0.75, fog: false })));
+}
+// each tower holds its own side's flag, gate, workshop and chalk line... and both hold the middle of the yard
+for (const [tw, s] of [[TOWER_BLUE, 1], [TOWER_RED, -1]]) {
+  const Z = z => s > 0 ? z : mirZ(z);
+  for (const p of [[0, 13.5, Z(-205)], [s * -53, 16, Z(-90)], [0, 11, Z(SCHOOL.zN)], [-40, 0.1, Z(-330)], [0, 0.1, Z(-330)], [40, 0.1, Z(-330)], [s * -30, 18, Z(-260)], [s * 30, 18, Z(-160)]]) towerString(tw, new THREE.Vector3(...p));
+  for (const dx of [-6, 0, 6]) towerString(tw, new THREE.Vector3(dx, 4, SCHOOL.mid));
+}
 
 // Clouds
 const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, fog: false, emissive: 0xbbbbbb });

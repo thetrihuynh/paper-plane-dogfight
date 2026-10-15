@@ -12,7 +12,7 @@ function eagleSpin(a, dt) {
     const f = a.spinFoe;
     a.mode = 'evade'; a.man = null; a.modeT = 1.4; a.target = f; a.preyT = 4;
     a.evadeDir.copy(f.pos).addScaledVector(fwdOf(f, _tmp2), -12).addScaledVector(UP, 1.5).sub(a.pos).normalize();
-    if (f === P) radioOnce('eagleCounter', 'Lan', 'Hắn né xong là vòng ngay ra sau đuôi cậu đấy!', 12);
+    if (f === P) radioOnce('eagleCounter', 'Alpha 2', 'Alpha 1, check six! Hắn né xong là cắt ngay ra sau đuôi!', 12);
   }
   if (a.spinT > 0 || a.spinCD > 0) return;
   // wait for the last moment: ~0.7 s to impact, judged from the closing speed
@@ -34,7 +34,8 @@ function eagleSpin(a, dt) {
   }
   if (a.flares > 0) popFlares(a);
   whoosh();
-  radioOnce('eagleSpin', pick(['Lan', 'Minh']), pick(['Hắn lại xoay né được!', 'Tên lửa không ăn thua với hắn!', 'Trời ạ, hắn xoay như con quay!']), 8);
+  eagleSkill(a, 'spin');
+  radioOnce('eagleSpin', pick(['Alpha 2', 'Alpha 3']), pick(['Trượt! Hắn lại né được!', 'Tên lửa bị lừa, không trúng!', 'Hắn lăn tránh tên lửa, nhanh quá!']), 8);
 }
 function eagleSpinStep(a, dt) {
   a.spinT -= dt;
@@ -62,7 +63,7 @@ function bossTactics(a, t, fwd, dist, dt) {
       if (o === P) continue;
       const v = _tmp.subVectors(a.pos, o.pos), d = v.length();
       const onMe = armourBroken && d < 25 && v.dot(fwdOf(o, _tmp2)) / d > 0.85 && a.lastHitBy === o && clock - a.lastHitT < 2;   // only if it is actually hurting him
-      if (onMe || (o.hp < o.maxHp * 0.3 && d < 45)) { prey = o; dur = rr(2.5, 3.5); radioOnce('bossPrey' + o.name, o.name, 'Đại Bàng Đỏ quay sang tớ! Ai đó yểm hộ với!', 12); break; }
+      if (onMe || (o.hp < o.maxHp * 0.3 && d < 45)) { prey = o; dur = rr(2.5, 3.5); radioOnce('bossPrey' + o.name, o.name, 'Red Eagle bám đuôi tôi! Cần yểm hộ, ngay!', 12); break; }
     }
     if (prey && prey !== a.target) { a.target = prey; a.hunt = 'stalk'; a.huntT = 0; }
     a.preyT = dur;
@@ -73,7 +74,8 @@ function bossTactics(a, t, fwd, dist, dt) {
     const c = new THREE.Vector3(); near.forEach(o => c.add(o.pos)); c.divideScalar(near.length);
     a.mode = 'extend'; a.man = null; a.modeT = rr(1.6, 2.2); a.hunt = 'stalk'; a.huntT = 0;
     a.evadeDir.subVectors(a.pos, c).setY(0).normalize().addScaledVector(UP, a.pos.y < AREA.y - 10 ? 0.8 : 0).normalize();
-    radioOnce('bossZoom', 'Bảng Đen', 'Hắn thoát khỏi vòng vây rồi! Hắn sẽ vòng lại, coi chừng!', 14);
+    eagleSkill(a, 'zoom');
+    radioOnce('bossZoom', 'Blackboard', 'Red Eagle thoát vòng vây, đang leo cao. Hắn sẽ quay lại, cảnh giác!', 14);
   }
   // you got on his tail? he pulls up and over you (a reversal) and comes down behind you
   a.reverseCD = (a.reverseCD || 0) - dt;
@@ -83,7 +85,8 @@ function bossTactics(a, t, fwd, dist, dt) {
       a.reverseCD = rr(5, 7); a.mode = 'evade'; a.man = null; a.modeT = 1.3;
       a.evadeDir.copy(UP).multiplyScalar(a.pos.y < AREA.y - 10 ? 0.9 : 0.2).addScaledVector(fwd, -0.45).addScaledVector(rightOf(a, _tmp2), rr(-0.3, 0.3)).normalize();
       a.target = P; a.preyT = 7; a.hunt = 'strike'; a.huntT = 0;
-      radioOnce('bossReverse', pick(['Lan', 'Minh']), 'Hắn lộn ngược qua đầu cậu, coi chừng sau lưng!', 8);
+      eagleSkill(a, 'reverse');
+      radioOnce('bossReverse', pick(['Alpha 2', 'Alpha 3']), 'Hắn lộn ngược qua đầu! Alpha 1, check six!', 8);
       return;
     }
   }
@@ -97,7 +100,7 @@ function bossTactics(a, t, fwd, dist, dt) {
       const spot = _tmp.copy(t.pos).addScaledVector(tf, -30).addScaledVector(UP, Math.min(12, AREA.y - 6 - t.pos.y)).addScaledVector(new THREE.Vector3().crossVectors(tf, UP).normalize(), side * 9);
       _des.subVectors(spot, a.pos).normalize(); boost = 1.5;
       const behindIt = _ar.subVectors(a.pos, t.pos).dot(tf) < -8 && dist < 45;
-      if (a.pos.distanceTo(spot) < 15 || behindIt || a.huntT > 2.5) { a.hunt = 'strike'; a.huntT = 0; if (t === P) radioOnce('bossDive', pick(['Lan', 'Minh', 'Bảng Đen']), pick(['Hắn bổ nhào xuống cậu kìa!', 'Trên đầu! Hắn đang lao xuống!', 'Ô Li 1, phía sau trên cao!']), 7); }
+      if (a.pos.distanceTo(spot) < 15 || behindIt || a.huntT > 2.5) { a.hunt = 'strike'; a.huntT = 0; if (t === P) radioOnce('bossDive', pick(['Alpha 2', 'Alpha 3', 'Blackboard']), pick(['Bandit bổ nhào, hướng 12 giờ cao!', 'Trên đầu! Hắn đang lao xuống!', 'Alpha 1, sáu giờ cao! Break!']), 7); }
     } else if (a.hunt === 'strike') {
       boost = 2.5;   // _des is already the lead-pursuit line from the attack branch
       if (dist < 7 || a.huntT > 4.5) { a.hunt = 'zoom'; a.huntT = 0; }
@@ -109,7 +112,7 @@ function bossTactics(a, t, fwd, dist, dt) {
   a.speedCap = 11 + 1.0 * (a.rage || 0) + (a.mode === 'extend' ? 2 : 0) + boost;   // applied after the physics step
   if (a.mode === 'extend' || boost > 1.5) a.speed = Math.min(a.speedCap, a.speed + 6 * dt);   // bursts of speed
 }
-// Song Ưng: a two-ship that herds you. The one nearer you is the BAIT (stays in front of your nose, jinking,
+// Song Nhạn: a two-ship that herds you. The one nearer you is the BAIT (stays in front of your nose, jinking,
 // pulling you into a chase); the other is the HAMMER (swings round onto your tail and shoots).
 // They also break your missile lock early by turning across your nose.
 function eliteTactics(a, t, fwd, dist, dt) {
@@ -117,7 +120,7 @@ function eliteTactics(a, t, fwd, dist, dt) {
   if (t === P && P.target === a && P.lockP > 0.3 && !P.gunMode && a.mode === 'attack' && Math.random() < dt * 3.5) {
     a.mode = 'evade'; a.man = null; a.modeT = rr(0.9, 1.3);   // beam the seeker: cut sideways across your nose
     a.evadeDir.subVectors(a.pos, P.pos).setY(0).normalize().cross(UP).multiplyScalar(Math.random() < 0.5 ? -1 : 1).addScaledVector(UP, 0.1).normalize();
-    radioOnce('eliteLock' + a.name, 'Lan', `${a.name} cắt ngang mũi cậu, khoá tuột mất rồi!`, 14);
+    radioOnce('eliteLock' + a.name, mateName(), `${a.name} cắt ngang mũi, mất khoá rồi!`, 14);
     return;
   }
   if (!mate) return;   // alone: fight like a normal ace
@@ -145,8 +148,8 @@ function eliteTactics(a, t, fwd, dist, dt) {
     a.mode = 'evade'; a.man = 'weave'; a.modeT = Math.max(a.modeT || 0, 1.2);
     a.evadeDir.subVectors(mate.pos, a.pos).setY(0).normalize().addScaledVector(fwd, 0.35).normalize();
     if (mate.mode !== 'evade') { mate.weaveFor = chaser; mate.weaveT = 2.2; }
-    if (chaser === P) radioOnce('weaveP', 'Bảng Đen', `${a.name} đang kéo cậu ngang qua mũi ${mate.name}! Bẻ ra ngay!`, 12);
-    else radioOnce('weaveA' + chaser.name, chaser.name, `Tớ đuổi ${a.name} mà ${mate.name} lại lao thẳng vào tớ!`, 12);
+    if (chaser === P) radioOnce('weaveP', 'Blackboard', `Alpha 1, ${a.name} đang dụ vào tầm súng ${mate.name}! Break, ngay!`, 12);
+    else radioOnce('weaveA' + chaser.name, chaser.name, `Đang đuổi ${a.name}, ${mate.name} lao thẳng vào mặt tôi!`, 12);
     return;
   }
   if (a.weaveT > 0 && a.weaveFor && a.weaveFor.alive) {   // swing in on whoever is chasing my partner
@@ -170,7 +173,7 @@ function eliteTactics(a, t, fwd, dist, dt) {
     if (D.t < 0.1) a.pinIn = false;
     if (!a.pinIn && rl < 40 && Math.abs(rel.dot(tf)) / rl < 0.55 && rel.dot(tr) * side > 0) a.pinIn = true;
     if (!a.pinIn) _des.subVectors(pt, a.pos).normalize();
-    if (a.pinIn && mate.pinIn && t === P) radioOnce('pincer', 'Lan', 'Chúng ép hai bên sườn cậu! Gọng kìm!', 12);
+    if (a.pinIn && mate.pinIn && t === P) radioOnce('pincer', 'Alpha 2', 'Alpha 1, gọng kìm! Bandit hai bên sườn!', 12);
     return;
   }
   // bait & hammer: the one nearer the target dangles in front of it, the other swings onto its tail
@@ -181,12 +184,12 @@ function eliteTactics(a, t, fwd, dist, dt) {
     _des.copy(t.pos).addScaledVector(tf, 22).addScaledVector(tr, side).sub(a.pos).normalize();
     if (a.tailT > 0.6 && Math.random() < dt * 2) defensiveManeuver(a, t, fwd);
     if (dist < 14) _des.addScaledVector(fwd, 1).normalize();
-    if (t === P && a.tailT > 0.3) radioOnce('eliteBait', 'Bảng Đen', `${a.name} cứ lượn trước mũi cậu mãi... coi chừng chiếc còn lại!`, 25);
+    if (t === P && a.tailT > 0.3) radioOnce('eliteBait', 'Blackboard', `${a.name} đang làm mồi nhử. Alpha 1, để mắt chiếc còn lại!`, 25);
   } else {
     const behindT = _tmp.copy(t.pos).addScaledVector(tf, -14).addScaledVector(UP, 2);
     const onSix = _ar.subVectors(a.pos, t.pos).dot(tf) < -6 && dA < 26;
     if (!onSix) _des.subVectors(behindT, a.pos).normalize();
-    if (onSix && t === P) radioOnce('eliteHammer', 'Lan', `Ô Li 1! ${a.name} đang ở sau đuôi cậu!`, 12);
+    if (onSix && t === P) radioOnce('eliteHammer', mateName(), `Alpha 1, check six! ${a.name} sau đuôi!`, 12);
   }
 }
 // Defensive maneuvers when someone sits on our tail; each design has its favourites.
@@ -224,11 +227,13 @@ function defensiveManeuver(a, chaser, fwd) {
   else if (man === 'scissors') { a.modeT = rr(2.0, 2.8); a.jinkT = 0; a.jinkS = Math.random() < 0.5 ? -1 : 1; }
   else if (man === 'climb') { a.modeT = rr(1.3, 1.9); a.evadeDir.copy(UP).addScaledVector(fwd, -0.3).normalize(); }   // up and over the chaser
   else a.modeT = 3.5;
-  if (chaser === P && a.team === 'red' && man === 'gap') radioOnce('aiGap', 'Lan', 'Nó định dụ cậu đâm vào cây đấy, cẩn thận!', 20);
-  if (chaser !== P && a.team === 'blue') radioOnce('allyTail' + a.name, a.name, 'Có địch bám đuôi tớ! Giúp với!', 20);
+  if (chaser === P && a.team === 'red' && man === 'gap') radioOnce('aiGap', 'Alpha 2', 'Alpha 1, coi chừng địa hình! Nó đang dụ vào hàng cây!', 20);
+  if (chaser !== P && a.team === 'blue') radioOnce('allyTail' + a.name, a.name, 'Bandit sau đuôi tôi! Cần hỗ trợ!', 20);
 }
 function updateAI(a, dt) {
+  if (a.scripted) return;   // a set-piece manoeuvre is flying him (js/counter.js)
   if (a.flee) { updateFlee(a, dt); return; }
+  if (a.retreat) { updateRetreat(a, dt); return; }
   if (a.K.ai === 'route') { updateHeron(a, dt); return; }
   if (a.K.ai === 'dread') { updateDread(a, dt); return; }
   if (a.kind === 'ace') eagleSpin(a, dt);
@@ -243,6 +248,9 @@ function updateAI(a, dt) {
     }
     a.target = best;
     if (a.huntHeron) a.target = a.huntHeron.alive ? a.huntHeron : (herons.find(h => h.alive) || best);   // the hunters only want a bomber
+  }
+  if (a.team === 'blue' && gameMode === 'escort' && (a.escT = (a.escT || 0) - dt) <= 0) {   // wingmen drop everything for a paper ball closing on a bomber
+    a.escT = 0.3; const ball = escortThreat(a); if (ball) a.target = ball;
   }
   const t = a.target;
   let dist = 1e9;
@@ -287,7 +295,7 @@ function updateAI(a, dt) {
       if (Math.hypot(a.pos.x - aimP.x, a.pos.z - aimP.z) < 3 && a.bombCD <= 0 && a.pos.y > o.pos.y + 3) {
         dropBomb(a); a.bombs--; a.bombCD = 2.5;
         if (a.bombs >= 0) { a.mode = 'extend'; a.modeT = 2.2; a.evadeDir.copy(fwd).setY(0.15).normalize(); }
-        radioOnce('bombDrop', 'Bảng Đen', 'Vòng Ống đang thả bom nước xuống!', 15);
+        radioOnce('bombDrop', 'Blackboard', 'Vòng Ống đang ném bom nước! Chặn lại!', 15);
       }
     } else if (ai === 'support') {
       // tape plane: hang back behind its wingmen and patch them up; flee if the player gets close
@@ -298,7 +306,9 @@ function updateAI(a, dt) {
     } else if (ai === 'ram') {
       // crumpled paper ball: straight at its target, full speed, bursts on contact
       _des.subVectors(_tmp2.copy(t.vel).multiplyScalar(Math.min(1.2, dist / 14)).add(t.pos), a.pos).normalize();
-      if (dist < 0.9 + (t.K ? t.K.hitR : 0.4)) { damage(t, 22, a); a.lastHitBy = null; burst(a.pos, 30, [0xe8e2d0, 0xffffff], 5, 1.5, 1); destroy(a, null); popup(t === P ? 'BỊ GIẤY VO ĐÂM!' : `${t.name} bị Giấy Vo đâm!`, RED, 1); return; }
+      if (dist < 0.9 + (t.K ? t.K.hitR : 0.4)) { damage(t, a.ramDmg || 22, a); a.lastHitBy = null; burst(a.pos, 30, [0xe8e2d0, 0xffffff], 5, 1.5, 1); destroy(a, null); const who = a.rookie ? 'tân binh' : 'Giấy Vo'; popup(t === P ? `BỊ ${who.toUpperCase()} ĐÂM!` : `${t.name} bị ${who} đâm!`, RED, 1);
+        if (a.rookie && isHeron(t)) radioOnce('rookieRam', t.name, pick(['Nó đâm thẳng vào tôi! Điên rồi!', 'Trúng một chiếc cảm tử! Thân bị rách!', 'Chúng lao vào như không cần mạng nữa!']), 12);
+        return; }
     } else if (ai === 'carrier') {
       // mothership: slow wide circles high over the yard, launching darts
       const c = arenaCenter(a.pos.z, _tmp2); _tmp.subVectors(a.pos, c); _tmp.y = 0;
@@ -311,7 +321,7 @@ function updateAI(a, dt) {
         a.spawnT = 8;
         const d = makeFlyer('dart', 'red', `Phi Tiêu con ${++a.kidN || (a.kidN = 1)}`); d.mom = a;
         d.pos.copy(a.pos).addScaledVector(DOWN, 1.2); orient(d, fwd); d.speed = 9;
-        radioOnce('motherKids', 'Bảng Đen', 'Tàu Mẹ lại vừa thả thêm Phi Tiêu!', 12);
+        radioOnce('motherKids', 'Blackboard', 'Tàu Mẹ vừa phóng thêm Phi Tiêu, bandit mới!', 12);
       }
     } else if (ai === 'sniper' && dist < 11) {                                            // keep distance, shoot from afar
       a.mode = 'extend'; a.modeT = 1.5; a.evadeDir.subVectors(a.pos, t.pos).setY(0).normalize().addScaledVector(fwd, 0.6).addScaledVector(UP, 0.1).normalize();
@@ -322,7 +332,7 @@ function updateAI(a, dt) {
       a.evadeDir.subVectors(a.pos, t.pos).normalize().addScaledVector(rightOf(a, _tmp2), a.curl * 0.6).addScaledVector(UP, 0.15).normalize();
     }
     // someone on my tail? break!
-    { const c = defenceCheck(a, fwd, dt); if (c) defensiveManeuver(a, c, fwd); }
+    if (!a.kamikaze) { const c = defenceCheck(a, fwd, dt); if (c) defensiveManeuver(a, c, fwd); }   // the escort's paper balls never break off
     // stalemate breaker: circling with no shot for a while -> extend away and come back in
     if (dist < 40 && fwd.angleTo(_leadDir) > 0.7) a.noShotT = (a.noShotT || 0) + dt; else a.noShotT = Math.max(0, (a.noShotT || 0) - dt);
     if (a.mode === 'attack' && a.noShotT > 3 && a.K.ai !== 'ram' && a.K.ai !== 'boss') {
@@ -366,6 +376,7 @@ function updateAI(a, dt) {
   const look = boss ? [0.25, 0.5, 0.8, 1.2, 1.7] : [0.3, 0.75, 1.3], lm = boss ? 1.6 : 0.9;   // aces read the terrain further ahead
   if (!danger && !a.forceCrash) for (const tl of look) { _tmp.copy(a.vel).multiplyScalar(tl).add(a.pos); if (_tmp.y < 1.3 || pointBlocked(_tmp, lm)) { danger = true; break; } }
   if (danger) { _tmp.set(fwd.x, 0, fwd.z); if (_tmp.lengthSq() < 0.01) _tmp.set(0, 0, -1); _tmp.normalize().multiplyScalar(0.35); _des.set(_tmp.x, 1, _tmp.z).normalize(); }
+  if (a.leashZ != null && a.pos.z > a.leashZ - 30 && _des.z > -0.3) { _des.z = -0.6; _des.normalize(); }   // he never crosses his side's border line
   instructor(a, _des, ctlA);
   if (a.mode === 'attack') ctlA.pitch *= a.kind === 'ace' ? 1 : a.kind === 'elite' ? 0.97 : 0.75;   // the Red Eagle out-turns everyone   // they can't sustain your turn rate: you can out-turn them onto their six
   const ahead = t && _tmp.subVectors(t.pos, a.pos).dot(fwd) > 0;
@@ -379,7 +390,7 @@ function updateAI(a, dt) {
   }
   if (a.spinT > 0) eagleSpinStep(a, dt);
   a.pos.addScaledVector(a.vel, dt);
-  a.pos.x = clamp(a.pos.x, -AREA.x - 2, AREA.x + 2); a.pos.z = clamp(a.pos.z, AREA.zMin - 2, AREA.zMax + 2); a.pos.y = Math.min(a.pos.y, AREA.y + 1);
+  a.pos.x = clamp(a.pos.x, -AREA.x - 2, AREA.x + 2); a.pos.z = clamp(a.pos.z, AREA.zMin - 2, a.leashZ != null ? Math.min(AREA.zMax + 2, a.leashZ - 4) : AREA.zMax + 2); a.pos.y = Math.min(a.pos.y, AREA.y + 1);
   if (a.forceCrash && a.pos.distanceTo(a.forceCrash) < 0.9) { a.lastHitBy = P; a.lastHitT = clock; crash(a); return; }
   if (a.speedCap) a.speed = Math.min(a.speed, a.speedCap);
   if (pointBlocked(a.pos, 0)) {
@@ -395,7 +406,7 @@ function updateAI(a, dt) {
   }
   // guns
   a.gunT -= dt;
-  if (t && a.K.gunRange > 0 && a.mode !== 'evade' && a.mode !== 'extend' && dist < a.K.gunRange && fwd.angleTo(_leadDir) < a.K.gunCone && a.gunT <= 0) {
+  if (t && a.K.gunRange > 0 && a.mode !== 'evade' && a.mode !== 'extend' && dist < (t.kamikaze ? 34 : a.K.gunRange) && fwd.angleTo(_leadDir) < (t.kamikaze ? 0.22 : a.K.gunCone) && a.gunT <= 0) {
     a.burst = (a.burst || 0) + 1;
     fireGun(a, 0.02 + dist / 1500);
     a.gunT = a.burst % 10 === 0 ? rr(0.6, 1.2) : 1 / a.K.fireRate;
@@ -411,9 +422,9 @@ function updateAI(a, dt) {
       launchMissile(a, t); a.mslLeft--; a.lockT = 0; a.mslT = a.K.mslGap ? rr(...a.K.mslGap) : a.kind === 'ace' ? rr(4.5, 6.5) : rr(7, 10);
       if (a.kind === 'elite') {   // salvo: the partner fires at the same target from its own angle
         const m2 = flyers.find(f => f !== a && f.alive && f.kind === 'elite');
-        if (m2 && m2.mslLeft > 0 && m2.target === t && m2.pos.distanceTo(t.pos) < 70 && m2.lockT < 50) { m2.lockT = 99; if (t === P) radioOnce('salvo', 'Bảng Đen', 'Song Ưng phóng tên lửa đồng loạt từ hai hướng!', 12); }
+        if (m2 && m2.mslLeft > 0 && m2.target === t && m2.pos.distanceTo(t.pos) < 70 && m2.lockT < 50) { m2.lockT = 99; if (t === P) radioOnce('salvo', 'Blackboard', 'Missile, hai hướng! Song Nhạn phóng đồng loạt!', 12); }
       }
-      if (t === P) radioOnce('enemyFox', pick(['Lan', 'Minh', 'Bảng Đen']), pick([`${a.name} vừa phóng tên lửa vào cậu!`, 'Tên lửa! Có tên lửa bám theo cậu!', 'Tên lửa đang lao tới, né đi!']), 8);
+      if (t === P) radioOnce('enemyFox', pick(['Alpha 2', 'Alpha 3', 'Blackboard']), pick([`Missile! ${a.name} vừa phóng vào Alpha 1!`, 'Alpha 1, missile bám đuôi! Pháo sáng!', 'Tên lửa đang lao tới, break!']), 8);
     }
   }
 }

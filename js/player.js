@@ -107,7 +107,7 @@ function updatePlayer(dt) {
       // shreds of paper peel off the wingtips; creak now and then
       if (Math.random() < dt * (3 + load * 6)) { _tmp.set((Math.random() < 0.5 ? -1 : 1) * 0.6, 0.1, 0.4); P.obj.localToWorld(_tmp); burst(_tmp, 2, [P.colorHex, 0xffffff], 2, 0.8, 0.5); }
       if (AU.ctx && Math.random() < dt * (0.8 + load * 2)) noiseHit(AU.ctx.currentTime, 2600 + Math.random() * 1500, 0.06 + load * 0.04, 0.12, 'highpass');
-      if (load > 0.8) radioOnce('sonicStress', 'Lan', 'Ô Li 1, bẻ lái gắt lúc siêu thanh là rách giấy đấy!', 20);
+      if (load > 0.8) radioOnce('sonicStress', 'Alpha 2', 'Alpha 1, quá tải! Bẻ gắt lúc siêu thanh là rách cánh!', 20);
       if (P.hp <= 0) { P.hp = 0; destroy(P, null); return; }
     }
     if (P.sonicHeat >= 1) { P.sonic = false; popup('QUÁ NHIỆT — HẠ TỐC!', RED, 1.4); }
@@ -138,7 +138,7 @@ function updatePlayer(dt) {
     if (!P.looping && !document.pointerLockElement) aim.y = Math.min(aim.y, -0.25 * k);
     if (document.pointerLockElement && aim.y > 0) aim.y *= 1 - k; aim.normalize();
     if (P.pos.y > ZONE.y + 6) { P.pos.y = ZONE.y + 6; if (P.vel.y > 0) P.vel.y = 0; }
-    radioOnce('ceiling', 'Bảng Đen', 'Ô Li 1, cậu đang chạm trần bay. Hạ độ cao xuống!', 12);
+    radioOnce('ceiling', 'Blackboard', 'Alpha 1, chạm trần bay. Giảm độ cao!', 12);
   }
   if (P.evadeDur) {
     // barrel roll: exactly one turn around the nose, eased in and out
@@ -303,10 +303,10 @@ function updateBlackout(dt, fwd) {
   }
   if (out > WARN_BAND) {
     P.bo = Math.min(1, P.bo + dt * (0.12 + (out - WARN_BAND) * 0.01));
-    radioOnce('outZone', 'Bảng Đen', 'Ô Li 1! Cậu đã vào vùng choáng. Quay lại ngay, cậu sẽ ngất mất!', 10);
+    radioOnce('outZone', 'Blackboard', 'Alpha 1, đã vào vùng choáng! Quay đầu ngay, sẽ mất ý thức!', 10);
   } else if (out > 0) {
     P.bo = Math.max(0, P.bo - dt * 0.15);
-    radioOnce('warnZone', 'Bảng Đen', 'Cậu đang ở rìa khuôn viên trường, đừng bay xa hơn nữa!', 14);
+    radioOnce('warnZone', 'Blackboard', 'Alpha 1, đang ở rìa khu vực tác chiến. Quay lại!', 14);
   } else P.bo = Math.max(0, P.bo - dt * 0.45);
   P.ctlAuth = 1 - P.bo * 0.75;
   if (P.bo > 0.15) {                                 // the pilot's hands get shaky
@@ -318,7 +318,7 @@ function updateBlackout(dt, fwd) {
   if (P.bo >= 1) {
     P.boT = 1.8; P.ctlAuth = 0.3;
     flash('', 'MẤT KIỂM SOÁT…', 1.6);
-    radio('Bảng Đen', 'Ô Li 1 mất liên lạc! Ô Li 1?!', true);
+    radio('Blackboard', 'Mất liên lạc với Alpha 1! Alpha 1, trả lời?!', true);
   }
 }
 function wakeUp() {
@@ -328,7 +328,7 @@ function wakeUp() {
   P.speed = 7; P.bo = 0.55; P.ctlAuth = 1;
   for (const m of missiles) if (m.target === P) m.target = null;
   damage(P, 30, null);
-  if (P.alive) { flash('', 'Bạn tỉnh lại… (-30 độ bền)', 2); radio('Lan', 'Cậu tỉnh rồi! Đừng bay xa thế nữa nhé!'); }
+  if (P.alive) { flash('', 'Bạn tỉnh lại… (-30 độ bền)', 2); radio('Alpha 2', 'Alpha 1 tỉnh lại rồi! Giữ trong khu vực tác chiến!'); }
 }
 function doEvade(dirHint) {
   P.evadeCalm = !underPursuit();   // chased -> no slow-mo / swinging camera for this roll
@@ -354,7 +354,8 @@ function doEvade(dirHint) {
   P.evadeSide = side;
   P.evadeVec.copy(lat).multiplyScalar(side);
   let nearest = 1e9;
-  for (const m of missiles) if (m.alive && m.target === P) nearest = Math.min(nearest, m.p.distanceTo(P.pos));
+  const chasing = missiles.filter(m => m.alive && m.target === P);   // taken before the flares pull some of them off onto a decoy
+  for (const m of chasing) nearest = Math.min(nearest, m.p.distanceTo(P.pos));
   if (P.flares > 0) popFlares(P);
   whoosh();
   // speed boost: bigger when a missile is chasing or when we're slow
@@ -363,7 +364,7 @@ function doEvade(dirHint) {
   P.speed = Math.min(17, Math.max(P.speed + (need ? 2.5 : 1.2), 8));
   shake = Math.min(0.7, shake + 0.25);
   if (nearest < 10 && nearest > 1.0) {             // perfect timing: missiles overshoot
-    for (const m of missiles) if (m.alive && m.target === P && m.p.distanceTo(P.pos) < 25) m.target = null;
+    for (const m of chasing) if (m.alive && m.p.distanceTo(P.pos) < 25) { m.target = null; m.spare = P; }   // dodged clean: it can't fuse on you or catch you in its blast
     score += 100; stats.evades++;
     startCine('evade', { subject: P, dur: 1.4, ts: 0.22, cd: 2, label: 'NÉ TÊN LỬA HOÀN HẢO! +100' });
   } else if (nearest < 1e9) flash('', P.flares > 0 ? 'Lộn vòng + pháo sáng!' : 'Lộn vòng né!', 0.8);
