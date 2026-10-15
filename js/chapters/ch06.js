@@ -1,6 +1,6 @@
 'use strict';
-// Chương 6: Tàu Mẹ
+// Chương 6: Rải thảm (Hạc Lớn's first sortie: escort it to their lab, where the second Tàu Mẹ is still being folded; see js/escort.js)
 WAVES.push(
-{ title: 'Chương 6: Tàu Mẹ', story: 'Radar bắt được một bóng khổng lồ: Tàu Mẹ hình diều hộp, mang theo cả một đàn Phi Tiêu con.', sky: 'overcast', boss: 'mother', spawn: [['mother', 1], ['crumple', 3], ['glider', 1]],
-    radio: [['Bảng Đen', 'Một Tàu Mẹ hình diều hộp đang thả Phi Tiêu liên tục! Kèm theo là Giấy Vo cảm tử lao thẳng vào cậu!'], ['Minh', 'Giấy Vo không bắn được, nhưng đâm trúng là đau lắm. Né sang bên rồi bắn!']] }
+{ title: 'Chương 6: Rải thảm', story: 'Tàu Mẹ thứ nhất đã rơi, nhưng chiếc thứ hai vẫn đang được gấp trong Phòng Thí Nghiệm khu Nam. Phe Xanh tung ra con bài bí mật: Hạc Lớn, chiếc máy bay lớn nhất từng được gấp. Nhiệm vụ: hộ tống nó tới tận nơi.', sky: 'sunset',
+    escort: 'lab', spawn: [], radio: [] }
 );

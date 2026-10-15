@@ -3,19 +3,19 @@
 // (plain script: shares the page's global scope with the other files, loaded in order by index.html)
 
 // =====================================================================
-//  ESCORT MODE: protect the bomber "Hạc Lớn" while it drops paper balls on the rival school,
-//  through flak guns and surface-to-air missile sites.
+//  ESCORT MODE: protect the bomber "Hạc Lớn" across the yard while it drops paper balls on Phe Đỏ's
+//  half of the school, through flak guns and surface-to-air missile sites.
 // =====================================================================
 let gameMode = 'campaign';
 const strikeTargets = [], groundUnits = [], flakShells = [];
 const STRIKE_DEFS = [
-  { name: 'Sân cờ đối thủ', pos: new THREE.Vector3(0, 0.5, -1200), r: 6 },
-  { name: 'Mái Nhà Đỏ', pos: new THREE.Vector3(-50, 14, -1200), r: 7 },
-  { name: 'Sân bóng đối thủ', pos: new THREE.Vector3(18, 0.5, -1390), r: 8 },
+  { name: 'Sân cờ Phe Đỏ', pos: FLAG_RED.clone().setY(0.5), r: 6 },
+  { name: 'Mái Nhà Thi Đấu', pos: new THREE.Vector3((GYM.x0 + GYM.x1) / 2, GYM.h + 0.6, (GYM.z0 + GYM.z1) / 2), r: 9 },   // the lab is rubble since Chương 6
+  { name: 'Sân bóng Phe Đỏ', pos: PITCH.clone(), r: 8 },
 ];
 const GROUND_DEFS = [
-  ['flak', -24, -1160], ['flak', 30, -1235], ['flak', -20, -1340], ['flak', 32, -1425], ['flak', -6, -1110],
-  ['sam', 0, -1300], ['sam', -36, -1440], ['sam', 36, -1100],
+  ['flak', -28, -478], ['flak', 30, -540], ['flak', -50, -610], ['flak', 26, -700], ['flak', 6, -752],
+  ['sam', -20, -560], ['sam', 60, -470], ['sam', -10, -680],
 ];
 const gunMetal = lam(0x5a5f55), samMat = lam(0x6b6e3e);
 for (const [kind, x, z] of GROUND_DEFS) {   // build the emplacements once (scenery); they only fight in escort mode
@@ -31,24 +31,29 @@ for (const [kind, x, z] of GROUND_DEFS) {   // build the emplacements once (scen
   }
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
   g.visible = false; scene.add(g);
-  { const b = addBox(x - 1.4, 0, z - 1.4, x + 1.4, 2, z + 1.4); gridInsert(b, b.min.x, b.min.z, b.max.x, b.max.z); }   // built after the grid, so register it by hand
-  groundUnits.push({ kind, pos: new THREE.Vector3(x, 1.4, z), obj: g, top, hp: 0, maxHp: kind === 'flak' ? 60 : 90, alive: false, cd: 0, lockT: 0, ammo: 0,
+  const box = addBox(x - 1.4, 0, z - 1.4, x + 1.4, 2, z + 1.4); box.off = true; gridInsert(box, box.min.x, box.min.z, box.max.x, box.max.z);   // built after the grid, so register it by hand; solid only in escort mode
+  groundUnits.push({ kind, pos: new THREE.Vector3(x, 1.4, z), obj: g, top, box, hp: 0, maxHp: kind === 'flak' ? 60 : 90, alive: false, cd: 0, lockT: 0, ammo: 0,
     // a stand-in "aircraft" so the normal missile code can launch from the SAM site
     q: new THREE.Quaternion(), vel: new THREE.Vector3(), K: { scale: 1, hitR: 1 }, gunSide: 1, speed: 6, team: 'red', name: kind === 'flak' ? 'Pháo phòng không' : 'Tên lửa phòng không' });
 }
 let heron = null, escortT = 0, interceptT = 0, escortDone = false;
-function startEscort() {
+// two escort missions: 'lab' (Chương 6: Hạc Lớn's first sortie, carpet-bombing their lab with the second Tàu Mẹ
+// inside) and the finale (paper balls on three targets, then the flag burns)
+let escortMode = 'finale';
+const LAB_TARGET = new THREE.Vector3(0, LABH.h + 0.6, (LABH.z0 + LABH.z1) / 2);
+function startEscort(mode) {
+  escortMode = mode === 'lab' ? 'lab' : 'finale';
   gameMode = 'escort'; escortDone = false; escortT = 0; interceptT = 12;
-  ZONE.zMin = -1520; AREA.zMin = -1510;
   strikeTargets.length = 0;
-  for (const d of STRIKE_DEFS) strikeTargets.push({ ...d, pos: d.pos.clone(), alive: true, hp: 1 });
-  rivalGroup.visible = true; resetRivalFlag(); setRivalSiteHouses(false);
-  for (const u of groundUnits) { u.alive = true; u.hp = u.maxHp; u.obj.visible = true; u.obj.rotation.set(0, 0, 0); u.cd = rr(0, 2); u.lockT = 0; u.ammo = u.kind === 'sam' ? 3 : 0; }
+  if (escortMode === 'lab') { strikeTargets.push({ name: 'Phòng Thí Nghiệm', pos: LAB_TARGET.clone(), r: 14, alive: true, hp: 1, lab: true }); setLabRuined(false); showLabWeapon(true, false); }
+  else for (const d of STRIKE_DEFS) strikeTargets.push({ ...d, pos: d.pos.clone(), alive: true, hp: 1 });
+  resetRivalFlag();
+  for (const u of groundUnits) { u.alive = true; u.hp = u.maxHp; u.obj.visible = true; u.box.off = false; u.obj.rotation.set(0, 0, 0); u.cd = rr(0, 2); u.lockT = 0; u.ammo = u.kind === 'sam' ? 3 : 0; }
   flakShells.length = 0;
-  // everyone starts over the back yard, the bomber in the middle of the formation
-  P.pos.set(-6, 16, -700); orient(P, FWD); aim.set(0, 0, -1); P.speed = 8;
-  flyers.filter(f => f.team === 'blue' && f !== P).forEach((f, i) => { f.pos.set(i ? 7 : -9, 15 + i, -690); orient(f, FWD); });
-  heron = makeFlyer('heron', 'blue', 'Hạc Lớn'); heron.pos.set(0, 19, -680); orient(heron, FWD); heron.speed = 7; heron.bombCD = 0;
+  // everyone starts over our own courtyard, the bomber in the middle of the formation
+  P.pos.set(-6, 22, -120); orient(P, FWD); aim.set(0, 0, -1); P.speed = 8;
+  flyers.filter(f => f.team === 'blue' && f !== P).forEach((f, i) => { f.pos.set(i ? 7 : -9, 21 + i, -110); orient(f, FWD); });
+  heron = makeFlyer('heron', 'blue', 'Hạc Lớn'); heron.pos.set(0, 25, -100); orient(heron, FWD); heron.speed = 7; heron.bombCD = 0;
   waveState = 'escort';
   skyTo = PALETTES.sunset;
   P.hp = P.maxHp; P.msl = Math.max(P.msl, MSL_PER_WAVE); P.flares = Math.max(P.flares, FLR_PER_WAVE);
@@ -56,15 +61,21 @@ function startEscort() {
   startEscortCut();
 }
 function escortBriefing() {
-  radio('Bảng Đen', 'Hộ tống Hạc Lớn vượt sông, thả bóng giấy xuống 3 mục tiêu. Bên đó còn pháo phòng không và trạm tên lửa đất đối không, bắn hạ được bằng súng!', true);
+  if (escortMode === 'lab') {
+    radio('Bảng Đen', 'Hộ tống Hạc Lớn tới Phòng Thí Nghiệm khu Nam. Chiếc Tàu Mẹ thứ hai vẫn nằm trong đó. Pháo phòng không và trạm tên lửa bắn hạ được bằng súng!', true);
+    radio('Minh', 'Một chiếc máy bay chậm thế kia thì phá nổi cả toà nhà à?');
+    flash(WAVES[wave] ? WAVES[wave].title : 'RẢI THẢM', 'Hộ tống Hạc Lớn · phá huỷ Phòng Thí Nghiệm và Tàu Mẹ II', 3.2);
+    return;
+  }
+  radio('Bảng Đen', 'Hộ tống Hạc Lớn băng qua sân trường, thả bóng giấy xuống 3 mục tiêu bên khu Phe Đỏ. Bên đó còn pháo phòng không và trạm tên lửa đất đối không, bắn hạ được bằng súng!', true);
   radio('Lan', 'Mấy chiếc còn sót lại của Phe Đỏ sẽ liều mạng nhắm vào Hạc Lớn. Đừng bỏ nó quá xa nhé!');
-  flash(WAVES[wave] ? WAVES[wave].title : 'PHẢN CÔNG', 'Hộ tống Hạc Lớn · ném bóng giấy xuống Trường Bên Kia Sông', 3.2);
+  flash(WAVES[wave] ? WAVES[wave].title : 'PHẢN CÔNG', 'Hộ tống Hạc Lớn · ném bóng giấy xuống khu Phe Đỏ', 3.2);
 }
 function endEscortWorld() {   // back to the normal campaign layout
-  gameMode = 'campaign'; ZONE.zMin = -1030; AREA.zMin = -1026; heron = null;
+  gameMode = 'campaign'; heron = null; carpet.length = 0;
   strikeTargets.length = 0; flakShells.length = 0;
-  rivalGroup.visible = false; resetRivalFlag(); setRivalSiteHouses(true);
-  for (const u of groundUnits) { u.alive = false; u.obj.visible = false; u.obj.rotation.set(0, 0, 0); }
+  resetRivalFlag();
+  for (const u of groundUnits) { u.alive = false; u.obj.visible = false; u.box.off = true; u.obj.rotation.set(0, 0, 0); }
 }
 function strikeHit(t, at) {
   t.alive = false; score += 300;
@@ -83,7 +94,7 @@ function updateHeron(a, dt) {
     const vh = _tmp2.set(a.vel.x, 0, a.vel.z).multiplyScalar(0.8);
     const impact = _tmp.copy(a.pos).addScaledVector(vh, tf);
     const miss = Math.hypot(impact.x - next.pos.x, impact.z - next.pos.z);
-    _des.set(next.pos.x - a.pos.x, 0, next.pos.z - a.pos.z).normalize(); _des.y = (Math.max(next.pos.y + 13, 19) - a.pos.y) * 0.08; _des.normalize();
+    _des.set(next.pos.x - a.pos.x, 0, next.pos.z - a.pos.z).normalize(); _des.y = (Math.max(next.pos.y + 13, 26) - a.pos.y) * 0.08;   // cruise above the Giếng Trời and the wings _des.normalize();
     a.bombCD -= dt;
     if (miss < next.r * 0.7 && a.bombCD <= 0) { dropBomb(a); a.bombCD = 0.45; radioOnce('heronDrop', 'Hạc Lớn', 'Thả bóng giấy!', 6); }
   } else _des.set(0, 0.05, 1).normalize();   // job done: head home
@@ -157,13 +168,15 @@ function updateEscort(dt) {
   interceptT -= dt;
   const reds = flyers.filter(f => f.alive && f.team === 'red').length;
   if (interceptT <= 0 && reds < 7) {
-    const near = heron && heron.pos.z < -1000;
+    const near = heron && heron.pos.z < SCHOOL.mid;
     interceptT = near ? 16 : 24;
     const pool = near ? ['swallow', 'nakamura', 'dart', 'stunt', 'crumple'] : ['dart', 'swallow', 'dart'];
     for (let i = 0; i < 3; i++) { const k = pick(pool), e = makeFlyer(k, 'red', `${KINDS[k].label} chặn đường`); e.pos.copy(findSpawn(35, 80, 'rival')); orient(e, _ax.subVectors(heron ? heron.pos : P.pos, e.pos)); e.speed = e.K.veq; }
     radioOnce('scramble' + (near ? 1 : 0), 'Bảng Đen', near ? 'Thêm máy bay đánh chặn cất cánh từ trường đối thủ!' : 'Radar thấy máy bay đánh chặn đang lao tới Hạc Lớn!', 20);
   }
+  if (escortMode === 'lab' && heron && heron.alive && !escortDone && !cut && Math.hypot(heron.pos.x - LAB_TARGET.x, heron.pos.z - LAB_TARGET.z) < 70) { startCarpetCut(); return; }
   const left = strikeTargets.filter(t => t.alive).length;
+  if (escortMode === 'lab') { $('objective').textContent = `HỘ TỐNG HẠC LỚN · Độ bền ${heron ? Math.max(0, Math.round(heron.hp / heron.maxHp * 100)) : 0}% · tới Phòng Thí Nghiệm còn ${heron ? Math.max(0, Math.round(Math.hypot(heron.pos.x - LAB_TARGET.x, heron.pos.z - LAB_TARGET.z) - 70)) : 0} m · ĐIỂM ${score}`; return; }
   $('objective').textContent = `HỘ TỐNG HẠC LỚN · Độ bền ${heron ? Math.max(0, Math.round(heron.hp / heron.maxHp * 100)) : 0}% · Mục tiêu còn ${left}/${strikeTargets.length} · ĐIỂM ${score}`;
 }
 
@@ -230,4 +243,83 @@ function updateFlares(dt) {
     if (fl.life <= 0 || fl.pos.y < 0.2) { fl.alive = false; scene.remove(fl.mesh); }
   }
   for (let i = flares.length - 1; i >= 0; i--) if (!flares[i].alive) flares.splice(i, 1);
+}
+
+// =====================================================================
+//  Chương 6: the carpet bombing. Nobody knew Hạc Lớn could do this: it opens up over the lab and lays a
+//  carpet of bombs end to end across it; the lab, the second Tàu Mẹ inside, and the radar on the roof all go down.
+// =====================================================================
+const carpet = [];
+const carpetBombGeo = new THREE.CylinderGeometry(0.22, 0.22, 0.9, 8).rotateX(PI / 2), carpetBombMat = lam(0x3a4a2e);
+const CARPET_LEN = 9.5;
+function startCarpetCut() {
+  const crew = flyers.filter(f => f.alive && f.team === 'blue' && f !== heron);
+  // line the bomber up for a run straight down the lab's length, south-bound
+  const start = new THREE.Vector3(LAB_TARGET.x, 27, LAB_TARGET.z + 46);
+  cut = { kind: 'carpet', t: 0, boss: heron, crew: [heron].concat(crew.filter(f => f !== P)), said: {}, start, dropT: 0, hits: 0, slow: t => t > 2.6 && t < 5.4 ? 0.45 : 1 };
+  heron.pos.copy(start); orient(heron, _ax.set(0.001, 0, -1));
+  for (const f of flyers) if (f.alive && f.team === 'red') f.flee = true;   // their fighters scatter from under it
+  P.invulnT = 99; document.body.classList.add('cine');
+}
+function updateCarpetCut(dt) {
+  const c = cut; c.t += dt; const t = c.t;
+  heron.pos.copy(c.start).add(_pv.set(0, 0, -7.5 * t)); orient(heron, _ax.set(0.001, 0, -1)); heron.speed = 7.5; heron.vel.set(0, 0, -7.5);
+  P.pos.copy(heron.pos).add(_pv.set(-7, -2, 6)); orient(P, _ax.set(0.001, 0, -1)); P.vel.set(0, 0, -7.5);
+  c.crew.forEach((f, i) => { if (f !== heron) { f.pos.copy(heron.pos).add(_pv.set(i % 2 ? 8 : -9, -1 + i * 0.5, 4 + i * 2)); orient(f, _ax.set(0.001, 0, -1)); f.vel.set(0, 0, -7.5); } });
+  // the bomb bay: a dense stream from 2.4 s to 6 s, spread across the wings
+  if (t > 2.4 && t < 6) { c.dropT -= dt; while (c.dropT <= 0) {
+    c.dropT += 0.045;
+    const m = new THREE.Mesh(carpetBombGeo, carpetBombMat); m.castShadow = true; scene.add(m);
+    carpet.push({ p: heron.pos.clone().add(_pv.set(rr(-5, 5), -1.5, rr(-1.5, 1.5))), v: new THREE.Vector3(rr(-0.4, 0.4), -1, -6), m });
+    if (AU.ctx && Math.random() < 0.25) tone(700, 240, 0.4, 0.03, 'sine');
+  } }
+  for (let i = carpet.length - 1; i >= 0; i--) {
+    const b = carpet[i]; b.v.y -= 9.8 * dt; b.p.addScaledVector(b.v, dt); b.m.position.copy(b.p); b.m.lookAt(_tmp.copy(b.p).add(b.v));
+    if (b.p.y < 0.4 || pointBlocked(b.p)) {
+      scene.remove(b.m); carpet.splice(i, 1);
+      explosion(b.p, 1.7, Math.random() < 0.3 ? 0.7 : 0);
+      for (let k = 0; k < 3; k++) puff(smoke, b.p, _pv.set(rr(-1, 1), rr(2, 4), rr(-1, 1)), rr(2.5, 4), 0.6, 2.6, 0x3a3430);
+      for (const u of groundUnits) if (u.alive && u.pos.distanceTo(b.p) < 6) damageGround(u, 200);
+      if (Math.abs(b.p.x - LAB_TARGET.x) < 14 && Math.abs(b.p.z - LAB_TARGET.z) < 16) c.hits++;
+      shake = Math.min(0.9, shake + 0.12);
+    }
+  }
+  // the lab caves in: everything sinks into the dust, then only rubble is left
+  if (t > 5.2) {
+    const k = Math.min(1, (t - 5.2) / 1.6);
+    labParts.forEach(o => { o.position.y = o.userData.y0 - k * k * 14; o.rotation.z = (o.userData.tilt ??= rr(-0.06, 0.06)) * k; });
+    labWeapon.position.y = LABW.y - k * k * 14;
+    if (Math.random() < dt * 30) puff(smoke, _tmp.set(rr(-14, 14), rr(0, 6), LAB_TARGET.z + rr(-14, 14)), _pv.set(rr(-2, 2), rr(1, 3), rr(-2, 2)), rr(3, 5), 1, 4, 0xb8b0a0);
+    if (!c.said.boom) { c.said.boom = 1; shake = 1; if (AU.ctx) { noiseHit(AU.ctx.currentTime, 90, 1, 2.2); noiseHit(AU.ctx.currentTime + 0.3, 60, 0.8, 2.5); } }
+    if (k >= 1 && !c.said.ruin) { c.said.ruin = 1; setLabRuined(true); showLabWeapon(false); labWeapon.position.y = LABW.y; labParts.forEach(o => o.rotation.z = 0); }
+  }
+  const line = (n, at, who, text) => { if (t > at && !c.said[n]) { c.said[n] = 1; sayNow(who, text); } };
+  line(1, 0.4, 'Hạc Lớn', 'Hạc Lớn vào hướng ném. Mở khoang bom... toàn bộ.');
+  line(2, 2.9, 'Lan', 'Ơ... nó không thả từng quả... nó RẢI THẢM?!');
+  line(3, 5.4, 'Minh', 'Cả toà nhà... đang sụp!');
+  line(4, 7.4, 'Bảng Đen', 'Phòng Thí Nghiệm và Tàu Mẹ II đã bị chôn vùi! Hạc Lớn, quay về!');
+  if (t >= CARPET_LEN || pressed.Enter || pressed.NumpadEnter) endCarpetCut();
+}
+function endCarpetCut() {
+  const c = cut; cut = null; document.body.classList.remove('cine');
+  for (const b of carpet) scene.remove(b.m); carpet.length = 0;
+  setLabRuined(true); showLabWeapon(false); labWeapon.position.y = LABW.y;
+  escortDone = true; strikeTargets.forEach(t => t.alive = false); score += 1500;
+  flash('PHÒNG THÍ NGHIỆM ĐÃ SỤP ĐỔ', 'Tàu Mẹ II bị chôn vùi · +1500', 3);
+  for (const u of groundUnits) u.alive && damageGround(u, 999);
+  if (heron) removeFlyer(heron);   // banks away for home
+  P.invulnT = 1.5; P.pos.copy(c.start).add(_pv.set(-7, -2, -60)); orient(P, _ax.set(0.001, 0, 1)); P.speed = 9; aim.set(0, 0, 1); camPos.copy(P.pos).add(_pv.set(0, 0.5, -2.5)); camAimS.copy(aim);
+  for (const f of flyers) if (f.alive && f.team === 'red') f.flee = true;
+  endEscortWorld(); waveState = 'active';   // the normal flow ends the chapter once their stragglers are gone
+}
+function carpetCamera(dt) {
+  const c = cut, t = c.t, h = heron.pos;
+  let shot, fov = 55;
+  if (t < 2.6) { shot = 1; _cd.set(14, 3, LAB_TARGET.z + 8); _cl.copy(h); fov = lerp(40, 55, t / 2.6); }   // low in front of the lab: the bomber looming over it
+  else if (t < 5.2) { shot = 2; _cd.copy(h).add(_pv.set(-3.5, 1.8, 7)); _cl.copy(h).add(_pv.set(1, -12, -14)); fov = 60; }   // over its shoulder: the carpet marching across the lab
+  else { shot = 3; _cd.set(46, 16, LAB_TARGET.z + 30); _cl.copy(LAB_TARGET).add(_pv.set(0, -4, 0)); fov = 50; }   // wide: the whole building going down
+  camera.position.lerp(_cd, shot !== c.shot ? 1 : 1 - Math.exp(-dt * 6)); c.shot = shot;
+  camera.up.set(0, 1, 0); camera.lookAt(_cl);
+  camera.fov += (fov - camera.fov) * (shot !== c.fovS ? 1 : Math.min(1, dt * 3)); c.fovS = shot; camera.updateProjectionMatrix();
+  camPos.copy(camera.position);
 }

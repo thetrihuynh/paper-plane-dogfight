@@ -43,10 +43,33 @@ function makeCrumpleGeo() {   // a scrunched-up paper ball (kamikaze)
   g.computeVertexNormals();
   return g;
 }
-function makeMotherGeo() {    // box-kite mothership: two stacked wings, side plates, a fuselage and tailplane
-  const B = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
-  return mergeGeometries([B(3.2, 0.04, 0.9, 0, 0.45, 0), B(3.2, 0.04, 0.9, 0, -0.15, 0), B(0.04, 0.64, 0.9, -1.6, 0.15, 0), B(0.04, 0.64, 0.9, 1.6, 0.15, 0),
-    B(0.3, 0.25, 1.8, 0, 0.05, 0.15), B(1.1, 0.04, 0.35, 0, 0.05, 1.0), B(0.04, 0.4, 0.35, 0, 0.25, 1.0)]);
+// Tàu Mẹ: a flying battleship folded from card. Armoured hull with a wedge bow, deck superstructure and bridge
+// tower, swept wings with engine pods, twin stern engines, gun turrets fore, aft and under the keel, missile racks
+// down both flanks, twin tail fins. About 2.2 long and 1.9 across at scale 1 (forward = -z).
+const MOTHER_TURRETS = [[0, 0.27, -0.36], [0, 0.27, -0.12], [-0.17, 0.15, 0.78], [0.17, 0.15, 0.78], [0, -0.16, 0.05]];   // where its guns fire from
+const MOTHER_ENGINES = [[-0.5, -0.06, 0.93], [0.5, -0.06, 0.93], [-0.12, 0, 1.06], [0.12, 0, 1.06]];
+function makeMotherGeo() {
+  const parts = [], add = g => parts.push(g.toNonIndexed());
+  const B = (w, h, d, x, y, z) => add(new THREE.BoxGeometry(w, h, d).translate(x, y, z));
+  B(0.42, 0.2, 1.5, 0, 0, 0.15);                                                                  // hull
+  add(new THREE.ConeGeometry(0.3, 0.55, 4).rotateY(PI / 4).rotateX(-PI / 2).scale(1, 0.5, 1).translate(0, 0, -0.875));   // wedge bow
+  B(0.3, 0.12, 0.9, 0, 0.16, 0.15);                                                              // superstructure
+  B(0.16, 0.22, 0.22, 0, 0.33, 0.38); B(0.2, 0.05, 0.12, 0, 0.42, 0.33);                         // bridge tower + its wings
+  add(new THREE.CylinderGeometry(0.012, 0.012, 0.22, 5).translate(0, 0.55, 0.42));                // mast
+  for (const sx of [-1, 1]) {
+    const sh = new THREE.Shape(); sh.moveTo(sx * 0.2, -0.05); sh.lineTo(sx * 0.95, 0.5); sh.lineTo(sx * 0.95, 0.72); sh.lineTo(sx * 0.2, 0.72); sh.closePath();
+    add(new THREE.ExtrudeGeometry(sh, { depth: 0.04, bevelEnabled: false }).rotateX(PI / 2).translate(0, -0.02, 0));   // swept wing
+    add(new THREE.CylinderGeometry(0.09, 0.1, 0.72, 10).rotateX(PI / 2).translate(sx * 0.5, -0.06, 0.56));   // engine pod
+    add(new THREE.CylinderGeometry(0.07, 0.08, 0.3, 10).rotateX(PI / 2).translate(sx * 0.12, 0, 0.92));      // stern engine
+    B(0.06, 0.08, 0.6, sx * 0.24, 0.02, -0.12);                                                  // missile rack
+    for (let k = 0; k < 4; k++) add(new THREE.CylinderGeometry(0.018, 0.018, 0.14, 6).rotateX(PI / 2).translate(sx * 0.275, 0.02, -0.38 + k * 0.15));
+    add(new THREE.BoxGeometry(0.03, 0.3, 0.26).rotateZ(-sx * 0.25).translate(sx * 0.2, 0.22, 0.92));   // tail fin
+  }
+  for (const [x, y, z] of MOTHER_TURRETS) {   // turret domes with twin barrels
+    add(new THREE.CylinderGeometry(0.06, 0.075, 0.06, 10).translate(x, y, z));
+    for (const bx of [-0.022, 0.022]) B(0.014, 0.014, 0.18, x + bx, y + 0.01, z - 0.1);
+  }
+  const g = mergeGeometries(parts); g.computeVertexNormals(); return g;
 }
 const PLANE_GEOS = {
   dart: makePlaneGeo(),
@@ -88,7 +111,7 @@ const PLANE_GEOS = {
   mother: makeMotherGeo(),
 };
 const PLANE_EDGES = {};
-for (const k in PLANE_GEOS) PLANE_EDGES[k] = new THREE.EdgesGeometry(PLANE_GEOS[k], k === 'ring' ? 30 : 1);
+for (const k in PLANE_GEOS) PLANE_EDGES[k] = new THREE.EdgesGeometry(PLANE_GEOS[k], k === 'ring' ? 30 : k === 'mother' ? 25 : 1);
 const planeGeo = PLANE_GEOS.dart;
 function makeTrail(color) {
   const N = 30, pos = new Float32Array(N * 3), geo = new THREE.BufferGeometry();
@@ -117,7 +140,9 @@ const KINDS = {
   ring:      { hp: 150, veq: 5.6, rates: [0.8, 1.6, 0.3], scale: 0.55, hitR: 0.75, color: 0x9b59b6, gunDmg: 3.0, gunCone: 0.13, gunRange: 26, fireRate: 3, points: 200, label: 'Vòng Ống', evade: 0.2, geo: 'ring', mslN: 2, flares: 3, ai: 'bomber', bombs: 3 },
   tape:      { hp: 80, veq: 6.8, rates: [1.0, 2.0, 0.4], scale: 0.5, hitR: 0.7, color: 0x5fd35f, gunDmg: 1.2, gunCone: 0.1, gunRange: 18, fireRate: 3, points: 180, label: 'Băng Keo', evade: 0.8, geo: 'glider', ai: 'support' },
   crumple:   { hp: 20, veq: 10, rates: [1.8, 2.5, 0.8], scale: 0.42, hitR: 0.55, color: 0xe8e2d0, gunDmg: 0, gunCone: 0, gunRange: 0, fireRate: 1, points: 80, label: 'Giấy Vo', evade: 0.3, geo: 'crumple', ai: 'ram' },
-  mother:    { hp: 420, veq: 5, rates: [0.6, 1.0, 0.25], scale: 0.95, hitR: 1.4, color: 0xc0c7d6, gunDmg: 2.4, gunCone: 0.16, gunRange: 26, fireRate: 4, points: 600, label: 'Tàu Mẹ', evade: 0.1, geo: 'mother', ai: 'carrier', mslN: 2, flares: 4 },
+  mother:    { hp: 900, veq: 4.5, rates: [0.4, 0.6, 0.2], scale: 5.5, hitR: 3.2, color: 0x8f97a6, edge: 0x9c1c1c, gunDmg: 2.4, gunCone: 0.16, gunRange: 26, fireRate: 4, points: 1500, label: 'Tàu Mẹ', evade: 0, geo: 'mother', ai: 'carrier', mslN: 4, flares: 6, rigid: true, tough: true, turrets: true, mslDmg: 22 },
+  // the flagship Tàu Mẹ of Chương 4: huge, slow, armed to the teeth, flying dead straight for our library
+  dread:     { hp: 1800, veq: 4, rates: [0, 0, 0], scale: 12, hitR: 6.5, color: 0x8f97a6, edge: 0x9c1c1c, gunDmg: 0, gunCone: 0, gunRange: 0, fireRate: 1, points: 3000, label: 'Tàu Mẹ', evade: 0, geo: 'mother', ai: 'dread', mslN: 999, flares: 12, rigid: true, tough: true, turrets: true, mslDmg: 24, mslSpeed: 24, mslTurn: 2.1 },
   elite:     { hp: 230, veq: 10.5, rates: [2.0, 3.6, 0.8], scale: 0.4, hitR: 0.5, color: 0x1e1e24, gunDmg: 3.2, gunCone: 0.1, gunRange: 32, fireRate: 9, points: 800, label: 'Song Ưng', evade: 2.2, geo: 'swallow', ai: 'elite', mslN: 4, flares: 6 },
   heron:     { hp: 480, veq: 7, rates: [0.7, 1.2, 0.3], scale: 2.0, hitR: 2.4, color: 0x3d6fd8, gunDmg: 0, gunCone: 0, gunRange: 0, fireRate: 1, label: 'Hạc Lớn', geo: 'glider', ai: 'route', flares: 6 },
   ace:    { hp: 460, veq: 11, rates: [2.1, 3.6, 0.85], scale: 0.36, hitR: 0.65, color: 0xc8102e, geo: 'eagle', gunDmg: 3.4, gunCone: 0.09, gunRange: 34, fireRate: 10, points: 2000, label: 'Đại Bàng Đỏ', evade: 2.4, mslN: 6, flares: 8, ai: 'boss' },
@@ -144,13 +169,17 @@ const flyers = [];
 // wing flutter: each paper wing bends under load and buzzes in the vertex shader (body stays rigid)
 // uFl / uBend: x = left wing (-x), y = right wing (+x)
 function addFlutter(mat) {
-  const u = mat.userData.fl = { uFl: { value: new THREE.Vector2() }, uBend: { value: new THREE.Vector2() }, uT: { value: 0 }, uSweep: { value: 0 }, uFold: { value: new THREE.Vector2() } };
+  const u = mat.userData.fl = { uFl: { value: new THREE.Vector2() }, uBend: { value: new THREE.Vector2() }, uT: { value: 0 }, uSweep: { value: 0 }, uFold: { value: new THREE.Vector2() },
+    uTear: { value: new THREE.Vector2() }, uSeed: { value: 0 } };
   mat.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, u);
-    sh.vertexShader = 'uniform vec2 uFl; uniform vec2 uBend; uniform float uT; uniform float uSweep; uniform vec2 uFold;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+    sh.vertexShader = 'uniform vec2 uFl; uniform vec2 uBend; uniform float uT; uniform float uSweep; uniform vec2 uFold; uniform vec2 uTear;\nvarying vec3 vTearP;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      vTearP = position;
       float wx = smoothstep(0.08, 0.95, abs(position.x));
       float side = position.x < 0.0 ? 0.0 : 1.0;
       float fl = mix(uFl.x, uFl.y, side), bend = mix(uBend.x, uBend.y, side);
+      float tr = mix(uTear.x, uTear.y, side);   // torn wing: limp, flaps in the airflow and droops a little
+      fl += tr * 0.9; bend -= tr * 0.35;
       float ph = uT + side * 0.37;
       float buzz = sin(ph * 52.0 + position.z * 6.0) * 0.55 + sin(ph * 33.0 + position.x * 11.0) * 0.3 + sin(ph * 87.0) * 0.15;
       transformed.y += buzz * fl * 0.024 * wx + bend * 0.08 * wx * wx;     // flap (toned down to 10%) + load bend: slight in gentle turns, deep in hard U-turns
@@ -166,6 +195,31 @@ function addFlutter(mat) {
       transformed.x *= 1.0 - 0.24 * fd;
       transformed.z += max(fd, 0.0) * abs(position.x) * 0.3;
       transformed.y += max(fd, 0.0) * 0.05 * abs(position.x);`);
+    // torn paper: ragged rips eaten in from the trailing edge & wingtip, plus round bullet holes,
+    // each with a darker crumpled rim. uTear = how torn each wing is (0..~0.85)
+    sh.fragmentShader = `uniform vec2 uTear; uniform float uSeed; varying vec3 vTearP;
+      float tHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float tNoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(tHash(i), tHash(i + vec2(1, 0)), f.x), mix(tHash(i + vec2(0, 1)), tHash(i + vec2(1, 1)), f.x), f.y); }
+      ` + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+      {
+        float side = vTearP.x < 0.0 ? 0.0 : 1.0;
+        float d = mix(uTear.x, uTear.y, side);
+        float wing = smoothstep(0.12, 0.55, abs(vTearP.x));
+        if (d > 0.01 && wing > 0.0) {
+          vec2 q = vTearP.xz + vec2(uSeed + side * 7.3, uSeed * 0.7);
+          float n = tNoise(q * vec2(5.0, 7.0)) * 0.6 + tNoise(q * 17.0) * 0.28 + tNoise(q * 43.0) * 0.12;
+          float reach = d * wing * (0.5 + 0.8 * smoothstep(0.0, 0.6, vTearP.z) + 0.6 * smoothstep(0.4, 0.85, abs(vTearP.x)));
+          float cut = reach * 0.72 - 0.1;
+          if (n < cut) discard;
+          float rim = 1.0 - smoothstep(cut, cut + 0.09, n);
+          vec2 cell = floor(q * 6.0), fc = fract(q * 6.0) - 0.5 - (vec2(tHash(cell + 3.1), tHash(cell + 8.7)) - 0.5) * 0.4;
+          float hole = step(tHash(cell), d * wing * 0.55), r = length(fc * vec2(1.0, 1.3));
+          if (hole > 0.5 && r < 0.2) discard;
+          rim = max(rim, hole * (1.0 - smoothstep(0.2, 0.36, r)));
+          diffuseColor.rgb *= 1.0 - rim * 0.6;
+        }
+      }`);
   };
   return mat;
 }
@@ -176,8 +230,11 @@ function makeFlyer(kind, team, name, color, edgeColor) {
   const geo = K.geo || 'dart';
   const mesh = new THREE.Mesh(PLANE_GEOS[geo], addFlutter(new THREE.MeshLambertMaterial({ color: c, map: paperTex, side: THREE.DoubleSide })));
   mesh.castShadow = true; g.add(mesh);
-  const edges = new THREE.LineSegments(PLANE_EDGES[geo], addFlutter(new THREE.LineBasicMaterial({ color: edgeColor ?? (kind === 'ace' ? 0x000000 : 0x7d8da0), transparent: true, opacity: edgeColor != null ? 0.95 : 0.7 })));
+  const edges = new THREE.LineSegments(PLANE_EDGES[geo], addFlutter(new THREE.LineBasicMaterial({ color: edgeColor ?? K.edge ?? (kind === 'ace' ? 0x000000 : 0x7d8da0), transparent: true, opacity: edgeColor != null || K.edge ? 0.95 : 0.7 })));
   g.add(edges);
+  if (geo === 'mother') for (const [x, y, z] of MOTHER_ENGINES) {   // engine glow
+    const e = new THREE.Mesh(new THREE.CircleGeometry(x && Math.abs(x) > 0.3 ? 0.085 : 0.065, 12), new THREE.MeshBasicMaterial({ color: 0xffa040 })); e.position.set(x, y, z + 0.02); g.add(e);
+  }
   if (kind === 'ace') {   // dark chevrons along the wing, following the leading-edge sweep
     const st = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.07), new THREE.MeshBasicMaterial({ color: 0x1a0505, side: THREE.DoubleSide }));
     for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) { const m = st.clone(); m.rotation.set(-PI / 2, 0, sx * 0.62); m.position.set(sx * (0.38 + k * 0.28), 0.1 + k * 0.012, -0.32 + k * 0.2); g.add(m); }
@@ -192,6 +249,7 @@ function makeFlyer(kind, team, name, color, edgeColor) {
     target: null, mode: 'attack', modeT: 0, thinkT: 0, evadeDir: new THREE.Vector3(), wander: rr(0, 10),
     flU: [mesh.material.userData.fl, edges.material.userData.fl], flutter: 0,
     lastHitBy: null, lastHitT: -99, smokeT: 0, curl: Math.random() < 0.5 ? -1 : 1,
+    tearBias: 0, tearSeed: rr(0, 50), tearL: 0, tearR: 0, joltR: 0, joltP: 0,
   };
   flyers.push(f);
   return f;
@@ -213,8 +271,19 @@ function flyPhysics(f, ctl, dt) {
   const auth = clamp((f.speed - 1.5) / 5, 0.25, 1) * (f.ctlAuth ?? 1) * (f.sonic ? 0.55 : 1);   // supersonic: much wider turns
   // stick inputs ease in/out so the plane responds smoothly instead of snapping
   const sm = f.sm || (f.sm = { pitch: 0, roll: 0, yaw: 0 }), k = 1 - Math.exp(-dt * 6);
-  sm.pitch += (ctl.pitch - sm.pitch) * k; sm.roll += (ctl.roll - sm.roll) * k; sm.yaw += (ctl.yaw - sm.yaw) * k;
-  _eu.set(sm.pitch * K.rates[0] * auth * dt, -sm.yaw * K.rates[2] * auth * dt, -sm.roll * K.rates[1] * Math.max(auth, 0.5) * dt, 'XYZ');
+  // torn wings (player): sluggish stick, the more-torn wing drops (constant roll pull), buffeting, extra drag
+  const wd = f.isPlayer && !f.sonic ? clamp((1 - f.hp / f.maxHp - 0.15) / 0.85, 0, 1) : 0;
+  let inP = ctl.pitch, inR = ctl.roll;
+  if (wd > 0 || f.joltR || f.joltP) {
+    const sp = clamp(f.speed / 8, 0.4, 1.4), t = clock + f.tearSeed;
+    inR += ((f.tearR - f.tearL) * 0.35 + (Math.sin(t * 3.1) * 0.6 + Math.sin(t * 7.9) * 0.4) * 0.16 * wd * sp) + f.joltR;
+    inP += (Math.sin(t * 4.3 + 1) * 0.6 + Math.sin(t * 11.3) * 0.4) * 0.1 * wd * sp + f.joltP;
+    const jk = Math.exp(-dt * 4); f.joltR *= jk; f.joltP *= jk;
+    if (Math.abs(f.joltR) + Math.abs(f.joltP) < 0.01) f.joltR = f.joltP = 0;
+  }
+  const rk = 1 - 0.3 * wd;
+  sm.pitch += (inP - sm.pitch) * k; sm.roll += (inR - sm.roll) * k; sm.yaw += (ctl.yaw - sm.yaw) * k;
+  _eu.set(sm.pitch * K.rates[0] * rk * auth * dt, -sm.yaw * K.rates[2] * rk * auth * dt, -sm.roll * K.rates[1] * rk * Math.max(auth, 0.5) * dt, 'XYZ');
   _qd.setFromEuler(_eu); f.q.multiply(_qd);
   const fwd = fwdOf(f, _fw);
   if (f.speed < STALL) {                 // stall: the nose falls
@@ -226,7 +295,7 @@ function flyPhysics(f, ctl, dt) {
   f.throttle = lerp(f.throttle, ctl.throttle, Math.min(1, dt * 1.2));
   const thrust = K.veq * 0.45 / 0.6 * (f.sonic ? 2.6 : 1);
   const loopK = f.looping ? 0.35 : 1;   // arcade loop: gravity & pull drag eased so the plane carries over the top
-  f.speed += (f.throttle * thrust - 0.45 * f.speed - 4 * fwd.y * loopK) * dt - Math.abs(sm.pitch) * auth * f.speed * 0.14 * loopK * dt;
+  f.speed += (f.throttle * thrust - (0.45 + 0.06 * wd) * f.speed - 4 * fwd.y * loopK) * dt - Math.abs(sm.pitch) * auth * f.speed * 0.14 * loopK * dt;
   f.speed = clamp(f.speed, 1.5, f.sonic ? SONIC_MAX : Math.max(17, f.speed - 8 * dt));   // bleed off after supersonic
   f.vel.copy(fwd).multiplyScalar(f.speed);
   if (f.speed < STALL) f.vel.y -= (STALL - f.speed) * 0.8;

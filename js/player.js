@@ -324,7 +324,7 @@ function updateBlackout(dt, fwd) {
 function wakeUp() {
   P.sonic = false;
   const safe = arenaCenter(P.pos.z, new THREE.Vector3());
-  P.pos.copy(safe); P.pos.y = 7; orient(P, _tmp.set(0, 0, safe.z > -480 ? -1 : 1)); aim.copy(fwdOf(P, _fw));
+  P.pos.copy(safe); P.pos.y = 7; orient(P, _tmp.set(0, 0, safe.z > SCHOOL.mid ? -1 : 1)); aim.copy(fwdOf(P, _fw));
   P.speed = 7; P.bo = 0.55; P.ctlAuth = 1;
   for (const m of missiles) if (m.target === P) m.target = null;
   damage(P, 30, null);
@@ -374,7 +374,7 @@ function onGapPass(g) {
   const threats = missiles.filter(m => m.alive && m.target === P && m.p.distanceTo(P.pos) < 22);
   const chasers = flyers.filter(f => f.alive && f.team === 'red' && f.pos.distanceTo(P.pos) < 12 && _tmp.subVectors(P.pos, f.pos).dot(fwdOf(f, _tmp2)) > 0);
   for (const m of threats) m.target = { pos: hitP.clone(), vel: new THREE.Vector3(), alive: true, isPoint: true, name: g.name };
-  for (const c of chasers) if (Math.random() < (c.kind === 'ace' || c.kind === 'elite' ? 0.15 : 0.55))   // aces rarely fall for it { c.forceCrash = hitP.clone(); c.forceCrashT = 2.5; }
+  for (const c of chasers) if (!c.K.tough && Math.random() < (c.kind === 'ace' || c.kind === 'elite' ? 0.15 : 0.55))   // aces rarely fall for it { c.forceCrash = hitP.clone(); c.forceCrashT = 2.5; }
   if (now - g.lastT > 6) { score += g.bonus; stats.passes++; }
   g.lastT = now;
   const dramatic = threats.length + chasers.length > 0;

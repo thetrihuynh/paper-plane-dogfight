@@ -228,7 +228,9 @@ function defensiveManeuver(a, chaser, fwd) {
   if (chaser !== P && a.team === 'blue') radioOnce('allyTail' + a.name, a.name, 'Có địch bám đuôi tớ! Giúp với!', 20);
 }
 function updateAI(a, dt) {
+  if (a.flee) { updateFlee(a, dt); return; }
   if (a.K.ai === 'route') { updateHeron(a, dt); return; }
+  if (a.K.ai === 'dread') { updateDread(a, dt); return; }
   if (a.kind === 'ace') eagleSpin(a, dt);
   const fwd = fwdOf(a, _fa);
   a.thinkT -= dt;
@@ -300,7 +302,8 @@ function updateAI(a, dt) {
       // mothership: slow wide circles high over the yard, launching darts
       const c = arenaCenter(a.pos.z, _tmp2); _tmp.subVectors(a.pos, c); _tmp.y = 0;
       const rad = _tmp.length() || 1; _tmp.divideScalar(rad);
-      _des.set(-_tmp.z, 0, _tmp.x).addScaledVector(_tmp, (24 - rad) * 0.05); _des.y = (22 - a.pos.y) * 0.08; _des.normalize();
+      _des.set(-_tmp.z, 0, _tmp.x).addScaledVector(_tmp, (34 - rad) * 0.05); _des.y = (30 - a.pos.y) * 0.08; _des.normalize();
+      if (a.K.turrets) shipWeapons(a, dt);
       a.spawnT -= dt;
       const kids = flyers.filter(f => f.alive && f.mom === a).length;
       if (a.spawnT <= 0 && kids < 5) {
@@ -358,7 +361,7 @@ function updateAI(a, dt) {
   if (a.forceCrash) { a.forceCrashT -= dt; if (a.forceCrashT <= 0) a.forceCrash = null; else _des.subVectors(a.forceCrash, a.pos).normalize(); }
   // terrain avoidance (look ahead)
   let danger = !a.forceCrash && a.pos.y < 1.3;
-  const boss = a.kind === 'ace' || a.kind === 'elite';
+  const boss = a.kind === 'ace' || a.kind === 'elite' || a.K.tough;   // tough ones read the terrain further ahead and glance off walls
   const look = boss ? [0.25, 0.5, 0.8, 1.2, 1.7] : [0.3, 0.75, 1.3], lm = boss ? 1.6 : 0.9;   // aces read the terrain further ahead
   if (!danger && !a.forceCrash) for (const tl of look) { _tmp.copy(a.vel).multiplyScalar(tl).add(a.pos); if (_tmp.y < 1.3 || pointBlocked(_tmp, lm)) { danger = true; break; } }
   if (danger) { _tmp.set(fwd.x, 0, fwd.z); if (_tmp.lengthSq() < 0.01) _tmp.set(0, 0, -1); _tmp.normalize().multiplyScalar(0.35); _des.set(_tmp.x, 1, _tmp.z).normalize(); }
@@ -366,7 +369,13 @@ function updateAI(a, dt) {
   if (a.mode === 'attack') ctlA.pitch *= a.kind === 'ace' ? 1 : a.kind === 'elite' ? 0.97 : 0.75;   // the Red Eagle out-turns everyone   // they can't sustain your turn rate: you can out-turn them onto their six
   const ahead = t && _tmp.subVectors(t.pos, a.pos).dot(fwd) > 0;
   ctlA.throttle = danger || a.mode === 'evade' || a.mode === 'extend' || a.K.ai === 'ram' || a.K.ai === 'elite' || a.K.ai === 'boss' ? 0.95 : (ahead && dist < 14 ? 0.45 : 0.7);   // hang back ~14 m when chasing
+  if (a.K.chaser && t) ctlA.throttle = 1;   // a hunter never hangs back
   flyPhysics(a, ctlA, dt);
+  if (a.K.chaser && t) {   // ...and keeps up whatever the prey does: falling behind, it pours on speed (even past the sound barrier)
+    const want = dist > 22 ? Math.min(t.speed + 3 + (dist - 22) * 0.08, 32) : Math.max(a.K.veq, t.speed + 0.5);
+    a.speed += (want - a.speed) * (1 - Math.exp(-dt * 6));
+    a.vel.copy(fwdOf(a, _fa)).multiplyScalar(a.speed);
+  }
   if (a.spinT > 0) eagleSpinStep(a, dt);
   a.pos.addScaledVector(a.vel, dt);
   a.pos.x = clamp(a.pos.x, -AREA.x - 2, AREA.x + 2); a.pos.z = clamp(a.pos.z, AREA.zMin - 2, AREA.zMax + 2); a.pos.y = Math.min(a.pos.y, AREA.y + 1);
@@ -394,11 +403,11 @@ function updateAI(a, dt) {
   // missiles: limited load-out; must hold the target in the seeker for 1.6 s (the target hears it coming)
   if (a.mslLeft > 0 && t) {
     a.mslT -= dt;
-    const inCone = a.mslT <= 0 && a.mode === 'attack' && dist < 60 && dist > 15 && fwd.angleTo(_tmp.subVectors(t.pos, a.pos).normalize()) < 0.55;
+    const inCone = a.mslT <= 0 && a.mode === 'attack' && dist < (a.K.mslRange || 60) && dist > 15 && fwd.angleTo(_tmp.subVectors(t.pos, a.pos).normalize()) < (a.K.mslCone || 0.55);
     a.lockT = inCone ? a.lockT + dt : Math.max(0, a.lockT - dt * 2);
     if (t === P && a.lockT > 0.3) { P.lockedBy = a; P.lockedByT = 0.25; }
-    if (a.lockT >= (a.kind === 'ace' ? 1.1 : 1.6) - (a.kind === 'ace' ? 0.2 : 0.4) * (a.phase || 0)) {   // an enraged boss locks faster   // an enraged boss locks faster
-      launchMissile(a, t); a.mslLeft--; a.lockT = 0; a.mslT = a.kind === 'ace' ? rr(4.5, 6.5) : rr(7, 10);
+    if (a.lockT >= (a.K.mslLock || (a.kind === 'ace' ? 1.1 : 1.6) - (a.kind === 'ace' ? 0.2 : 0.4) * (a.phase || 0))) {   // an enraged boss locks faster   // an enraged boss locks faster
+      launchMissile(a, t); a.mslLeft--; a.lockT = 0; a.mslT = a.K.mslGap ? rr(...a.K.mslGap) : a.kind === 'ace' ? rr(4.5, 6.5) : rr(7, 10);
       if (a.kind === 'elite') {   // salvo: the partner fires at the same target from its own angle
         const m2 = flyers.find(f => f !== a && f.alive && f.kind === 'elite');
         if (m2 && m2.mslLeft > 0 && m2.target === t && m2.pos.distanceTo(t.pos) < 70 && m2.lockT < 50) { m2.lockT = 99; if (t === P) radioOnce('salvo', 'Bảng Đen', 'Song Ưng phóng tên lửa đồng loạt từ hai hướng!', 12); }

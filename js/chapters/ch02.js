@@ -1,6 +1,6 @@
 'use strict';
-// Chương 2: Gió mùa
+// Chương 2: Trinh sát (sneak across the yard under the radar and fly through their lab; see js/recon.js)
 WAVES.push(
-{ title: 'Chương 2: Gió mùa', story: 'Bị đuổi về tay trắng, chúng chờ gió mùa đông bắc nổi lên rồi thả Chim Én, loại nhanh nhất, theo gió lao sang.', sky: 'windy', wind: 1, spawn: [['swallow', 3], ['dart', 2]],
-    radio: [['Bảng Đen', 'Gió mùa đông bắc thổi mạnh, máy bay sẽ bị dạt! Chim Én đuôi chẻ đang lao tới.'], ['Lan', 'Gió đẩy cả đạn lẫn máy bay, ngắm bù một chút nha!']] }
+{ title: 'Chương 2: Trinh sát', story: 'Nhiệm vụ đầu tiên: một mình lẻn sang khu Nam, bay thấp dưới tầm radar, xuyên qua Phòng Thí Nghiệm của Phe Đỏ để xem chúng đang chế tạo thứ gì. Bị radar bắt trước khi kịp nhìn thấy là thất bại.', sky: 'morning',
+    recon: 'sneak', flight: [], spawn: [], radio: [] }
 );

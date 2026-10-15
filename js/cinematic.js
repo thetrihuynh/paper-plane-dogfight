@@ -141,9 +141,9 @@ const cutSlow = t => t > 13.45 && t < 14.45 ? lerp(0.22, 0.6, Math.abs(t - 13.95
 //  and the Red Faction's flag burning away. Then the war is over.
 // =====================================================================
 const END_LEN = 19.5;
-// Ô Li 1's farewell pass: down from the orbit, low across the burning base, right past the burning flag,
-// over the river and up into the sky towards home.  [t, x, y, z]
-const END_PATH = [[8.5, 25, 40, -1500], [10.0, 14, 20, -1440], [11.5, 10, 9, -1390], [13.0, 2, 10, -1300], [14.5, -1.6, 14.2, -1208], [16.0, -6, 18, -1120], [17.5, -4, 30, -1060], [19.5, 0, 46, -960]];
+// Ô Li 1's farewell pass: down from the orbit, low across the burning south courtyard, over the lab, right past
+// the burning flag, and up over the yard towards home.  [t, x, y, z]
+const END_PATH = [[8.5, 25, 40, -800], [10.0, 14, 22, -765], [11.5, 8, 11, -722], [13.0, 6, 21, -662], [14.5, -1.6, 14.2, FLAG_RED.z - 8], [16.0, -6, 18, -545], [17.5, -4, 30, -480], [19.5, 0, 46, -380]];
 const endCurve = new THREE.CatmullRomCurve3(END_PATH.map(k => new THREE.Vector3(k[1], k[2], k[3])));
 const endPathAt = (t, out) => {
   let k = 0; while (k < END_PATH.length - 2 && t > END_PATH[k + 1][0]) k++;
@@ -169,7 +169,7 @@ function burnFlag(p) {   // p 0..1: the fire eats the flag from the fly end (x =
   burnTex.needsUpdate = true;
   return front / w;
 }
-const END_FIRES = [[-50, 15, -1180], [-48, 15, -1240], [50, 15, -1220], [0, 13, -1470], [-20, 13, -1472], [22, 13, -1468], [18, 1, -1390], [0, 1, -1200], [-30, 1, -1320], [34, 1, -1180]];
+const END_FIRES = [[-50, 12, -640], [-30, 12, -645], [48, 12, -640], [0, 13, -639], [53, 19, -712], [-46, 10, -712], [-2, 1, -712], [0, 1, FLAG_RED.z], [-30, 1, -600], [34, 1, -560]];
 function startEnding() {
   // the remnants turn tail; guns fall silent
   for (const f of [...flyers]) if (f.alive && f.team === 'red') removeFlyer(f);
@@ -186,7 +186,7 @@ function updateEnding(dt) {
   const c = cut; c.t += dt; const t = c.t;
   // 1 (0-4 s): the last bombing run along the base
   if (t < 4.2) {
-    const hz = -1330 - 40 * (t / 4.2);
+    const hz = -660 - 50 * (t / 4.2);
     heron.pos.set(0, 24, hz); orient(heron, FWD); heron.vel.set(0, 0, -9.5); heron.speed = 9.5;
     if (t > 0.6 + c.drops * 0.38 && c.drops < 9) { c.drops++; const b = { p: heron.pos.clone().add(_pv.set(rr(-1, 1), -1, 0)), v: _pv.set(rr(-1.5, 1.5), -2, -7).clone(), alive: true, owner: heron, mesh: new THREE.Mesh(PLANE_GEOS.crumple, paperBallMat) }; b.mesh.scale.setScalar(0.9); scene.add(b.mesh); bombs.push(b); }
   } else { heron.pos.addScaledVector(_pv.set(0, 0.15, -1).normalize(), 9 * dt); }
@@ -205,7 +205,7 @@ function updateEnding(dt) {
   }
   if (t < 8.5) {
     // 2 (4-8.5 s): Ô Li 1 circles high above, the flight in a loose echelon
-    const a0 = 0.6 + t * 0.09, cx = 0, cz = -1300, R = 42;
+    const a0 = 0.6 + t * 0.09, cx = 0, cz = -690, R = 42;
     P.pos.set(cx + Math.cos(a0) * R, 46, cz + Math.sin(a0) * R);
     orient(P, _tmp.set(-Math.sin(a0), 0, Math.cos(a0))); P.q.multiply(_q.setFromAxisAngle(FWD, -0.35)); P.speed = 8; aim.copy(fwdOf(P, _tmp));
     c.crew.forEach((f, i) => { const a = a0 - 0.08 * (i + 1); f.pos.set(cx + Math.cos(a) * (R + 4 + i * 3), 45 - i * 0.8, cz + Math.sin(a) * (R + 4 + i * 3)); orient(f, _tmp.set(-Math.sin(a), 0, Math.cos(a))); f.q.multiply(_q.setFromAxisAngle(FWD, -0.35)); f.speed = 8; });
@@ -228,8 +228,8 @@ function updateEnding(dt) {
     const frontU = burnFlag(c.flagP);
     if (frontU !== undefined) {
       const fxw = 0.1 + 4 * frontU;
-      for (let k = 0; k < 3; k++) puff(fire, _tmp.set(fxw + rr(-0.2, 0.2), 13.4 + Math.random() * 2.5, -1200 + rr(-0.1, 0.1)), _pv.set(rr(-0.2, 0.2), rr(0.8, 1.6), 0), rr(0.3, 0.6), 0.12, 0.35, [0xffa53a, 0xff6a1f, 0xffd23f][k]);
-      if (Math.random() < 0.5) puff(smoke, _tmp.set(fxw, 15.5, -1200), _pv.set(0, 1.5, 0), 2, 0.15, 0.7, 0x333333);
+      for (let k = 0; k < 3; k++) puff(fire, _tmp.set(FLAG_RED.x + fxw + rr(-0.2, 0.2), 13.4 + Math.random() * 2.5, FLAG_RED.z + rr(-0.1, 0.1)), _pv.set(rr(-0.2, 0.2), rr(0.8, 1.6), 0), rr(0.3, 0.6), 0.12, 0.35, [0xffa53a, 0xff6a1f, 0xffd23f][k]);
+      if (Math.random() < 0.5) puff(smoke, _tmp.set(FLAG_RED.x + fxw, 15.5, FLAG_RED.z), _pv.set(0, 1.5, 0), 2, 0.15, 0.7, 0x333333);
     }
     if (c.flagP >= 1) rivalFlag.visible = false;
   }
@@ -249,9 +249,9 @@ function finishEnding() {
 function endingCamera(dt) {
   const t = cut.t, h = heron.pos;
   let pos = _cd, look = _cl, fov = 55, shot;
-  if (t < 4.2) { shot = 1; pos.set(16, 4, -1440); look.copy(h).lerp(_tmp.set(0, 4, -1420), 0.35); fov = 58; }   // low on the enemy base, the bomber roaring over
+  if (t < 4.2) { shot = 1; pos.set(16, 4, -735); look.copy(h).lerp(_tmp.set(0, 4, -712), 0.35); fov = 58; }   // low in their courtyard, the bomber roaring over
   else if (t < 8.5) {   // high above, behind Ô Li 1, looking down on the burning school
-    shot = 2; pos.copy(P.pos).addScaledVector(fwdOf(P, _tmp2), -7).add(_pv.set(0, 3.5, 0)); look.set(0, 0, -1300); fov = 60;
+    shot = 2; pos.copy(P.pos).addScaledVector(fwdOf(P, _tmp2), -7).add(_pv.set(0, 3.5, 0)); look.set(0, 0, -690); fov = 60;
   } else {   // Ô Li 1's view: tight behind the plane as it skims the ruins and climbs away
     shot = 3; const fw = fwdOf(P, _tmp2);
     pos.copy(P.pos).addScaledVector(fw, -2.3).addScaledVector(upOf(P, _ar).lerp(UP, 0.6).normalize(), 0.55);
@@ -265,20 +265,20 @@ function endingCamera(dt) {
 }
 
 // ---- Chương 12 intro: the giant bomber lumbers past, the five fighters ease in around it, then
-//      open the throttles and surge ahead towards the river.
+//      open the throttles and surge ahead across the yard.
 const ESC_LEN = 11.5, ESC_V = 5;
 const ESC_FORM = [[0, 3, -5], [-6, 0, 2], [6, 0, 2], [-10, 1, -3], [10, 1, -3]];   // P, Lan, Minh, Tuấn, Hà around the bomber
 function startEscortCut() {
   for (const a of ALLIES) if (!flyers.some(f => f.alive && f.name === a.name)) makeFlyer('ally', 'blue', a.name, a.color);
   const lan = flyers.find(f => f.alive && f.name === 'Lan'), minh = flyers.find(f => f.alive && f.name === 'Minh');
-  const tuan = makeFlyer('ally', 'blue', 'Tuấn', 0x9be37a), ha = makeFlyer('ally', 'blue', 'Hà', 0xffb35c);
+  const tuan = escortMode === 'lab' ? null : makeFlyer('ally', 'blue', 'Tuấn', 0x9be37a), ha = escortMode === 'lab' ? null : makeFlyer('ally', 'blue', 'Hà', 0xffb35c);   // Tuấn and Hà only fly the finale
   cut = { kind: 'escort', t: 0, boss: heron, crew: [P, lan, minh, tuan, ha], said: {} };
   P.invulnT = ESC_LEN; document.body.classList.add('cine');
   if (!cineOn) endEscortCut();
 }
-const escHeronZ = t => -560 - ESC_V * t;
+const escHeronZ = t => -60 - ESC_V * t;   // lifts off over our courtyard
 function updateEscortCut(dt) {
-  const c = cut; c.t += dt; const t = c.t, hz = escHeronZ(t), y = 22;
+  const c = cut; c.t += dt; const t = c.t, hz = escHeronZ(t), y = 26;
   heron.pos.set(Math.sin(t * 0.4) * 0.6, y + Math.sin(t * 0.7) * 0.3, hz); orient(heron, FWD);
   heron.q.multiply(_q.setFromAxisAngle(FWD, Math.sin(t * 0.5) * 0.05)); heron.vel.set(0, 0, -ESC_V); heron.speed = ESC_V;
   // after the order to go, the fighters accelerate (a = 4 m/s²) and pull away ahead of the bomber
@@ -293,9 +293,10 @@ function updateEscortCut(dt) {
   if (go > 0 && Math.random() < 0.6) for (const f of c.crew) if (f && f.alive) puff(fire, _tmp.copy(f.pos).add(_pv.set(0, 0, 0.35)), _pv.set(0, 0, 3), 0.18, 0.12, 0.04, 0xffb347);
   aim.set(0, 0, -1);
   const line = (k, at, who, text) => { if (t > at && !c.said[k]) { c.said[k] = 1; sayNow(who, text); } };
-  line(1, 0.5, 'Bảng Đen', 'Hạc Lớn cất cánh! Máy bay lớn nhất Phe Xanh từng gấp.');
+  line(1, 0.5, 'Bảng Đen', escortMode === 'lab' ? 'Hạc Lớn cất cánh! Máy bay lớn nhất Phe Xanh từng gấp.' : 'Hạc Lớn cất cánh lần nữa! Lần này là chuyến cuối.');
   line(2, 3.6, 'Lan', 'To thật... nhưng chậm như rùa vậy.');
-  line(3, 5.0, 'Tuấn', 'Tuấn và Hà gấp xong máy bay mới rồi! Lần này cho bọn tớ đi cùng!');
+  if (escortMode === 'lab') line(3, 5.0, 'Minh', 'Chậm thế này thì bọn pháo phòng không bắn trúng mất...');
+  else line(3, 5.0, 'Tuấn', 'Tuấn và Hà gấp xong máy bay mới rồi! Lần này cho bọn tớ đi cùng!');
   line(4, 6.6, 'Bảng Đen', 'Phi đội Ô Li, tăng tốc! Mở đường phía trước cho Hạc Lớn!');
   line(5, 8.4, 'Minh', 'Rõ! Theo tớ!');
   line(6, 10.2, 'Hạc Lớn', 'Hạc Lớn bám theo sau. Trông cậy vào các cậu!');
@@ -306,8 +307,8 @@ function endEscortCut() {
   const c = cut; cut = null; document.body.classList.remove('cine');
   // jump to the end state: fighters out in front, bomber cruising behind
   const hz = escHeronZ(ESC_LEN), ahead = 0.5 * 4 * (ESC_LEN - 6.8) ** 2;
-  heron.pos.set(0, 22, hz); orient(heron, FWD); heron.speed = 7;
-  c.crew.forEach((f, i) => { if (!f || !f.alive) return; const o = ESC_FORM[i]; f.pos.set(o[0] * 1.2, 22 + o[1], hz + o[2] - ahead - i * 2.5); orient(f, FWD); f.speed = 9; });
+  heron.pos.set(0, 26, hz); orient(heron, FWD); heron.speed = 7;
+  c.crew.forEach((f, i) => { if (!f || !f.alive) return; const o = ESC_FORM[i]; f.pos.set(o[0] * 1.2, 26 + o[1], hz + o[2] - ahead - i * 2.5); orient(f, FWD); f.speed = 9; });
   P.invulnT = 1; aim.set(0, 0, -1); camPos.copy(P.pos).add(_pv.set(0, 0.5, 2.5)); camAimS.copy(aim);
   escortBriefing();
 }
@@ -315,12 +316,12 @@ function escortCutCamera(dt) {
   const t = cut.t, h = heron.pos;
   let pos = _cd, look = _cl, fov = 50;
   if (t < 3.6) {   // 1: low and ahead: the bomber lumbers overhead, huge against the sky
-    pos.set(13, 17.5, -574); look.copy(h).add(_pv.set(0, 0.4, 0)); fov = lerp(46, 58, clamp(t / 3.6, 0, 1));   // beside the corridor roof, not inside it
+    pos.set(13, 21.5, -74); look.copy(h).add(_pv.set(0, 0.4, 0)); fov = lerp(46, 58, clamp(t / 3.6, 0, 1));   // low over our courtyard
   } else if (t < 6.6) {   // 2: tracking alongside: the five fighters throttled back around it
     pos.copy(h).add(_pv.set(16, 1.5, 3)); look.copy(h).add(_pv.set(-2, 0, -2)); fov = 46;
   } else if (t < 9.6) {   // 3: from behind and above the bomber: the fighters surge ahead
     pos.copy(h).add(_pv.set(0, 4, 13)); look.copy(h).add(_pv.set(0, 0, -40)); fov = 52;
-  } else {   // 4: wide: the river and the Red Faction's school ahead
+  } else {   // 4: wide: the yard and the Red Faction's wing ahead
     pos.copy(h).add(_pv.set(-12, 9, 16)); look.set(0, 16, h.z - 120); fov = 55;
   }
   const shot = t < 3.6 ? 1 : t < 6.6 ? 2 : t < 9.6 ? 3 : 4;   // hard cut when the shot changes, smooth within a shot
@@ -347,6 +348,9 @@ const eaglePos = (t, out) => {   // time -> point on the Catmull-Rom path throug
   return out.copy(cut.path.getPoint(u));
 };
 function updateCutscene(dt) {
+  if (cut.kind === 'lab') { updateLabCut(dt); return; }
+  if (cut.kind === 'carpet') { updateCarpetCut(dt); return; }
+  if (cut.kind === 'rescue') { updateRescueCut(dt); return; }
   if (cut.kind === 'ending') { updateEnding(dt); return; }
   if (cut.kind === 'escort') { updateEscortCut(dt); return; }
   if (cut.kind === 'twins') { updateTwinsCut(dt); return; }
@@ -391,6 +395,9 @@ function updateCutscene(dt) {
 }
 function skipCutscene() {
   const c = cut; if (!c) return;
+  if (c.kind === 'lab') { endLabCut(); return; }
+  if (c.kind === 'carpet') { endCarpetCut(); return; }
+  if (c.kind === 'rescue') { endRescueCut(); return; }
   if (c.kind === 'ending') { finishEnding(); return; }
   if (c.kind === 'escort') { endEscortCut(); return; }
   if (c.kind === 'twins') { endTwinsCut(); return; }
@@ -403,6 +410,9 @@ function skipCutscene() {
   radio('Lan', 'Khép vòng vây! Hắn vọt lên thì bật siêu thanh đuổi theo!');
 }
 function cutsceneCamera(dt) {
+  if (cut.kind === 'lab') { labCutCamera(dt); return; }
+  if (cut.kind === 'carpet') { carpetCamera(dt); return; }
+  if (cut.kind === 'rescue') { rescueCamera(dt); return; }
   if (cut.kind === 'ending') { endingCamera(dt); return; }
   if (cut.kind === 'escort') { escortCutCamera(dt); return; }
   if (cut.kind === 'twins') { twinsCamera(dt); return; }

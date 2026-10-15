@@ -86,7 +86,7 @@
     <h1>✈ Máy Bay Giấy</h1>
     <h2>Không Chiến Sân Trường</h2>
     <p class="en">Paper Plane Dogfight: Schoolyard Skies</p>
-    <p><b>BẢN TIN NHIỆM VỤ:</b> Hai trường đã chia thành hai phe: <b style="color:#1d4fa3">Phe Xanh</b> (trường ta) và <b style="color:#c8102e">Phe Đỏ</b> (Trường Bên Kia Sông). Hạm đội máy bay giấy của Phe Đỏ đang xâm phạm vùng trời trường ta. Phi đội <b>Ô Li</b> của Phe Xanh xuất kích! Vượt qua 11 trận: đánh chặn, gió mùa, bảo vệ sân trường khỏi bom nước, sương mù, Tàu Mẹ, đêm trăng, cặp át Song Ưng, giông bão… hạ gục <b>Đại Bàng Đỏ</b>, át chủ bài giỏi nhất của Phe Đỏ, rồi <b>phản công</b>: hộ tống máy bay ném bom Hạc Lớn sang thả bóng giấy xuống trường đối thủ để kết thúc cuộc chiến.</p>
+    <p><b>BẢN TIN NHIỆM VỤ:</b> Trường THCS Giấy Bay đã chia đôi thành hai phe: <b style="color:#1d4fa3">Phe Xanh</b> giữ khu Bắc (dãy A, dãy B, Nhà Hiệu Bộ) và <b style="color:#c8102e">Phe Đỏ</b> giữ khu Nam (dãy C, dãy D, Phòng Thí Nghiệm). Sân trường chung ở giữa, quanh Giếng Trời, là chiến trường. Hạm đội máy bay giấy của Phe Đỏ đang lấn sang khu Bắc. Phi đội <b>Ô Li</b> của Phe Xanh xuất kích! Vượt qua 12 trận: huấn luyện, trinh sát, truy kích, chặn chiến hạm Tàu Mẹ trước khi nó ném bom Thư Viện, sương mù, hộ tống Hạc Lớn rải thảm Phòng Thí Nghiệm, đêm trăng, cặp át Song Ưng, giông bão… hạ gục <b>Đại Bàng Đỏ</b>, át chủ bài giỏi nhất của Phe Đỏ, rồi <b>phản công</b>: hộ tống máy bay ném bom Hạc Lớn băng qua sân trường, thả bóng giấy xuống khu Phe Đỏ để kết thúc cuộc chiến.</p>
     <div class="keys">
       <b>Chuột</b><span>Ngắm hướng bay (máy bay tự bay theo, kiểu War Thunder)</span>
       <b id="kPitch">W / S</b><span id="kPitchTxt">Bay lên / bay xuống (thả phím: tự bay ngang)</span>
@@ -166,8 +166,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 window.THREE = THREE; window.mergeGeometries = mergeGeometries;
-const FILES = [ "js/core.js", "js/world.js", "js/effects.js", "js/aircraft.js", "js/weapons.js", "js/escort.js", "js/audio.js", "js/input.js", "js/game.js", "js/chapters/ch01.js", "js/chapters/ch02.js", "js/chapters/ch03.js", "js/chapters/ch04.js", "js/chapters/ch05.js", "js/chapters/ch06.js", "js/chapters/ch07.js", "js/chapters/ch08.js", "js/chapters/ch09.js", "js/chapters/ch10.js", "js/chapters/ch11.js", "js/chapters/ch12.js", "js/player.js", "js/cinematic.js", "js/ai.js", "js/camera.js", "js/hud.js", "js/main.js" ];
-const V = '20261014e';   // bump when the files change, so browsers don't run stale cached copies
+const FILES = [ "js/core.js", "js/world.js", "js/effects.js", "js/aircraft.js", "js/weapons.js", "js/escort.js", "js/recon.js", "js/dread.js", "js/audio.js", "js/input.js", "js/game.js", "js/chapters/ch01.js", "js/chapters/ch02.js", "js/chapters/ch03.js", "js/chapters/ch04.js", "js/chapters/ch05.js", "js/chapters/ch06.js", "js/chapters/ch07.js", "js/chapters/ch08.js", "js/chapters/ch09.js", "js/chapters/ch10.js", "js/chapters/ch11.js", "js/chapters/ch12.js", "js/player.js", "js/cinematic.js", "js/ai.js", "js/camera.js", "js/hud.js", "js/main.js" ];
+const V = '20261015q';   // bump when the files change, so browsers don't run stale cached copies
 for (const f of FILES) { const s = document.createElement('script'); s.src = f + '?v=' + V; s.async = false; document.body.appendChild(s); }
 </script>
 </body>

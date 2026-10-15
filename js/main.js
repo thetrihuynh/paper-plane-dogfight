@@ -7,6 +7,8 @@
 // =====================================================================
 function animateWorld(dt) {
   fans.forEach((f, i) => f.rotation.y += dt * (7 + i * 0.4));
+  labDish.rotation.y += dt * 1.6;   // the radar on the lab roof never stops sweeping
+  labBeacon.visible = Math.floor(clock * (gameMode === 'recon' && RC.detected ? 6 : 2.5)) % 2 === 0;
   const pa = flagGeo.attributes.position.array;
   for (let i = 0; i < pa.length; i += 3) { const x = flagBase[i]; pa[i + 2] = Math.sin(x * 1.7 - clock * 5.5 + flagBase[i + 1] * 0.5) * 0.22 * (x / 4.2); }
   flagGeo.attributes.position.needsUpdate = true; flagGeo.computeVertexNormals();
@@ -45,7 +47,7 @@ function autoQuality(realDt) {
   }
 }
 function frameInner(now) {
-  let dt = Math.min(0.05, (now - last) / 1000); last = now;
+  let dt = clamp((now - last) / 1000, 0, 0.05); last = now;
   if (paused) { for (const k in pressed) delete pressed[k]; renderer.render(scene, camera); return; }
   const realDt = dt;
   autoQuality(realDt);
@@ -111,14 +113,24 @@ function frameInner(now) {
     f.flv.br += (ok * clamp(curve((sm.pitch * 0.8 + rollL * 0.6) * q) + loopLoad, -2, 2.6) - f.flv.br) * kb;
     f.flutter = Math.max(f.flv.l, f.flv.r);
     f.sweep += ((f.sonic ? 1 : 0) - f.sweep) * Math.min(1, dt * 3);
-    const sup = f.sonic ? 0.35 : 1;   // swept wings flutter less
+    const sup = f.K.rigid ? 0 : f.sonic ? 0.35 : 1;   // swept wings flutter less; a battleship's not at all
     // turn rate (heading change, + = turning right) drives the wing fold: inside wing tucks in, outside wing stretches
     const fw = fwdOf(f, _tmp), hd = Math.atan2(fw.x, -fw.z);
     let dh = f.prevHd === undefined ? 0 : hd - f.prevHd; if (dh > PI) dh -= 2 * PI; if (dh < -PI) dh += 2 * PI; f.prevHd = hd;
     const horiz = Math.hypot(fw.x, fw.z), turn = horiz > 0.3 && dt > 0 ? clamp(dh / dt / 1.1, -1, 1) : 0;
     f.turnS = lerp(f.turnS || 0, ok * turn, Math.min(1, dt * 5));
     const tn = f.turnS, foldL = Math.max(0, -tn) * 0.9 - Math.max(0, tn) * 0.25, foldR = Math.max(0, tn) * 0.9 - Math.max(0, -tn) * 0.25;
-    for (const u of f.flU) { u.uFl.value.set(f.flv.l * sup, f.flv.r * sup); u.uBend.value.set(f.flv.bl * sup, f.flv.br * sup); u.uT.value = clock + f.curl * 3.1; u.uSweep.value = f.sweep; u.uFold.value.set(foldL, foldR); }
+    // wing tears follow the damage (tape repairs close them again); tearBias leans them to the side that took the hits
+    const dmg = f.alive ? clamp(1 - f.hp / f.maxHp - 0.12, 0, 1) / 0.88 : 0.9, tb = f.tearBias || 0;
+    f.tearL = 0.85 * dmg * clamp(1 - tb * 0.7, 0, 1.6); f.tearR = 0.85 * dmg * clamp(1 + tb * 0.7, 0, 1.6);
+    // shreds flutter off a badly torn wing at speed
+    if (f.alive && f.obj.visible && dmg > 0.35 && Math.random() < dt * dmg * clamp(f.speed / 6, 0.3, 2) * 3) {
+      const sx = Math.random() < f.tearL / (f.tearL + f.tearR) ? -1 : 1;
+      _tmp.set(sx * rr(0.35, 0.75), 0.1, rr(0.1, 0.55)); f.obj.localToWorld(_tmp);
+      burst(_tmp, 1, [f.colorHex], 1.5, 1.2, 0.5);
+    }
+    for (const u of f.flU) { u.uTear.value.set(f.tearL, f.tearR); u.uSeed.value = f.tearSeed;
+      u.uFl.value.set(f.flv.l * sup, f.flv.r * sup); u.uBend.value.set(f.flv.bl * sup, f.flv.br * sup); u.uT.value = clock + f.curl * 3.1; u.uSweep.value = f.sweep; u.uFold.value.set(foldL, foldR); }
   }
   updateConfetti(dt);
   updatePuffs(smoke, dt, 0.6);
@@ -151,7 +163,7 @@ function frameInner(now) {
   updateCamera(dt);
 
   if (AU.ctx) {
-    const inHall = P && P.pos.z < HALL_Z0 && P.pos.z > HALL_Z1 && Math.abs(P.pos.x) < 15;
+    const inHall = P && underRoof(P.pos);
     const live = state === 'play' && P.alive;
     if (AU.master && !AU.muted) AU.master.gain.value = 0.7 * (cine.t > 0 ? 0.6 : 1) * (P && P.boT > 0 ? 0.25 : 1 - (P ? P.bo : 0) * 0.5);
     AU.wind.gain.value = lerp(AU.wind.gain.value, live ? 0.04 + (P.speed / 80) * 0.25 + (P.rush || 0) * 0.3 : 0.015, 0.1);

@@ -15,6 +15,7 @@ const G = '#9effa0', RED = '#ff4d4d', BLU = '#7fd6ff', YEL = '#ffe066', LOCKG = 
 const LOCK_RANGE = 60, LOCK_CONE = 0.4;
 const GUN_RANGE = 45;   // bullets fly ~40 m/s for 1 s, plus our own speed
 const _sp = new THREE.Vector3(), _cam = new THREE.Vector3();
+const _rtv = new THREE.Vector3();
 function proj(v) {
   _cam.copy(v).applyMatrix4(camera.matrixWorldInverse);
   const behind = _cam.z > 0;
@@ -114,7 +115,7 @@ let popLast = 0;
 function drawHUD() {
   hg.clearRect(0, 0, W, H);
   if (state === 'menu' || !P || cine.t > 0) return;
-  if (cut) { text('Enter: bỏ qua', W - 20, H - 24, 'rgba(255,255,255,0.7)', 12, 'right', '700'); return; }
+  if (cut) { if (cut.kind === 'rescue') drawRescueHUD(); text('Enter: bỏ qua', W - 20, H - 24, 'rgba(255,255,255,0.7)', 12, 'right', '700'); return; }
   drawSpeedLines();
   hg.lineWidth = 1.6;
   const fwd = fwdOf(P, _fw).clone();
@@ -259,6 +260,12 @@ function drawHUD() {
     if (sink && blink) { text('KÉO LÊN! PULL UP!', W / 2, wy, RED, 20, 'center', '800'); wy += 24; }
 
     { const dt = Math.min(0.05, Math.max(0, clock - popLast)); popLast = clock; drawPopups(dt); }
+    { const ship = flyers.find(f => f.alive && f.K.turrets);   // Tàu Mẹ: its armour bar, and how far it still is from the library
+      if (ship && !flyers.some(f => f.alive && f.kind === 'ace')) {
+        const d = ship.kind === 'dread' ? Math.round(Math.hypot(ship.pos.x - OBJECTIVE_DEFS.library.pos.x, ship.pos.z - OBJECTIVE_DEFS.library.pos.z)) : 0;
+        text(ship.kind === 'dread' ? `TÀU MẸ · CÁCH THƯ VIỆN ${d} m` : 'TÀU MẸ II', W / 2, 44, d && d < 150 && blink ? '#ffd23f' : RED, 13, 'center', '800');
+        hg.fillStyle = 'rgba(0,0,0,0.5)'; hg.fillRect(W / 2 - 160, 54, 320, 7); hg.fillStyle = RED; hg.fillRect(W / 2 - 160, 54, 320 * ship.hp / ship.maxHp, 7);
+      } }
     { const boss = flyers.find(f => f.alive && f.kind === 'ace');
       if (boss) {
         const near = flyers.filter(o => o.alive && o.team === 'blue' && o.pos.distanceTo(boss.pos) < 40).length, ok = near >= 2;
@@ -289,6 +296,8 @@ function drawHUD() {
     }
     { const r = course.rings[course.next];
       if (r && waveState === 'wait') { const q = proj(r.pos); if (q.behind || q.x < 0 || q.x > W || q.y < 0 || q.y > H) edgeArrow(q, '#ffd93b'); else { hg.strokeStyle = '#ffd93b'; hg.lineWidth = 2; hg.beginPath(); hg.arc(q.x, q.y, 14, 0, PI * 2); hg.stroke(); text(`VÒNG ${course.next + 1}/${course.rings.length}`, q.x, q.y - 22, '#ffd93b', 12, 'center', '800'); } } }
+    { const t = reconTarget(_rtv);   // chapter 1: the lesson's ring, the next bend of the corridor route, the store, home
+      if (t) { const q = proj(t[0]); if (q.behind || q.x < 0 || q.x > W || q.y < 0 || q.y > H) edgeArrow(q, '#ffd93b'); else { hg.strokeStyle = '#ffd93b'; hg.lineWidth = 2; hg.beginPath(); hg.arc(q.x, q.y, 14, 0, PI * 2); hg.stroke(); text(`${t[1]} · ${Math.round(P.pos.distanceTo(t[0]))} m`, q.x, q.y - 22, '#ffd93b', 12, 'center', '800'); } } }
     if (gameMode === 'escort') {
       if (heron && heron.alive) {   // the bomber: always know where it is and how it's doing
         const q = proj(heron.pos), on = !q.behind && q.x > 0 && q.x < W && q.y > 0 && q.y < H, hpk = heron.hp / heron.maxHp;
@@ -392,7 +401,7 @@ function drawMinimap() {
   // school ground, buildings, zone edge
   const poly = (pts, fill, stroke) => { hg.beginPath(); pts.forEach(([x, z], i) => { const [sx, sy] = toS(x, z); i ? hg.lineTo(sx, sy) : hg.moveTo(sx, sy); }); hg.closePath(); if (fill) { hg.fillStyle = fill; hg.fill(); } if (stroke) { hg.strokeStyle = stroke; hg.stroke(); } };
   poly([[-ZONE.x, ZONE.zMax], [ZONE.x, ZONE.zMax], [ZONE.x, ZONE.zMin], [-ZONE.x, ZONE.zMin]], 'rgba(30,80,40,0.35)', null);
-  for (let ri = 0; ri < radarRects.length; ri++) { if (gameMode !== 'escort' && ri >= RIVAL_RECTS[0] && ri < RIVAL_RECTS[1]) continue; const [a, b, c, d] = radarRects[ri]; if (Math.abs((a + c) / 2 - P.pos.x) < range + 80 && Math.abs((b + d) / 2 - P.pos.z) < range + 200) poly([[a, b], [c, b], [c, d], [a, d]], GR + '0.16)', null); }
+  for (let ri = 0; ri < radarRects.length; ri++) { const [a, b, c, d] = radarRects[ri]; if (Math.abs((a + c) / 2 - P.pos.x) < range + 80 && Math.abs((b + d) / 2 - P.pos.z) < range + 200) poly([[a, b], [c, b], [c, d], [a, d]], GR + '0.16)', null); }
   hg.lineWidth = 1.2; hg.setLineDash([4, 4]);
   poly([[-ZONE.x, ZONE.zMax], [ZONE.x, ZONE.zMax], [ZONE.x, ZONE.zMin], [-ZONE.x, ZONE.zMin]], null, 'rgba(255,224,102,0.6)');
   hg.setLineDash([]);
@@ -430,6 +439,7 @@ function drawMinimap() {
     for (const u of groundUnits) { if (!u.alive) continue; const p = place(u.pos.x, u.pos.z); if (p.rim) continue; hg.fillStyle = u.kind === 'sam' ? '#ff7a5a' : 'rgba(255,122,90,0.75)'; hg.beginPath(); hg.moveTo(p.x, p.y - 4.5); hg.lineTo(p.x + 4, p.y + 3); hg.lineTo(p.x - 4, p.y + 3); hg.closePath(); hg.fill(); }
     if (heron && heron.alive) { const p = place(heron.pos.x, heron.pos.z); if (p.rim) rimArrow(p, '#7fd6ff'); else { hg.strokeStyle = '#7fd6ff'; hg.lineWidth = 2; hg.beginPath(); hg.arc(p.x, p.y, 6, 0, PI * 2); hg.stroke(); text('B', p.x, p.y + 0.5, '#7fd6ff', 8, 'center', '800'); } }
   }
+  reconMap(place, rimArrow, toS, hg);
   for (const b of bombs) { const p = place(b.p.x, b.p.z); if (!p.rim) { hg.fillStyle = '#7fb8ff'; hg.beginPath(); hg.arc(p.x, p.y, 2.2, 0, PI * 2); hg.fill(); } }
   // aircraft
   for (const f of flyers) {

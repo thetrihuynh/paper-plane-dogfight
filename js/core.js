@@ -5,12 +5,13 @@
 // =====================================================================
 //  Constants
 // =====================================================================
-const HALL_Z0 = -320, HALL_Z1 = -640, HW = 5;   // corridor ends & half-width
-const AREA = { x: 56, zMax: -34, zMin: -1026, y: 38 };    // where the AI likes to fight
-const ZONE = { x: 60, zMax: -30, zMin: -1030, y: 60 };    // school airspace (60 m ceiling)
+// one school: Phe Xanh's wing at the north (gate) end, Phe Đỏ's at the south end, the shared yard between
+const AREA = { x: 76, zMax: -34, zMin: -766, y: 38 };     // where the AI likes to fight
+const ZONE = { x: 80, zMax: -30, zMin: -770, y: 60 };     // school airspace (60 m ceiling)
 const WARN_BAND = 12;                                      // warning band beyond the zone before blackout begins
-const CENTER = new THREE.Vector3(0, 9, -170);
-const arenaCenter = (z, out) => out.set(0, 9, z > -480 ? -170 : z > -1045 ? -820 : -1260);
+const CENTER = new THREE.Vector3(0, 9, -400);
+// the middle of whichever open space z is in: north courtyard, the yard (either half), south courtyard
+const arenaCenter = (z, out) => out.set(0, 9, z > -160 ? -95 : z > -400 ? -290 : z > -640 ? -510 : -705);
 const PI = Math.PI;
 const BULLET_SPEED = 40;
 const UP = new THREE.Vector3(0, 1, 0), DOWN = new THREE.Vector3(0, -1, 0), FWD = new THREE.Vector3(0, 0, -1);

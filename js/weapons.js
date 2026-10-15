@@ -36,6 +36,13 @@ function fireGun(f, spread) {
   if (f === P) { stats.shots++; gunSound(); }
   else if (f.pos.distanceToSquared(P.pos) < 900) gunSound(0.35);
 }
+// a single round from anywhere (turrets): same pool and rules as fireGun
+function fireBullet(owner, from, dir, dmg) {
+  const b = bullets[bIdx]; bMesh.setColorAt(bIdx, _col.set(owner.team === 'blue' ? TRACER.ally : TRACER.red)); bMesh.instanceColor.needsUpdate = true;
+  bIdx = (bIdx + 1) % BMAX;
+  b.alive = true; b.p.copy(from); b.v.copy(dir).multiplyScalar(BULLET_SPEED).add(owner.vel); b.life = 1.2; b.team = owner.team; b.owner = owner; b.dmg = dmg;
+  if (from.distanceToSquared(P.pos) < 1600) gunSound(0.3);
+}
 const _a = new THREE.Vector3(), _ab = new THREE.Vector3(), _ac = new THREE.Vector3();
 function segHit(a, b, c, r) {
   _ab.subVectors(b, a); _ac.subVectors(c, a);
@@ -84,7 +91,7 @@ function launchMissile(f, target) {
   const m = {
     p: f.pos.clone().addScaledVector(down, 0.5 * f.K.scale).addScaledVector(right, 0.35 * f.gunSide), dir: fwd, speed: f.speed + 2,
     target, team: f.team, owner: f, life: 7, alive: true, armed: 0.25, mesh: new THREE.Mesh(GEO.missile, mslMat), puffD: 0,
-    vel: new THREE.Vector3(), turn: f === P ? 3.2 : 1.9, dmg: f === P ? 60 : 34, flareChecked: false,
+    vel: new THREE.Vector3(), turn: f === P ? 3.2 : (f.K.mslTurn || 1.9), vmax: f === P ? 21 : (f.K.mslSpeed || 17.5), dmg: f === P ? 60 : (f.K.mslDmg || 34), flareChecked: false,
   };
   m.mesh.castShadow = true; m.mesh.scale.setScalar(0.35); scene.add(m.mesh);
   missiles.push(m);
@@ -124,7 +131,7 @@ function updateMissiles(dt) {
       }
       if (d < 0.6 + (t.K ? t.K.hitR * 0.6 : 0.3) && m.armed <= 0) { explodeMissile(m); continue; }
     } else if (t && !t.alive) m.target = null;
-    m.speed = Math.min(m.owner === P ? 21 : 17.5, m.speed + 12 * dt);   // enemy missiles are a little slower: dodgeable
+    m.speed = Math.min(m.vmax, m.speed + 12 * dt);   // enemy missiles are usually a little slower: dodgeable
     m.vel.copy(m.dir).multiplyScalar(m.speed);
     m.p.addScaledVector(m.vel, dt);
     m.mesh.position.copy(m.p); m.mesh.quaternion.setFromUnitVectors(FWD, m.dir);
@@ -147,22 +154,23 @@ function updateMissiles(dt) {
 const bombs = [], objectives = [];
 const bombGeo = new THREE.SphereGeometry(0.22, 12, 8), bombMat = new THREE.MeshLambertMaterial({ color: 0x3f8cff });
 const OBJECTIVE_DEFS = {
-  flag: { name: 'Cột cờ', pos: new THREE.Vector3(0, 9, -120), r: 4.5 },
-  roofA: { name: 'Mái Nhà A', pos: new THREE.Vector3(-50, 14, -175), r: 7 },
-  roofB: { name: 'Mái Nhà B', pos: new THREE.Vector3(50, 14, -175), r: 7 },
-  canteen: { name: 'Mái Căn Tin', pos: new THREE.Vector3(50, 14, -940), r: 7 },
-  roofC: { name: 'Mái Nhà C', pos: new THREE.Vector3(-50, 14, -820), r: 7 },
-  stage: { name: 'Sân khấu khai giảng', pos: new THREE.Vector3(0, 8.5, -1013), r: 8 },
+  flag: { name: 'Cột cờ', pos: FLAG_BLUE, r: 4.5 },
+  roofA: { name: 'Mái Dãy A', pos: new THREE.Vector3(-47, 14, -161), r: 7 },
+  roofB: { name: 'Mái Dãy B', pos: new THREE.Vector3(47, 14, -161), r: 7 },
+  canteen: { name: 'Mái Căn Tin', pos: new THREE.Vector3(61, 9, -83), r: 7 },
+  roofC: { name: 'Mái Thư Viện', pos: new THREE.Vector3(-53, 17, -90), r: 8 },
+  stage: { name: 'Sân khấu khai giảng', pos: new THREE.Vector3(29, 8.5, -38), r: 8 },
+  library: { name: 'Thư Viện', pos: new THREE.Vector3((LIB.x0 + LIB.x1) / 2, LIB.h + 0.6, (LIB.z0 + LIB.z1) / 2), r: 16 },
 };
 function setObjectives(keys) {
   objectives.length = 0;
   for (const k of keys || []) { const d = OBJECTIVE_DEFS[k]; objectives.push({ key: k, name: d.name, pos: d.pos, r: d.r, hp: 100, maxHp: 100, alive: true }); }
 }
 const paperBallMat = new THREE.MeshLambertMaterial({ color: 0xf4f1e6, flatShading: true });
-function dropBomb(a) {
+function dropBomb(a, big = 1) {
   const ours = a.team === 'blue';
   const b = { p: a.pos.clone().addScaledVector(DOWN, 0.6), v: a.vel.clone().multiplyScalar(0.8), alive: true, owner: a, mesh: new THREE.Mesh(ours ? PLANE_GEOS.crumple : bombGeo, ours ? paperBallMat : bombMat) };
-  if (ours) b.mesh.scale.setScalar(0.7);
+  if (ours) b.mesh.scale.setScalar(0.7); else b.mesh.scale.setScalar(big);
   b.mesh.castShadow = true; scene.add(b.mesh); bombs.push(b);
   if (AU.ctx && a.pos.distanceTo(P.pos) < 40) tone(900, 300, 0.5, 0.05, 'sine');
 }
@@ -199,7 +207,8 @@ function objectiveLost(o) {
   o.alive = false; o.hp = 0; splash(o.pos, true); splash(_tmp.copy(o.pos).add(_pv.set(1.5, 0, 1)), true);
   flash('', `${o.name} đã bị phá huỷ!`, 1.8);
   radio('Bảng Đen', `${o.name} ướt sũng rồi! Bảo vệ những chỗ còn lại!`, true);
-  if (state === 'play' && objectives.every(x => !x.alive)) missionFail('Sân trường đã bị ném bom nước tơi bời…');
+  if (state === 'play' && o.key === 'library') missionFail('Tàu Mẹ đã ném bom Thư Viện, xưởng gấp máy bay của Phe Xanh…');
+  else if (state === 'play' && objectives.every(x => !x.alive)) missionFail('Sân trường đã bị ném bom nước tơi bời…');
 }
 function missionFail(reason) {
   state = 'dead'; endT = 0; P.failReason = reason;

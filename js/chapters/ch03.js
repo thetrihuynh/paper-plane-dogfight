@@ -1,6 +1,6 @@
 'use strict';
-// Chương 3: Bảo vệ sân trường
+// Chương 3: Truy kích (the whirlwind gives Ô Li 1 away; run for our line with their interceptors on its tail; see js/recon.js)
 WAVES.push(
-{ title: 'Chương 3: Bảo vệ sân trường', story: 'Thua hai trận, Bên Kia Sông đổi chiến thuật: Vòng Ống mang bom nước định làm ướt cột cờ và mái nhà trước giờ chào cờ.', sky: 'noon', defend: ['flag', 'roofA', 'roofB'], area: 'front', spawn: [['ring', 3], ['nakamura', 1], ['dart', 2]],
-    radio: [['Bảng Đen', 'Khẩn cấp! Vòng Ống mang bom nước định ném vào cột cờ và mái hai dãy nhà! Hạ chúng trước khi chúng bay tới!'], ['Minh', 'Bom nước bắn vỡ được đấy, cứ xả súng vào!']] }
+{ title: 'Chương 3: Truy kích', story: 'Ảnh chiếc Tàu Mẹ gấp dở đã nằm trong máy. Giờ chỉ còn việc bay về khu Bắc... nếu không có gì bất trắc.', sky: 'morning',
+    recon: 'chase', flight: [], spawn: [], radio: [] }
 );

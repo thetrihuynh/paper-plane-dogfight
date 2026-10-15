@@ -73,14 +73,14 @@ function updateCamera(dt) {
       // evade: swing out to the opposite side and a little low, to watch the roll
       if (ev > 0) _cd.addScaledVector(_v3.crossVectors(camDir, camUp).normalize(), -P.evadeSide * 1.4 * ev).addScaledVector(camUp, -0.25 * ev);
       camPos.lerp(_cd, 1 - Math.exp(-dt * 6));
-      // keep camera inside the corridor when flying through it
-      if (P.pos.z < HALL_Z0 + 2 && P.pos.z > HALL_Z1 - 2 && Math.abs(P.pos.x) < 5 && P.pos.y < 8 && camPos.z < HALL_Z0 + 4 && camPos.z > HALL_Z1 - 4) {
-        camPos.x = clamp(camPos.x, -4.3, 4.3); camPos.y = clamp(camPos.y, 0.5, 7.4);
-      }
       camPos.y = Math.max(camPos.y, 0.15);
-      // don't let the camera sit inside trees / walls: pull it toward the plane
+      // don't let the camera sit inside trees / walls, or behind one (narrow corridors with sharp bends):
+      // walk from the plane out to the camera spot and stop just short of the first thing in the way
       _cd.copy(camPos);
-      for (let i = 0; i < 8 && pointBlocked(_cd, 0.05); i++) _cd.lerp(P.pos, 0.3);
+      for (let i = 1; i <= 12; i++) {
+        _cl.lerpVectors(P.pos, camPos, i / 12);
+        if (pointBlocked(_cl, 0.08)) { _cd.lerpVectors(P.pos, camPos, Math.max(0.15, (i - 1) / 12)); break; }
+      }
       camera.position.copy(_cd);
       camera.up.copy(camUp);
       camera.lookAt(_cl.copy(camera.position).addScaledVector(camDir, 60));

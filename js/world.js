@@ -1,5 +1,5 @@
 'use strict';
-// Máy Bay Giấy · world building helpers, the schoolyard, trees, the rival school, collision grid
+// Máy Bay Giấy · world building helpers, the school (both factions' wings and the shared yard), trees, collision grid
 // (plain script: shares the page's global scope with the other files, loaded in order by index.html)
 
 // =====================================================================
@@ -26,25 +26,6 @@ function plaque(text, x, y, z, ry, w = 6, h = 1.4, bg = '#c8102e', fg = '#ffd93b
   const tex = signTex([text], { w: 512, h: Math.round(512 * h / w), bg, fg, size: 90 });
   return put(new THREE.PlaneGeometry(w, h), signMat(tex), x, y, z, { ry, cast: false });
 }
-function classBlock(x0, x1, za, zb, face, name) {
-  const z0 = Math.min(za, zb), z1 = Math.max(za, zb), len = z1 - z0, cz = (z0 + z1) / 2;
-  building(x0, x1, z0, z1, 14, true, false);
-  addBox(x0, 0, z0, x1, 14, z1);
-  const fx = face > 0 ? x1 : x0, bx1 = fx + face * 2.8, bl = Math.min(fx, bx1), bh = Math.max(fx, bx1);
-  put(new THREE.BoxGeometry(2.8, 0.35, len), MAT.concrete, (fx + bx1) / 2, 7, cz); addBox(bl, 6.82, z0, bh, 7.18, z1);
-  put(new THREE.BoxGeometry(2.8, 0.35, len), MAT.concrete, (fx + bx1) / 2, 13.9, cz); addBox(bl, 13.72, z0, bh, 14.08, z1);
-  const colGeo = new THREE.CylinderGeometry(0.22, 0.22, 14, 10), colX = bx1 - face * 0.3;
-  for (let z = z0 + 1; z <= z1 - 1; z += 6) { put(colGeo, MAT.white, colX, 7, z); addBox(colX - 0.22, 0, z - 0.22, colX + 0.22, 14, z + 0.22); }
-  const rm = lam(0xffffff, { map: rep(railTex, len / 2, 1), alphaTest: 0.5, side: THREE.DoubleSide });
-  const railX = bx1 - face * 0.1;
-  put(new THREE.PlaneGeometry(len, 1.1), rm, railX, 7.7, cz, { ry: PI / 2, cast: false });
-  addBox(railX - 0.05, 7.18, z0, railX + 0.05, 8.25, z1);
-  gap('LUỒN HÀNH LANG LỚP HỌC!', 'cột hành lang', new THREE.Vector3((bl + bh) / 2, 7, cz), len / 2 + 3,
-    p => p.x > bl && p.x < bh && p.z > z0 && p.z < z1 && ((p.y > 0.3 && p.y < 6.6) || (p.y > 8.4 && p.y < 13.5)),
-    p => new THREE.Vector3(colX, p.y, clamp(z0 + 1 + Math.round((p.z - z0 - 1) / 6) * 6, z0 + 1, z1 - 1)));
-  plaque(name, bx1 + face * 0.05, 12, cz, face > 0 ? PI / 2 : -PI / 2, 7, 1.5);
-}
-
 const BOX = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 function studentGeo(kind) {
   const P = [];
@@ -246,39 +227,148 @@ function banyan(x, z, s = 1, ry = 0) {
 }
 
 // =====================================================================
-//  WORLD
+//  WORLD: one school, two halves. Phe Xanh holds the north wing (gate side, z near -30), Phe Đỏ the south
+//  wing (back gate, z near -770); the big shared schoolyard in between is the battlefield, with the
+//  Giếng Trời hall in the middle. The layout is point-symmetric (x -> -x, z -> -800 - z), so neither side
+//  gets the better ground. Everything is built for flying: verandas 10 m deep and 5 m tall a floor,
+//  12 m passages between the blocks, and every indoor hall has a big way in AND a big way out.
 // =====================================================================
-put(new THREE.PlaneGeometry(130, 1000), lam(0xffffff, { map: rep(concreteTex, 130 / 4, 1000 / 4) }), 0, 0, -530, { rx: -PI / 2, cast: false });
-put(new THREE.PlaneGeometry(130, 70), lam(0xffffff, { map: rep(asphaltTex, 130 / 8, 70 / 8) }), 0, 0, 5, { rx: -PI / 2, cast: false });
-put(new THREE.PlaneGeometry(2000, 2200), lam(0x7d8467), 0, -0.05, -500, { rx: -PI / 2, cast: false });
-const decal = (m, k) => Object.assign(m, { polygonOffset: true, polygonOffsetFactor: -k, polygonOffsetUnits: -k * 2 });
-for (let x = -60; x < 60; x += 8) put(new THREE.PlaneGeometry(4, 0.25), decal(lam(0xf2f2f2), 2), x, 0.02, 18, { rx: -PI / 2, cast: false });
-put(new THREE.PlaneGeometry(10, 320), decal(lam(0xffffff, { map: rep(tileTex, 5, 160) }), 2), 0, 0.02, -480, { rx: -PI / 2, cast: false });
-// neighbourhood streets
-for (const sx of [-1, 1]) for (const x of [84, 107, 130]) put(new THREE.PlaneGeometry(6, 1240), decal(lam(0xffffff, { map: rep(asphaltTex, 1, 150) }), 1), sx * x, 0.01, -500, { rx: -PI / 2, cast: false });
+const SCHOOL = { x: 80, zN: -30, zS: -770, mid: -400 };   // walls and the centre line
+const mirZ = z => 2 * SCHOOL.mid - z;
+const FLOOR_H = 5.5, VER_D = 10;
+const roofRects = [];   // covered spaces [x0, z0, x1, z1, yTop]: indoors, and hidden from radar
+function underRoof(p) { for (const r of roofRects) if (p.x > r[0] && p.x < r[2] && p.z > r[1] && p.z < r[3] && p.y < r[4]) return true; return false; }
+const fans = [];
+const bladeGeo = BOX(1.7, 0.03, 0.26); bladeGeo.translate(0.95, 0, 0);
+function ceilingFan(x, y, z) {
+  put(new THREE.CylinderGeometry(0.04, 0.04, 0.5), MAT.metal, x, y + 0.3, z, { cast: false });
+  const hub = new THREE.Group(); hub.position.set(x, y, z); scene.add(hub);
+  put(new THREE.CylinderGeometry(0.22, 0.18, 0.2, 14), lam(0xdedede), 0, 0, 0, { parent: hub });
+  for (let k = 0; k < 3; k++) { const b = put(bladeGeo, lam(0xe9e6dc), 0, 0, 0, { parent: hub }); b.rotation.y = k * PI * 2 / 3; }
+  fans.push(hub);
+  discs.push({ t: 2, c: new THREE.Vector3(x, y, z), r: 1.85, th: 0.15 });
+}
+const corrMats = {};
+const corrMat = n => corrMats[n] || (corrMats[n] = lam(0xffffff, { map: rep(corrTex, n, 1) }));
 
+// A classroom block: classrooms at the back, a deep veranda (hiên) on every floor open to the yard in front.
+// zb = back wall line, zf = the yard edge. Planes can run the length of each veranda floor between the
+// columns and the classroom doors, or cut in and out between the columns anywhere.
+function wingBlock(x0, x1, zb, zf, floors, name) {
+  const s = Math.sign(zf - zb), H = floors * FLOOR_H, zm = zf - s * VER_D;
+  const va = Math.min(zm, zf), vc = Math.max(zm, zf);
+  building(x0, x1, Math.min(zb, zm), Math.max(zb, zm), H, null);
+  for (let k = 1; k < floors; k++) solid(x0, k * FLOOR_H - 0.45, va, x1, k * FLOOR_H, vc, MAT.concrete);
+  solid(x0, H - 0.45, va, x1, H, vc, MAT.concrete);
+  gableRoof(x0, x1, Math.min(zb, zf), Math.max(zb, zf), H, 4.5, false);
+  radarRects.push([x0, va, x1, vc]);
+  roofRects.push([x0, va, x1, vc, H - 0.45]);
+  // classroom fronts (doors, windows, class signs) on every floor
+  for (let k = 0; k < floors; k++) put(new THREE.PlaneGeometry(x1 - x0, FLOOR_H - 0.45), corrMat(Math.max(1, Math.round((x1 - x0) / 10))), (x0 + x1) / 2, k * FLOOR_H + (FLOOR_H - 0.45) / 2, zm + s * 0.03, { ry: s > 0 ? 0 : PI, cast: false });
+  // columns along the yard edge, a fascia board with the block's name, railings upstairs
+  const colZ = zf - s * 0.45, cols = [], n = Math.max(2, Math.round((x1 - x0) / 7));
+  for (let i = 0; i <= n; i++) {
+    const x = lerp(x0 + 0.4, x1 - 0.4, i / n); cols.push(x);
+    put(new THREE.CylinderGeometry(0.32, 0.32, H, 10), MAT.white, x, H / 2, colZ); addBox(x - 0.32, 0, colZ - 0.32, x + 0.32, H, colZ + 0.32);
+  }
+  solid(x0, H - 1.25, colZ - 0.3, x1, H - 0.45, colZ + 0.3, MAT.cream);
+  plaque(name, (x0 + x1) / 2, H - 0.85, colZ + s * 0.32, s > 0 ? 0 : PI, Math.min(10, (x1 - x0) * 0.4), 0.75);
+  const rm = lam(0xffffff, { map: rep(railTex, (x1 - x0) / 2, 1), alphaTest: 0.5, side: THREE.DoubleSide });
+  for (let k = 1; k < floors; k++) {
+    put(new THREE.PlaneGeometry(x1 - x0, 1.1), rm, (x0 + x1) / 2, k * FLOOR_H + 0.55, colZ, { ry: s > 0 ? 0 : PI, cast: false });
+    addBox(x0, k * FLOOR_H, colZ - 0.05, x1, k * FLOOR_H + 1.1, colZ + 0.05);
+  }
+  for (let x = x0 + 12; x < x1 - 6; x += 18) for (let k = 0; k < floors; k++) ceilingFan(x, (k + 1) * FLOOR_H - 0.95, (va + vc) / 2);
+  gap('LUỒN HÀNH LANG LỚP HỌC!', 'cột hành lang', new THREE.Vector3((x0 + x1) / 2, H / 2, (va + vc) / 2), (x1 - x0) / 2 + 3,
+    p => p.x > x0 && p.x < x1 && p.z > va && p.z < vc && p.y > 0.3 && (p.y % FLOOR_H) < FLOOR_H - 0.6 && p.y < H - 1.3,
+    p => new THREE.Vector3(cols.reduce((a, b) => Math.abs(b - p.x) < Math.abs(a - p.x) ? b : a), p.y, colZ));
+}
+// the centre block of a wing: a tall archway straight through it (Nhà Hiệu Bộ)
+function archBlock(x0, x1, zb, zf, floors, name, slogan, ax = 5.5, ah = 8) {
+  const s = Math.sign(zf - zb), H = floors * FLOOR_H, za = Math.min(zb, zf), zc = Math.max(zb, zf);
+  building(x0, -ax, za, zc, H, null); building(ax, x1, za, zc, H, null);
+  const top = solid(-ax, ah, za, ax, H, zc, MAT.cream); top.material = bldgMats(2 * ax, zc - za, H - ah);
+  gableRoof(x0, x1, za, zc, H, 5.5, true);
+  roofRects.push([-ax, za, ax, zc, ah]);
+  put(new THREE.PlaneGeometry(zc - za, ah), corrMat(2), -ax + 0.03, ah / 2, (za + zc) / 2, { ry: PI / 2, cast: false });
+  put(new THREE.PlaneGeometry(zc - za, ah), corrMat(2), ax - 0.03, ah / 2, (za + zc) / 2, { ry: -PI / 2, cast: false });
+  put(new THREE.PlaneGeometry(2 * ax, zc - za), lam(0xffffff, { map: rep(ceilTex, 4, 8) }), 0, ah - 0.03, (za + zc) / 2, { rx: PI / 2, cast: false });
+  plaque(name, 0, ah + 2, zf + s * 0.05, s > 0 ? 0 : PI, 9, 1.5, '#1d4fa3');
+  plaque(slogan, 0, H - 1.6, zf + s * 0.05, s > 0 ? 0 : PI, 12, 1.4);
+  ceilingFan(0, ah - 0.9, (za + zc) / 2);
+  gap('XUYÊN CỔNG VÒM!', 'tường cổng vòm', new THREE.Vector3(0, ah / 2, (za + zc) / 2), (zc - za) / 2 + 3,
+    p => Math.abs(p.x) < ax && p.y < ah && p.z > za && p.z < zc, p => new THREE.Vector3(p.x < 0 ? -ax - 0.5 : ax + 0.5, p.y, p.z), 60);
+}
+// a hall you can fly straight through: big doors in both end walls (along z)
+function throughHall(x0, x1, z0, z1, h, door, mats, label) {
+  const T = 0.6, dw = door.w / 2, cx = door.x ?? (x0 + x1) / 2;
+  solid(x0, 0, z0, x0 + T, h, z1, mats.wall); solid(x1 - T, 0, z0, x1, h, z1, mats.wall);
+  for (const z of [z0, z1 - T]) {
+    solid(x0, 0, z, cx - dw, h, z + T, mats.wall); solid(cx + dw, 0, z, x1, h, z + T, mats.wall); solid(cx - dw, door.h, z, cx + dw, h, z + T, mats.wall);
+  }
+  solid(x0 - 0.4, h, z0 - 0.4, x1 + 0.4, h + 0.6, z1 + 0.4, mats.roof);
+  put(new THREE.PlaneGeometry(x1 - x0 - 2 * T, z1 - z0 - 2 * T), mats.floor, (x0 + x1) / 2, 0.03, (z0 + z1) / 2, { rx: -PI / 2, cast: false });
+  put(new THREE.PlaneGeometry(x1 - x0 - 2 * T, z1 - z0 - 2 * T), mats.ceil, (x0 + x1) / 2, h - 0.03, (z0 + z1) / 2, { rx: PI / 2, cast: false });
+  radarRects.push([x0, z0, x1, z1]); roofRects.push([x0, z0, x1, z1, h]);
+  for (const [z, ry] of [[z0 - 0.05, PI], [z1 + 0.05, 0]]) plaque(label, cx, door.h + (h - door.h) / 2, z, ry, Math.min(16, door.w), Math.min(2, (h - door.h) * 0.7), mats.signBg || '#1d4fa3');
+  for (const z of [z0, z1]) gap(`BAY XUYÊN ${label}!`, 'khung cửa', new THREE.Vector3(cx, door.h / 2, z), door.w,
+    p => Math.abs(p.x - cx) < dw && p.y < door.h && Math.abs(p.z - z) < 0.8, p => new THREE.Vector3(p.x < cx ? cx - dw - 0.5 : cx + dw + 0.5, p.y, z), 60);
+}
+function flagPole(x, z, tex, isRival) {
+  solid(x - 3.2, 0, z - 3.2, x + 3.2, 0.4, z + 3.2, MAT.stone);
+  solid(x - 2.2, 0.4, z - 2.2, x + 2.2, 0.8, z + 2.2, MAT.concrete);
+  put(new THREE.CylinderGeometry(0.08, 0.14, 16, 10), MAT.metal, x, 8.8, z);
+  put(new THREE.SphereGeometry(0.22, 10, 8), lam(0xffd93b), x, 16.9, z);
+  addBox(x - 0.3, 0, z - 0.3, x + 0.3, 17, z + 0.3);
+  const m = put(flagGeo, lam(0xffffff, { map: tex, side: THREE.DoubleSide, transparent: !!isRival, alphaTest: 0.05 }), x + 0.1, 15.2, z, { cast: false });
+  gap('XUYÊN QUA LÁ CỜ!', 'cột cờ', new THREE.Vector3(x + 2, 15, z), 4, p => p.x > x + 0.2 && p.x < x + 4.3 && p.y > 13.8 && p.y < 16.6 && Math.abs(p.z - z) < 0.35, new THREE.Vector3(x, 15, z), 80);
+  return m;
+}
+
+// ---- ground ----
+put(new THREE.PlaneGeometry(SCHOOL.x * 2, SCHOOL.zN - SCHOOL.zS), lam(0xffffff, { map: rep(concreteTex, 40, 185) }), 0, 0, SCHOOL.mid, { rx: -PI / 2, cast: false });
+put(new THREE.PlaneGeometry(170, 70), lam(0xffffff, { map: rep(asphaltTex, 170 / 8, 70 / 8) }), 0, 0, 5, { rx: -PI / 2, cast: false });
+put(new THREE.PlaneGeometry(170, 30), lam(0xffffff, { map: rep(asphaltTex, 170 / 8, 30 / 8) }), 0, 0, -786, { rx: -PI / 2, cast: false });
+put(new THREE.PlaneGeometry(2000, 2400), lam(0x7d8467), 0, -0.05, SCHOOL.mid, { rx: -PI / 2, cast: false });
+const decal = (m, k) => Object.assign(m, { polygonOffset: true, polygonOffsetFactor: -k, polygonOffsetUnits: -k * 2 });
+for (let x = -80; x < 80; x += 8) put(new THREE.PlaneGeometry(4, 0.25), decal(lam(0xf2f2f2), 2), x, 0.02, 18, { rx: -PI / 2, cast: false });
+const tileMat = n => decal(lam(0xffffff, { map: rep(tileTex, 4, n) }), 2);
+put(new THREE.PlaneGeometry(8, 160), tileMat(80), 0, 0.02, -250, { rx: -PI / 2, cast: false });   // tiled walks from each wing to the Giếng Trời
+put(new THREE.PlaneGeometry(8, 160), tileMat(80), 0, 0.02, -550, { rx: -PI / 2, cast: false });
+put(new THREE.PlaneGeometry(8, 100), tileMat(50), 0, 0.02, -95, { rx: -PI / 2, cast: false });
+put(new THREE.PlaneGeometry(8, 100), tileMat(50), 0, 0.02, -705, { rx: -PI / 2, cast: false });
+// the two border lines painted across the yard: past them each side's own ground begins; the Giếng Trời stands in between
+const BORDER_Z = -330;
+for (const [z, col, txt] of [[BORDER_Z, '#1d4fa3', 'RANH GIỚI KHU XANH'], [mirZ(BORDER_Z), '#b20d24', 'RANH GIỚI KHU ĐỎ']]) {
+  for (let x = -78; x < 78; x += 6) put(new THREE.PlaneGeometry(4, 0.6), decal(lam(col), 2), x + 2, 0.025, z, { rx: -PI / 2, cast: false });
+  for (const x of [-45, 45]) put(new THREE.PlaneGeometry(14, 2.2), decal(lam(0xffffff, { map: signTex([txt], { w: 1024, h: 160, bg: col, fg: '#ffffff', border: '#ffffff', size: 90 }) }), 2), x, 0.03, z + (z > SCHOOL.mid ? 2 : -2), { rx: -PI / 2, rz: z > SCHOOL.mid ? PI : 0, cast: false });
+}
+for (const sx of [-1, 1]) for (const x of [84, 107, 130]) put(new THREE.PlaneGeometry(6, 1300), decal(lam(0xffffff, { map: rep(asphaltTex, 1, 160) }), 1), sx * x, 0.01, SCHOOL.mid, { rx: -PI / 2, cast: false });
+
+// ---- the outer wall, with a gate at each end ----
 const wallMat = lam(0xf0c75a), capMat = lam(0xb4472a);
 for (const sx of [-1, 1]) {
-  solid(sx * 60 - 0.5, 0, -30, sx * 60 + 0.5, 3.2, -1030, wallMat);
-  solid(sx * 60 - 0.7, 3.2, -30, sx * 60 + 0.7, 3.5, -1030, capMat, { collide: false });
+  solid(sx * SCHOOL.x - 0.5, 0, SCHOOL.zS, sx * SCHOOL.x + 0.5, 3.2, SCHOOL.zN, wallMat);
+  solid(sx * SCHOOL.x - 0.7, 3.2, SCHOOL.zS, sx * SCHOOL.x + 0.7, 3.5, SCHOOL.zN, capMat, { collide: false });
 }
-solid(-60, 0, -1030, 60, 4, -1031, wallMat);
-
-// ---- School gate ----
 const railMatCache = (n) => lam(0xffffff, { map: rep(railTex, n, 1), alphaTest: 0.5, side: THREE.DoubleSide });
-for (const sx of [-1, 1]) {
-  solid(sx * 7.5 - 0.7, 0, -30.7, sx * 7.5 + 0.7, 10, -29.3, MAT.cream);
-  solid(sx * 7.5 - 0.9, 10, -30.9, sx * 7.5 + 0.9, 10.5, -29.1, capMat, { collide: false });
-  solid(sx * 8.2, 0, -30.25, sx * 60, 2.1, -29.75, wallMat);
-  solid(sx * 8.2, 2.1, -30.35, sx * 60, 2.3, -29.65, capMat, { collide: false });
-  addBox(sx * 8.2, 2.3, -30.1, sx * 60, 3.4, -29.9);
-  put(new THREE.PlaneGeometry(51.8, 1.1), railMatCache(26), sx * 34.1, 2.85, -30, { cast: false });
-  put(new THREE.PlaneGeometry(5, 3.2), lam(0x2f6fb5, { map: rep(railTex, 3, 3), alphaTest: 0.5, side: THREE.DoubleSide }), sx * 10.8, 1.6, -30.6, { cast: false });
+function gateWall(z, out, beamMat, lines, bg) {   // out: which way is outside (+1 / -1)
+  for (const sx of [-1, 1]) {
+    solid(sx * 7.5 - 0.7, 0, z - 0.7, sx * 7.5 + 0.7, 10, z + 0.7, MAT.cream);
+    solid(sx * 7.5 - 0.9, 10, z - 0.9, sx * 7.5 + 0.9, 10.5, z + 0.9, capMat, { collide: false });
+    solid(sx * 8.2, 0, z - 0.25, sx * SCHOOL.x, 2.1, z + 0.25, wallMat);
+    solid(sx * 8.2, 2.1, z - 0.35, sx * SCHOOL.x, 2.3, z + 0.35, capMat, { collide: false });
+    addBox(sx * 8.2, 2.3, z - 0.1, sx * SCHOOL.x, 3.4, z + 0.1);
+    put(new THREE.PlaneGeometry(SCHOOL.x - 8.2, 1.1), railMatCache(36), sx * (SCHOOL.x + 8.2) / 2, 2.85, z, { cast: false });
+    put(new THREE.PlaneGeometry(5, 3.2), lam(0x2f6fb5, { map: rep(railTex, 3, 3), alphaTest: 0.5, side: THREE.DoubleSide }), sx * 10.8, 1.6, z - out * 0.6, { cast: false });
+  }
+  solid(-8.4, 8.6, z - 0.4, 8.4, 11.2, z + 0.4, beamMat);
+  put(new THREE.PlaneGeometry(16.4, 2.5), signMat(signTex(lines, { w: 1024, h: 160, bg, border: '#ffd93b' })), 0, 9.9, z + out * 0.42, { ry: out > 0 ? 0 : PI, cast: false });
 }
-solid(-8.4, 8.6, -30.4, 8.4, 11.2, -29.6, MAT.blue);
-put(new THREE.PlaneGeometry(16.4, 2.5), signMat(signTex([{ t: 'TRƯỜNG THCS GIẤY BAY', size: 120 }, { t: '★ Năm học 2026 – 2027 ★', size: 60, c: '#ffffff' }],
-  { w: 1024, h: 160, bg: '#1d4fa3', border: '#ffd93b' })), 0, 9.9, -29.58, { cast: false });
+gateWall(SCHOOL.zN, 1, MAT.blue, [{ t: 'TRƯỜNG THCS GIẤY BAY', size: 120 }, { t: '★ Cổng Bắc · Khu Phe Xanh ★', size: 60, c: '#ffffff' }], '#1d4fa3');
+gateWall(SCHOOL.zS, -1, MAT.red, [{ t: 'TRƯỜNG THCS GIẤY BAY', size: 120 }, { t: '★ Cổng Nam · Khu Phe Đỏ ★', size: 60, c: '#ffffff' }], '#b20d24');
 
+// ---- outside the front gate: the bánh mì cart and parked scooters ----
 student(15, -10, -PI / 2, 'vendor');
 solid(16, 0, -12, 18.2, 1.1, -9, MAT.metal);
 solid(16, 1.1, -12, 18.2, 2.1, -9, lam(0xbfe6f2, { transparent: true, opacity: 0.55 }), { collide: false });
@@ -288,7 +378,6 @@ put(new THREE.CylinderGeometry(0.05, 0.05, 3), MAT.metal, 17, 1.5, -10.5);
 addBox(14.9, 2.8, -12.7, 19.2, 3.6, -8.3);
 for (let i = 0; i < 6; i++) scooters.push({ x: -14 - i * 1.4, z: -24, ry: 0.2 });
 for (let i = 0; i < 4; i++) scooters.push({ x: 24 + i * 1.4, z: -24, ry: -0.2 });
-student(-22, -20, 0.5, 'girl'); student(-23, -21, 2.5, 'boy'); student(26, -18, -1, 'boy');
 
 // Electric poles + tangled wires
 const wireMat = new THREE.LineBasicMaterial({ color: 0x1a1a1a });
@@ -301,8 +390,9 @@ function poleLine(points) {
   for (let i = 0; i < points.length - 1; i++) for (let k = 0; k < 5; k++)
     wire(new THREE.Vector3(points[i].x + (k - 2) * 0.35, 10.3 - k * 0.15, points[i].z), new THREE.Vector3(points[i + 1].x + (k - 2) * 0.35, 10.3 - k * 0.15, points[i + 1].z), 0.6 + k * 0.25);
 }
-poleLine([-70, -40, -10, 20, 50, 80].map(x => ({ x, z: 24 })));
-for (const sx of [-1, 1]) poleLine([-20, -110, -200, -290, -380, -470, -560, -650, -740, -830, -920, -1010].map(z => ({ x: sx * 64, z })));
+poleLine([-90, -50, -10, 30, 70, 110].map(x => ({ x, z: 24 })));
+poleLine([-90, -50, -10, 30, 70, 110].map(x => ({ x, z: -778 })));
+for (const sx of [-1, 1]) poleLine([-20, -110, -200, -290, -380, -470, -560, -650, -740].map(z => ({ x: sx * 87, z })));
 
 // Neighbourhood tube houses (nhà ống) – instanced, all solid
 const houseList = [];
@@ -313,48 +403,30 @@ function house(cx, cz, w, d, h, alongZ) {   // w = frontage
   houseList[houseList.length - 1].box = addBox(cx - sx / 2, 0, cz - sz / 2, cx + sx / 2, h, cz + sz / 2);
 }
 const tallH = () => rnd() < 0.05 ? R(28, 42) : R(8, 22);
-for (const sx of [-1, 1]) for (const base of [67, 87, 110, 133]) for (let z = 30; z > -1036;) {
-  const w = R(4, 6.5), d = R(8, 14);
+for (const sx of [-1, 1]) for (const base of [90, 111, 134]) for (let z = 30; z > -800;) {
+  const w = R(4, 6.5), d = R(8, 13);
   house(sx * (base + d / 2), z - w / 2, w - 0.25, d, tallH(), true);
   z -= w;
 }
 for (const zb of [30, 52, 75, 98, 121]) for (let x = -150; x < 150;) { const w = R(4, 6.5), d = R(8, 12); house(x + w / 2, zb + d / 2, w - 0.25, d, tallH(), false); x += w; }
-for (const zb of [-1036, -1059, -1082, -1105, -1128]) for (let x = -150; x < 150;) { const w = R(4, 6.5), d = R(8, 12); house(x + w / 2, zb - d / 2, w - 0.25, d, tallH(), false); x += w; }
+for (const zb of [-801, -824, -847, -870, -893]) for (let x = -150; x < 150;) { const w = R(4, 6.5), d = R(8, 12); house(x + w / 2, zb - d / 2, w - 0.25, d, tallH(), false); x += w; }
 const houseMesh = instances(new THREE.BoxGeometry(1, 1, 1), lam(0xffffff, { map: houseTex }), houseList, false);
-// houses standing where the river and the Red Faction's school go (escort finale): cleared for that chapter only
-const rivalSiteHouses = houseList.map((h, i) => ({ h, i })).filter(({ h }) => h.z < -1030 && Math.abs(h.x) < 75);
-function setRivalSiteHouses(show) {
-  const m4 = new THREE.Matrix4();
-  for (const { h, i } of rivalSiteHouses) {
-    if (show) m4.compose(_p.set(h.x, h.y, h.z), _q.identity(), h.sv); else m4.makeScale(0, 0, 0);
-    houseMesh.setMatrixAt(i, m4); h.box.off = !show;
-  }
-  houseMesh.instanceMatrix.needsUpdate = true;
-}
 
 // Water tower landmark
-put(new THREE.CylinderGeometry(0.6, 0.6, 26, 10), MAT.concrete, -100, 13, -480);
-put(new THREE.CylinderGeometry(5, 4, 6, 18), lam(0xd9d4c4), -100, 29, -480);
-addBox(-105, 0, -485, -95, 32, -475);
+put(new THREE.CylinderGeometry(0.6, 0.6, 26, 10), MAT.concrete, -160, 13, -400);
+put(new THREE.CylinderGeometry(5, 4, 6, 18), lam(0xd9d4c4), -160, 29, -400);
+addBox(-165, 0, -405, -155, 32, -395);
 
 // Clouds
 const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, fog: false, emissive: 0xbbbbbb });
 const cloudList = [];
 for (let i = 0; i < 30; i++) {
-  const cx = R(-350, 350), cy = R(125, 170), cz = R(-1200, 200);
+  const cx = R(-350, 350), cy = R(125, 170), cz = R(-1000, 200);
   for (let k = 0; k < 5; k++) cloudList.push({ x: cx + R(-18, 18), y: cy + R(-3, 4), z: cz + R(-8, 8), sv: new THREE.Vector3(R(10, 20), R(5, 8), R(8, 14)) });
 }
 instances(icoGeo, cloudMat, cloudList, false);
 
-// ---- Front yard ----
-classBlock(-58, -42, -60, -290, 1, 'NHÀ A');
-classBlock(42, 58, -60, -290, -1, 'NHÀ B');
-solid(-3.2, 0, -116.8, 3.2, 0.4, -123.2, MAT.stone);
-solid(-2.2, 0.4, -117.8, 2.2, 0.8, -122.2, MAT.concrete);
-put(new THREE.CylinderGeometry(0.08, 0.14, 16, 10), MAT.metal, 0, 8.8, -120);
-put(new THREE.SphereGeometry(0.22, 10, 8), lam(0xffd93b), 0, 16.9, -120);
-addBox(-0.3, 0, -120.3, 0.3, 17, -119.7);
-// faction flags: our side is the Blue Faction (white paper plane on blue), theirs the Red Faction (black eagle on red)
+// ---- the two faction flags: ours (white paper plane on blue) and theirs (black eagle on red) ----
 function paperPlaneMark(g, cx, cy, s, col) {
   g.fillStyle = col; g.beginPath(); g.moveTo(cx + 1.0 * s, cy - 0.45 * s); g.lineTo(cx - 1.0 * s, cy + 0.05 * s); g.lineTo(cx - 0.2 * s, cy + 0.2 * s); g.closePath(); g.fill();
   g.globalAlpha = 0.75; g.beginPath(); g.moveTo(cx + 1.0 * s, cy - 0.45 * s); g.lineTo(cx - 0.2 * s, cy + 0.2 * s); g.lineTo(cx - 0.05 * s, cy + 0.6 * s); g.closePath(); g.fill(); g.globalAlpha = 1;
@@ -364,126 +436,265 @@ const flagTex = canvasTex(300, 200, (g, w, h) => {
   g.fillStyle = '#ffffff'; g.fillRect(0, h - 26, w, 8); g.fillRect(0, 18, w, 8);   // white stripes
   paperPlaneMark(g, w / 2, h / 2, 62, '#ffffff');
 });
+const rivalFlagTex = canvasTex(300, 200, (g, w, h) => {
+  g.fillStyle = '#c8102e'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#1a0505'; g.fillRect(0, h - 26, w, 8); g.fillRect(0, 18, w, 8);
+  // a black eagle with spread, feathered wings
+  g.fillStyle = '#1a0505'; g.beginPath(); g.moveTo(150, 70); g.lineTo(70, 92); g.lineTo(52, 84); g.lineTo(64, 100); g.lineTo(48, 104); g.lineTo(70, 112); g.lineTo(130, 110);
+  g.lineTo(140, 150); g.lineTo(150, 136); g.lineTo(160, 150); g.lineTo(170, 110); g.lineTo(230, 112); g.lineTo(252, 104); g.lineTo(236, 100); g.lineTo(248, 84); g.lineTo(230, 92); g.closePath(); g.fill();
+  g.beginPath(); g.arc(150, 72, 11, 0, PI * 2); g.fill();
+});
 const flagGeo = new THREE.PlaneGeometry(4.2, 2.8, 18, 8); flagGeo.translate(2.1, 0, 0);
 const flagBase = flagGeo.attributes.position.array.slice();
-put(flagGeo, lam(0xffffff, { map: flagTex, side: THREE.DoubleSide }), 0.1, 15.2, -120);
-gap('XUYÊN QUA LÁ CỜ!', 'cột cờ', new THREE.Vector3(2, 15, -120), 4, p => p.x > 0.2 && p.x < 4.3 && p.y > 13.8 && p.y < 16.6 && Math.abs(p.z + 120) < 0.35, new THREE.Vector3(0, 15, -120), 80);
-for (const sx of [-1, 1]) for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) student(sx * (13 + r * 2.2), -113 - c * 3, sx > 0 ? PI / 2 : -PI / 2);
-student(-6, -126, PI / 2 + 0.3, 'teacher');
-phuong(18, -70, 1); phuong(-20, -95, 1.1); phuong(28, -150, 1); bang(-14, -190, 1);
-phuong(16, -232, 1.1); bang(-28, -262, 1); banyan(3, -205, 1, 0); banyan(-29, -142, 0.9, 0.5); phuong(-34, -48, 0.9); phuong(34, -280, 0.9); bang(35, -110, 0.9);
-bench(18, -76); bench(-20, -101.5); bench(28, -156); bench(16, -238.5); bench(-14, -196);
-for (let r = 0; r < 3; r++) for (let i = 0; i < 9; i++) bikes.push({ x: -36 + i * 0.9, z: -40 - r * 2.2, ry: 0 });
-student(10, -60, 2.5); student(11, -61, -1); student(-10, -230, 1); student(-11, -231, 3); student(24, -200, 0); student(25, -201, 2);
-solid(-11.5, 0, -311.5, -11.2, 2.4, -311.2, MAT.wood); solid(-8.3, 0, -311.5, -8.0, 2.4, -311.2, MAT.wood);
-solid(-11.5, 2.4, -311.6, -8.0, 2.6, -311.1, MAT.wood, { collide: false });
-put(new THREE.CylinderGeometry(0.75, 0.75, 1.0, 20), [lam(0xa3201b), lam(0xe8d5a8), lam(0xe8d5a8)], -9.75, 1.7, -311.35, { rz: PI / 2 });
-solid(9, 0, -315.2, 9.2, 2.9, -314.9, MAT.wood); solid(13.8, 0, -315.2, 14, 2.9, -314.9, MAT.wood);
-solid(8.9, 1.2, -315.3, 14.1, 3.2, -315.0, MAT.wood);
-put(new THREE.PlaneGeometry(5, 1.8), signMat(signTex([{ t: 'BẢNG TIN', size: 80 }, { t: 'Thời khoá biểu · Nội quy', size: 40, c: '#222' }], { w: 512, h: 190, bg: '#f4f1e4', fg: '#c8102e', border: '#2f6e55' })), 11.5, 2.2, -314.98, { cast: false });
+const FLAG_BLUE = new THREE.Vector3(0, 9, -205), FLAG_RED = new THREE.Vector3(0, 9, mirZ(-205));
+flagPole(FLAG_BLUE.x, FLAG_BLUE.z, flagTex);
+const rivalFlag = flagPole(FLAG_RED.x, FLAG_RED.z, rivalFlagTex, true);
 
-// ---- Main hall building with the corridor ----
-building(-15, -5, HALL_Z0, HALL_Z1, 14, null);
-building(5, 15, HALL_Z0, HALL_Z1, 14, null);
-put(new THREE.BoxGeometry(10, 6, 320), MAT.yellow, 0, 11, -480);
-addBox(-5, 8, HALL_Z0, 5, 14, HALL_Z1);
-gableRoof(-15, 15, HALL_Z0, HALL_Z1, 14, 5, true);
-building(-60, -15, HALL_Z0 - 25, HALL_Z0, 14, false);
-building(15, 60, HALL_Z0 - 25, HALL_Z0, 14, false);
-building(-60, -15, HALL_Z1, HALL_Z1 + 25, 14, false);
-building(15, 60, HALL_Z1, HALL_Z1 + 25, 14, false);
-for (const z of [HALL_Z0, HALL_Z1]) {
-  const dz = z === HALL_Z0 ? 1 : -1;
-  for (const sx of [-1, 1]) solid(sx * 5.9 - 0.6, 0, z, sx * 5.9 + 0.6, 14, z + dz * 0.7, MAT.cream);
-  solid(-6.5, 8, z, 6.5, 8.6, z + dz * 0.8, MAT.cream);
+// =====================================================================
+//  The two wings (mirror images): three blocks facing the yard, 12 m passages between them
+// =====================================================================
+const ROW_N = [-150, -172], ROW_S = [mirZ(-150), mirZ(-172)];   // [back wall, yard edge]
+// Phe Xanh (north)
+wingBlock(-72, -22, ROW_N[0], ROW_N[1], 2, 'DÃY A');
+archBlock(-10, 10, ROW_N[0], ROW_N[1], 3, 'NHÀ HIỆU BỘ', 'TIÊN HỌC LỄ – HẬU HỌC VĂN');
+wingBlock(22, 72, ROW_N[0], ROW_N[1], 2, 'DÃY B');
+// Phe Đỏ (south)
+wingBlock(-72, -22, ROW_S[0], ROW_S[1], 2, 'DÃY C');
+wingBlock(22, 72, ROW_S[0], ROW_S[1], 2, 'DÃY D');
+// Phòng Thí Nghiệm: the centre of the south wing is a tall lab hall; fly in from the yard, out the back
+const LABH = { x0: -10, x1: 10, z0: Math.min(...ROW_S), z1: Math.max(...ROW_S), h: 12 };
+const _lab0 = scene.children.length, _labB0 = boxes.length, _labR0 = roofRects.length;   // the lab is destroyed in Chương 6: keep hold of its parts
+throughHall(LABH.x0, LABH.x1, LABH.z0, LABH.z1, LABH.h, { w: 12, h: 8.5 },
+  { wall: lam(0xdedad2), roof: lam(0x6f6a60), floor: lam(0xffffff, { map: rep(tileTex, 5, 6) }), ceil: lam(0xe9ece8), signBg: '#9c1c1c' }, 'PHÒNG THÍ NGHIỆM');
+{
+  const top = lam(0x1c1c1f), cab = lam(0xd9cdb0);
+  for (const sx of [-1, 1]) {   // benches along both side walls, flasks glowing on top
+    solid(sx * 8.3 - 1.1, 2.6, LABH.z0 + 3, sx * 8.3 + 1.1, 3.0, LABH.z1 - 3, top);
+    solid(sx * 8.3 - 1.0, 0, LABH.z0 + 3.1, sx * 8.3 + 1.0, 2.6, LABH.z1 - 3.1, cab);
+    for (let k = 0; k < 6; k++) put(new THREE.CylinderGeometry(0.12, 0.38, 0.8, 10), lam([0x6fd0ff, 0x9effa0, 0xff8fc0, 0xffd93b][k % 4], { emissive: [0x0a3a5a, 0x0a4a1a, 0x4a0a2a, 0x4a3a00][k % 4], transparent: true, opacity: 0.8 }), sx * 8.3 + R(-0.5, 0.5), 3.4, lerp(LABH.z0 + 4, LABH.z1 - 4, k / 5), { cast: false });
+  }
+  // the heater the Red Faction's little planes huddle round to dry off
+  const hx = -6.5, hz = LABH.z0 + 4, tinyPlane = new THREE.ConeGeometry(0.16, 0.5, 3).rotateX(-PI / 2).scale(1, 0.2, 1);
+  put(BOX(1.6, 1.4, 1.0), lam(0x8a3a1a, { emissive: 0xff6a1f, emissiveIntensity: 0.9 }), hx, 0.7, hz);
+  addBox(hx - 0.8, 0, hz - 0.5, hx + 0.8, 1.5, hz + 0.5);
+  for (let k = 0; k < 7; k++) { const a = k / 7 * PI * 2, m = put(tinyPlane, lam([0xffb3a7, 0xffd6a5, 0xf4f1e6][k % 3], { side: THREE.DoubleSide }), hx + Math.cos(a) * 1.6, 0.08, hz + Math.sin(a) * 1.3, { cast: false }); m.rotation.y = -a + PI / 2; }
 }
-put(new THREE.PlaneGeometry(10.4, 2.2), signMat(signTex(['TIÊN HỌC LỄ – HẬU HỌC VĂN'], { w: 1024, h: 170, size: 100 })), 0, 10.6, HALL_Z0 + 0.05, { cast: false });
-put(new THREE.PlaneGeometry(10.4, 2.2), signMat(signTex(['VÌ NGÀY MAI LẬP NGHIỆP'], { w: 1024, h: 170, size: 100 })), 0, 10.6, HALL_Z1 - 0.05, { ry: PI, cast: false });
-plaque('NHÀ HIỆU BỘ', -37, 11, HALL_Z0 + 0.05, 0, 9, 1.5, '#1d4fa3');
-plaque('THƯ VIỆN', 37, 11, HALL_Z0 + 0.05, 0, 9, 1.5, '#1d4fa3');
-const corrMat = lam(0xffffff, { map: rep(corrTex, 32, 1) });
-put(new THREE.PlaneGeometry(320, 8), corrMat, -4.95, 4, -480, { ry: PI / 2, cast: false });
-put(new THREE.PlaneGeometry(320, 8), corrMat, 4.95, 4, -480, { ry: -PI / 2, cast: false });
-put(new THREE.PlaneGeometry(10, 320), lam(0xffffff, { map: rep(ceilTex, 5, 160) }), 0, 7.95, -480, { rx: PI / 2, cast: false });
-const tubes = [];
-for (let z = HALL_Z0 - 6; z > HALL_Z1 + 3; z -= 10) for (const x of [-2.6, 2.6]) tubes.push({ x, y: 7.9, z });
-instances(BOX(0.14, 0.08, 1.3), MAT.emissive, tubes, false);
-const grades = ['6', '7', '8', '9'];
-for (let i = 0; i < 32; i++) for (const side of [-1, 1]) {
-  const z = side < 0 ? HALL_Z0 - 10 * i - 2.2 : HALL_Z1 + 10 * i + 2.2;
-  const tex = signTex([`Lớp ${grades[Math.floor(i / 8)]}${side < 0 ? 'A' : 'B'}${i % 8 + 1}`], { w: 256, h: 112, bg: '#1d4fa3', fg: '#fff', border: '#fff', size: 64 });
-  const sm = lam(0xffffff, { map: tex });
-  const x = side * 4.5;
-  put(BOX(0.9, 0.45, 0.06), [MAT.wood, MAT.wood, MAT.wood, MAT.wood, sm, sm], x, 3.55, z, { cast: false });
-  addBox(x - 0.45, 3.3, z - 0.05, x + 0.45, 3.8, z + 0.05);
+// the radar on the lab roof (it sweeps all the time; chapter 1 sneaks in under it)
+const RADAR_POS = new THREE.Vector3(0, LABH.h + 6.5, (LABH.z0 + LABH.z1) / 2);
+solid(-1.2, LABH.h + 0.6, RADAR_POS.z - 1.2, 1.2, LABH.h + 5, RADAR_POS.z + 1.2, MAT.metal);
+const labDish = new THREE.Group();
+labDish.position.set(0, LABH.h + 5.2, RADAR_POS.z);
+{
+  const dish = new THREE.Mesh(new THREE.SphereGeometry(2.6, 18, 8, 0, PI * 2, 0, PI * 0.32), lam(0xeeeeee, { side: THREE.DoubleSide }));
+  dish.rotation.x = -PI / 2 - 0.35; dish.position.set(0, 0.6, 0.4); dish.castShadow = true; labDish.add(dish);
+  const feed = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.8, 6), MAT.metal); feed.rotation.x = PI / 2 - 0.35; feed.position.set(0, 1.0, -0.5); labDish.add(feed);
+  labDish.add(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 0.9), MAT.metal));
 }
-for (const [x, z] of [[-4.3, -350], [4.3, -395], [-4.3, -452], [4.3, -515], [-4.3, -568], [4.3, -625]]) {
-  put(new THREE.CylinderGeometry(0.4, 0.3, 0.7, 12), lam(0x9b4a2c), x, 0.35, z);
-  const b = put(icoGeo, leafMats[1], x, 1.2, z); b.scale.set(0.6, 0.7, 0.6);
-  addBox(x - 0.5, 0, z - 0.5, x + 0.5, 1.8, z + 0.5);
+const labBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff2a2a }));
+labBeacon.position.set(0, 2.2, 0); labDish.add(labBeacon);
+scene.add(labDish);
+const labParts = scene.children.slice(_lab0), labBoxes = boxes.slice(_labB0), labRoof = roofRects[_labR0];
+labParts.forEach(o => o.userData.y0 = o.position.y);
+// ...and what's left of it afterwards: broken wall stubs, slabs and beams in a heap, scorched ground
+const labRubble = new THREE.Group(), rubbleBoxes = [];
+{
+  const c0 = scene.children.length, cz = (LABH.z0 + LABH.z1) / 2;
+  const chunk = (x, y, z, w, h, d, m, rx = 0, ry = 0, rz = 0, collide = true) => {
+    put(new THREE.BoxGeometry(w, h, d), m, x, y, z, { rx, ry, rz });
+    if (collide) { const r = Math.max(w, d) / 2; rubbleBoxes.push(addBox(x - r, 0, z - r, x + r, y + h / 2, z + r)); }
+  };
+  const wallM = lam(0xbdb8ae), burnt = lam(0x3a3430), slab = MAT.concrete;
+  for (const [x, z] of [[LABH.x0 + 0.4, LABH.z0 + 0.4], [LABH.x1 - 0.4, LABH.z0 + 0.4], [LABH.x0 + 0.4, LABH.z1 - 0.4], [LABH.x1 - 0.4, LABH.z1 - 0.4]]) chunk(x, R(1.5, 2.6), z, 0.8, R(3, 5.2), 0.8, wallM);
+  for (let i = 0; i < 9; i++) chunk(R(-8, 8), R(0.5, 1.6), cz + R(-9, 9), R(2.5, 5), 0.5, R(2, 4), i % 3 ? slab : burnt, R(-0.5, 0.5), R(0, 3), R(-0.5, 0.5));
+  for (let i = 0; i < 5; i++) chunk(R(-7, 7), R(1, 2.5), cz + R(-8, 8), 0.4, 0.4, R(5, 9), MAT.metal, R(-0.4, 0.4), R(0, 3), R(-0.6, 0.6), false);
+  chunk(2, 0.9, cz - 3, 1.6, 1.6, 1.6, MAT.metal, 0.4, 0.7, 1.2, false);   // the radar dish's mount, fallen
+  const dish = new THREE.Mesh(new THREE.SphereGeometry(2.6, 18, 8, 0, PI * 2, 0, PI * 0.32), lam(0xbbbbbb, { side: THREE.DoubleSide })); dish.position.set(4, 0.8, cz + 2); dish.rotation.set(1.9, 0.4, 0.3); scene.add(dish);
+  put(new THREE.CircleGeometry(15, 24), decal(lam(0x2a2622), 3), 0, 0.04, cz, { rx: -PI / 2, cast: false });
+  scene.children.slice(c0).forEach(o => labRubble.add(o)); scene.add(labRubble);
 }
-const fans = [];
-const bladeGeo = BOX(1.7, 0.03, 0.26); bladeGeo.translate(0.95, 0, 0);
-for (const z of [-365, -410, -470, -530, -615]) {
-  put(new THREE.CylinderGeometry(0.04, 0.04, 0.8), MAT.metal, 0, 7.55, z, { cast: false });
-  const hub = new THREE.Group(); hub.position.set(0, 7.0, z); scene.add(hub);
-  put(new THREE.CylinderGeometry(0.22, 0.18, 0.2, 14), lam(0xdedede), 0, 0, 0, { parent: hub });
-  for (let k = 0; k < 3; k++) { const b = put(bladeGeo, lam(0xe9e6dc), 0, 0, 0, { parent: hub }); b.rotation.y = k * PI * 2 / 3; }
-  fans.push(hub);
-  discs.push({ t: 2, c: new THREE.Vector3(0, 7.0, z), r: 1.85, th: 0.15 });
+let labRuined = false;
+function setLabRuined(r) {
+  labRuined = r;
+  labParts.forEach(o => { o.visible = !r; o.position.y = o.userData.y0; });
+  labBoxes.forEach(b => b.off = r);
+  labRubble.visible = r; rubbleBoxes.forEach(b => b.off = !r);
+  labRoof[4] = r ? -1 : LABH.h;
 }
-function hallBanner(z, text) {
-  put(new THREE.PlaneGeometry(9.9, 1.9), signMat(signTex([text], { w: 1024, h: 200, size: 80 })), 0, 6.95, z, { cast: false });
-  put(new THREE.PlaneGeometry(9.9, 1.9), signMat(signTex([text], { w: 1024, h: 200, size: 80 })), 0, 6.95, z - 0.02, { ry: PI, cast: false });
-  addBox(-5, 6.0, z - 0.1, 5, 8, z + 0.1);
-}
-hallBanner(-445, 'CHÀO MỪNG NGÀY NHÀ GIÁO VIỆT NAM 20-11');
-gap('LAO VÀO HÀNH LANG!', 'tường', new THREE.Vector3(0, 4, HALL_Z0), 8, p => Math.abs(p.x) < 5 && p.y < 8 && Math.abs(p.z - HALL_Z0) < 0.7, new THREE.Vector3(5.9, 4, HALL_Z0), 60);
-gap('LAO RA SÂN SAU!', 'tường', new THREE.Vector3(0, 4, HALL_Z1), 8, p => Math.abs(p.x) < 5 && p.y < 8 && Math.abs(p.z - HALL_Z1) < 0.7, new THREE.Vector3(5.9, 4, HALL_Z1), 60);
-gap('LUỒN DƯỚI BĂNG RÔN!', 'băng rôn', new THREE.Vector3(0, 4, -445), 6, p => Math.abs(p.x) < 5 && p.y < 5.9 && Math.abs(p.z + 445) < 0.4, new THREE.Vector3(0, 6.9, -445), 40);
-hallBanner(-590, 'THI ĐUA DẠY TỐT – HỌC TỐT');
-const walkers = [];
-function walker(z, kind, phase, speed) {}   // no people walking the corridor
-walker(-485, 'boy', 0, 0.7); walker(-487, 'girl', 2.2, 0.55); walker(-572, 'teacher', 1, 0.45); walker(-575, 'boy', 4, 0.8);
+setLabRuined(false);
 
-// ---- Back yard ----
-classBlock(-58, -42, -680, -960, 1, 'NHÀ C');
-classBlock(42, 58, -890, -990, -1, 'CĂN TIN');
-for (let x = 30; x <= 50; x += 5) for (const z of [-660, -700]) solid(x - 0.12, 0, z - 0.12, x + 0.12, 3, z + 0.12, MAT.metal);
-solid(29, 3, -658.5, 51, 3.25, -701.5, lam(0x3d7fc1));
-gap('LUỒN DƯỚI MÁI NHÀ XE!', 'cột nhà xe', new THREE.Vector3(40, 2, -680), 26, p => p.x > 29 && p.x < 51 && p.z < -658.5 && p.z > -701.5 && p.y > 1.15 && p.y < 2.85, p => new THREE.Vector3(clamp(Math.round(p.x / 5) * 5, 30, 50), 2, p.z < -680 ? -700 : -660), 60);
-for (let r = 0; r < 4; r++) for (let i = 0; i < 18; i++) bikes.push({ x: 31 + i * 1.05, z: -665 - r * 9, ry: 0 });
-phuong(0, -760, 1.3); phuong(30, -742, 1); phuong(-30, -720, 1); bang(-28, -880, 1.1); phuong(26, -935, 1); phuong(-20, -975, 0.9);
-bang(32, -800, 0.9);
-banyan(-2, -868, 1.1, 0.25);
-bench(0, -768.5); bench(30, -748); bench(-30, -726); bench(-28, -886.5);
-for (const x of [-22, -8]) solid(x - 0.08, 0, -790.08, x + 0.08, 3.2, -789.92, MAT.metal);
-put(new THREE.PlaneGeometry(14, 1.0), lam(0xffffff, { map: rep(netTex, 4, 1), alphaTest: 0.4, side: THREE.DoubleSide }), -15, 2.6, -790, { cast: false });
-addBox(-22, 2.1, -790.1, -8, 3.1, -789.9);
-gap('LUỒN DƯỚI LƯỚI BÓNG CHUYỀN!', 'lưới', new THREE.Vector3(-15, 1, -790), 9, p => p.x > -22 && p.x < -8 && p.y < 2.05 && Math.abs(p.z + 790) < 0.35, new THREE.Vector3(-15, 2.6, -790), 80);
-student(-18, -786, 0); student(-12, -794, PI); student(-16, -795, PI);
-solid(16.3, 0, -850.2, 16.7, 3.9, -849.8, MAT.blue);
-solid(14.9, 3.0, -851.2, 15.0, 4.3, -848.8, MAT.white);
-put(new THREE.TorusGeometry(0.4, 0.04, 6, 20), lam(0xff6a00), 14.45, 3.3, -850, { rx: PI / 2 });
-gap('XUYÊN RỔ BÓNG RỔ!', 'bảng rổ', new THREE.Vector3(14.45, 3.3, -850), 2, p => Math.hypot(p.x - 14.45, p.z + 850) < 0.36 && Math.abs(p.y - 3.3) < 0.3, new THREE.Vector3(14.95, 3.6, -850), 250);
-student(-20, -830, 0); student(-20, -836, PI);
-const shuttle = new THREE.Group();
-put(new THREE.ConeGeometry(0.1, 0.22, 8), lam(0xff4fa3), 0, 0.1, 0, { parent: shuttle, rx: PI });
-put(new THREE.SphereGeometry(0.05, 8, 6), MAT.white, 0, 0, 0, { parent: shuttle });
-// (no badminton players, so no shuttlecock either)
-student(14, -905, 1); student(15, -906, -2); student(-10, -930, 0.4, 'girl'); student(-11, -931, 2.6);
-solid(-15, 0, -1018, 15, 1.2, -1008, MAT.wood);
-solid(-15, 1.2, -1018, 15, 8.5, -1017.4, MAT.red);
-put(new THREE.PlaneGeometry(28, 5), signMat(signTex([{ t: 'LỄ KHAI GIẢNG', size: 130 }, { t: 'NĂM HỌC MỚI 2026 – 2027', size: 70, c: '#fff' }], { w: 1024, h: 190, bg: '#b20d24' })), 0, 5, -1017.3, { cast: false });
-for (const sx of [-1, 1]) {
-  solid(sx * 10 - 0.25, 0, -1000.25, sx * 10 + 0.25, 11.6, -999.75, MAT.red);
-  put(new THREE.SphereGeometry(0.4, 10, 8), lam(0xffd93b), sx * 10, 11.9, -1000);
+// =====================================================================
+//  Giếng Trời: the hall in the middle of the yard. A ring building on an open arcade: fly round the
+//  arcade under the ring, or dive into the well and climb out through the open sky. Two footbridges
+//  cross the well at different heights.
+// =====================================================================
+{
+  const cz = SCHOOL.mid, RO = 22, RI = 12, AH = 6, H = 21;
+  const ring = [[-RO, cz - RO, RO, cz - RI], [-RO, cz + RI, RO, cz + RO], [-RO, cz - RI, -RI, cz + RI], [RI, cz - RI, RO, cz + RI]];
+  for (const [x0, z0, x1, z1] of ring) {
+    const m = solid(x0, AH, z0, x1, H, z1, MAT.cream); m.material = bldgMats(x1 - x0, z1 - z0, H - AH);
+    solid(x0, AH - 0.5, z0, x1, AH, z1, MAT.concrete, { collide: false });
+    put(new THREE.PlaneGeometry(x1 - x0, z1 - z0), lam(0xffffff, { map: rep(ceilTex, (x1 - x0) / 4, (z1 - z0) / 4) }), (x0 + x1) / 2, AH - 0.52, (z0 + z1) / 2, { rx: PI / 2, cast: false });
+    radarRects.push([x0, z0, x1, z1]); roofRects.push([x0, z0, x1, z1, AH - 0.5]);
+  }
+  solid(-RO - 0.4, H, cz - RO - 0.4, RO + 0.4, H + 0.8, cz - RI, MAT.brick, { collide: false });   // parapets
+  solid(-RO - 0.4, H, cz + RI, RO + 0.4, H + 0.8, cz + RO + 0.4, MAT.brick, { collide: false });
+  // the arcade: columns round the outside and round the well
+  const cols = [];
+  const colAt = (x, z) => { put(new THREE.CylinderGeometry(0.4, 0.4, AH, 10), MAT.white, x, AH / 2, z); addBox(x - 0.4, 0, z - 0.4, x + 0.4, AH, z + 0.4); cols.push([x, z]); };
+  for (const r of [RO - 0.5, RI + 0.5]) { const n = r > 15 ? 7 : 4; for (let i = 0; i < n; i++) { const u = lerp(-r, r, i / n); colAt(u, cz - r); colAt(r, cz + u); colAt(-u, cz + r); colAt(-r, cz - u); } }
+  ceilingFan(0, AH - 1.4, cz - (RO + RI) / 2); ceilingFan(0, AH - 1.4, cz + (RO + RI) / 2); ceilingFan(-(RO + RI) / 2, AH - 1.4, cz); ceilingFan((RO + RI) / 2, AH - 1.4, cz);
+  // footbridges across the well and a little fountain at the bottom
+  solid(-RI, 10.6, cz - 1.5, RI, 11.2, cz + 1.5, MAT.concrete); solid(-RI, 11.2, cz - 1.6, RI, 12.2, cz - 1.45, MAT.metal, { collide: false }); solid(-RI, 11.2, cz + 1.45, RI, 12.2, cz + 1.6, MAT.metal, { collide: false });
+  solid(-1.5, 15.6, cz - RI, 1.5, 16.2, cz + RI, MAT.concrete);
+  put(new THREE.CylinderGeometry(3, 3.3, 0.8, 24), MAT.stone, 0, 0.4, cz); addBox(-3, 0, cz - 3, 3, 0.8, cz + 3);
+  put(new THREE.CylinderGeometry(2.7, 2.7, 0.1, 24), lam(0x3f86c8, { emissive: 0x0a2a4a }), 0, 0.82, cz, { cast: false });
+  put(new THREE.CylinderGeometry(0.25, 0.4, 2.2, 10), MAT.stone, 0, 1.9, cz); addBox(-0.4, 0, cz - 0.4, 0.4, 3, cz + 0.4);
+  for (const [z, ry] of [[cz - RO - 0.05, PI], [cz + RO + 0.05, 0]]) { plaque('GIẾNG TRỜI', 0, AH + 2, z, ry, 9, 1.5, '#1d4fa3'); plaque('NHÀ ĐA NĂNG', 0, H - 2, z, ry, 10, 1.4); }
+  for (const [x, ry] of [[-RO - 0.05, -PI / 2], [RO + 0.05, PI / 2]]) plaque('GIẾNG TRỜI', x, AH + 2, cz, ry, 9, 1.5, '#1d4fa3');
+  gap('LUỒN VÒNG CỘT GIẾNG TRỜI!', 'cột', new THREE.Vector3(0, AH / 2, cz), RO + 2,
+    p => p.y < AH - 0.6 && Math.max(Math.abs(p.x), Math.abs(p.z - cz)) < RO && Math.max(Math.abs(p.x), Math.abs(p.z - cz)) > RI,
+    p => { let b = cols[0], bd = 1e9; for (const c of cols) { const d = Math.hypot(c[0] - p.x, c[1] - p.z); if (d < bd) { bd = d; b = c; } } return new THREE.Vector3(b[0], p.y, b[1]); }, 70);
+  gap('VÚT LÊN GIẾNG TRỜI!', 'thành giếng', new THREE.Vector3(0, H - 3, cz), RI + 2,
+    p => Math.abs(p.x) < RI && Math.abs(p.z - cz) < RI && p.y > H - 4 && p.y < H, p => new THREE.Vector3(p.x < 0 ? -RI - 1 : RI + 1, p.y, p.z), 90);
+  gap('LUỒN DƯỚI CẦU GIẾNG TRỜI!', 'cầu', new THREE.Vector3(0, 9, cz), RI + 2,
+    p => Math.abs(p.x) < RI && Math.abs(p.z - cz) < 1.5 && p.y > 6 && p.y < 10.5, new THREE.Vector3(0, 10.9, cz), 60);
 }
-const gateBanner = put(new THREE.PlaneGeometry(20, 2.6), signMat(signTex(['HỘI KHOẺ PHÙ ĐỔNG 2026'], { w: 1024, h: 140, size: 80 })), 0, 10.2, -1000, { cast: false });
-gateBanner.material.side = THREE.DoubleSide;
-addBox(-10, 8.9, -1000.1, 10, 11.5, -999.9);
-gap('XUYÊN CỔNG HỘI KHOẺ!', 'cổng', new THREE.Vector3(0, 4, -1000), 12, p => Math.abs(p.x) < 9.7 && p.y < 8.8 && Math.abs(p.z + 1000) < 0.5, new THREE.Vector3(9.9, 4, -1000), 40);
-put(new THREE.CylinderGeometry(0.75, 0.75, 1.0, 20), [lam(0xa3201b), lam(0xe8d5a8), lam(0xe8d5a8)], -10, 2.1, -1013, { rz: PI / 2 });
+
+// =====================================================================
+//  The north courtyard (Phe Xanh): Thư Viện, the canteen, the bike shed, the opening-day stage
+// =====================================================================
+const woodFloorTex = canvasTex(256, 256, (g, w, h) => {
+  for (let y = 0; y < h; y += 32) for (let x = (y / 32 % 2) * 64; x < w + 128; x += 128) { g.fillStyle = ['#a8763f', '#9c6c38', '#b07d44'][((x + y) / 32 | 0) % 3]; g.fillRect(x - 128, y, 127, 31); }
+  speckle(g, w, h, 1500, 'rgba(60,30,10,0.12)');
+}, true);
+const bookTex = canvasTex(256, 256, (g, w, h) => {
+  g.fillStyle = '#3b2414'; g.fillRect(0, 0, w, h);
+  const cols = ['#8c2f2f', '#2f5c8c', '#2f7a4a', '#c9a227', '#6b3f8c', '#b5651d', '#e8e0c8', '#1f3b5c', '#a83c5a'];
+  for (let row = 0; row < 4; row++) {
+    const y0 = row * 64 + 6;
+    for (let x = 2; x < w - 4;) { const bw = 6 + Math.random() * 12, bh = 40 + Math.random() * 16; g.fillStyle = cols[(Math.random() * cols.length) | 0]; g.fillRect(x, y0 + 56 - bh, bw - 1, bh); x += bw; }
+    g.fillStyle = '#5a3820'; g.fillRect(0, y0 + 56, w, 6);
+  }
+}, true);
+const LIB = { x0: -72, x1: -34, z0: -132, z1: -48, h: 16 };
+throughHall(LIB.x0, LIB.x1, LIB.z0, LIB.z1, LIB.h, { w: 16, h: 10.5 },
+  { wall: lam(0x8c5a3c), roof: MAT.brick, floor: lam(0xffffff, { map: rep(woodFloorTex, 10, 21) }), ceil: lam(0xe8dcc2) }, 'THƯ VIỆN');
+{
+  const shelfSide = lam(0x5a3820);
+  for (const x of [-68.5, -37.5]) for (const [a, b] of [[-54, -74], [-80, -100], [-106, -126]]) {   // tall shelves down both walls
+    const face = lam(0xffffff, { map: rep(bookTex, 1, 1.2) }), end = lam(0xffffff, { map: rep(bookTex, (a - b) / 8, 1.2) });
+    const m = solid(x - 2, 0, b, x + 2, 9.5, a, shelfSide); m.material = [end, end, shelfSide, shelfSide, face, face];
+  }
+  const tableTop = lam(0x7a4a26), lampMat = lam(0x2f7a4a, { emissive: 0x0f3a20 }), glow = new THREE.MeshBasicMaterial({ color: 0xfff2b0 });
+  for (const z of [-64, -116]) {   // reading tables in the aisle (fly over them, or between their legs)
+    solid(-58, 2.2, z - 5, -48, 2.6, z + 5, tableTop);
+    for (const [sx, sz] of [[-57.5, -4.5], [-48.5, -4.5], [-57.5, 4.5], [-48.5, 4.5]]) solid(sx - 0.2, 0, z + sz - 0.2, sx + 0.2, 2.2, z + sz + 0.2, tableTop);
+    for (const sx of [-55, -51]) { put(new THREE.ConeGeometry(0.5, 0.5, 12, 1, true), lampMat, sx, 3.4, z); put(new THREE.SphereGeometry(0.18, 8, 6), glow, sx, 3.2, z, { cast: false }); }
+  }
+  put(new THREE.CylinderGeometry(0.25, 0.9, 3.5, 10), lam(0x5a3820), -53, 1.75, -90);   // the globe
+  put(new THREE.SphereGeometry(2, 20, 14), lam(0x4a8fc8, { emissive: 0x0a1a2a }), -53, 5.4, -90);
+  addBox(-55, 0, -92, -51, 7.4, -88);
+  for (const z of [-70, -110]) {   // chandeliers on long cords
+    put(new THREE.CylinderGeometry(0.04, 0.04, 3), MAT.metal, -53, 14.5, z, { cast: false });
+    put(new THREE.CylinderGeometry(1.6, 2.1, 0.8, 16), lam(0xc9a227, { emissive: 0x3a2a00 }), -53, 12.6, z);
+    addBox(-55.1, 12.2, z - 2.1, -50.9, 16, z + 2.1);
+  }
+}
+building(48, 74, -108, -58, 7, true);   // căn tin
+plaque('CĂN TIN', 47.95, 5.4, -83, -PI / 2, 7, 1.4, '#2f6e55');
+for (let x = 50; x <= 72; x += 5.5) for (const z of [-116, -142]) solid(x - 0.12, 0, z - 0.12, x + 0.12, 3, z + 0.12, MAT.metal);   // nhà xe
+solid(48, 3, -143.5, 74, 3.25, -114.5, lam(0x3d7fc1));
+gap('LUỒN DƯỚI MÁI NHÀ XE!', 'cột nhà xe', new THREE.Vector3(61, 2, -129), 18, p => p.x > 48 && p.x < 74 && p.z < -114.5 && p.z > -143.5 && p.y > 1.15 && p.y < 2.85, p => new THREE.Vector3(clamp(Math.round((p.x - 50) / 5.5) * 5.5 + 50, 50, 72), 2, p.z < -129 ? -142 : -116), 60);
+for (let r = 0; r < 3; r++) for (let i = 0; i < 22; i++) bikes.push({ x: 49.5 + i * 1.05, z: -121 - r * 8, ry: 0 });
+// the opening-day stage against the front wall
+solid(14, 0, -43, 44, 1.2, -33, MAT.wood);
+solid(14, 1.2, -33.6, 44, 8.5, -33, MAT.red);
+put(new THREE.PlaneGeometry(28, 5), signMat(signTex([{ t: 'LỄ KHAI GIẢNG', size: 130 }, { t: 'NĂM HỌC MỚI 2026 – 2027', size: 70, c: '#fff' }], { w: 1024, h: 190, bg: '#b20d24' })), 29, 5, -33.7, { ry: PI, cast: false });
+put(new THREE.CylinderGeometry(0.75, 0.75, 1.0, 20), [lam(0xa3201b), lam(0xe8d5a8), lam(0xe8d5a8)], 18, 2.1, -36, { rz: PI / 2 });
+phuong(-22, -72, 1); bang(24, -125, 0.9); phuong(-20, -128, 0.9); phuong(34, -70, 0.85);
+bench(-22, -78); bench(24, -132); bench(34, -76);
+// basketball hoop
+solid(14.3, 0, -100.2, 14.7, 3.9, -99.8, MAT.blue);
+solid(12.9, 3.0, -101.2, 13.0, 4.3, -98.8, MAT.white);
+put(new THREE.TorusGeometry(0.4, 0.04, 6, 20), lam(0xff6a00), 12.45, 3.3, -100, { rx: PI / 2 });
+gap('XUYÊN RỔ BÓNG RỔ!', 'bảng rổ', new THREE.Vector3(12.45, 3.3, -100), 2, p => Math.hypot(p.x - 12.45, p.z + 100) < 0.36 && Math.abs(p.y - 3.3) < 0.3, new THREE.Vector3(12.95, 3.6, -100), 250);
+
+// =====================================================================
+//  The south courtyard (Phe Đỏ): Nhà Thi Đấu, the warhead store, their football pitch
+// =====================================================================
+const courtTex = canvasTex(256, 256, (g, w, h) => {
+  for (let x = 0; x < w; x += 16) { g.fillStyle = ['#c89458', '#bd8a50', '#d09c60'][(x / 16) % 3]; g.fillRect(x, 0, 15, h); }
+  for (let i = 0; i < 40; i++) { g.fillStyle = 'rgba(80,40,10,0.25)'; g.fillRect(((Math.random() * 16) | 0) * 16, Math.random() * h, 15, 2); }
+}, true);
+const GYM = { x0: 34, x1: 72, z0: mirZ(-48), z1: mirZ(-132), h: 18 };   // point-mirror of the library
+[GYM.z0, GYM.z1] = [Math.min(GYM.z0, GYM.z1), Math.max(GYM.z0, GYM.z1)];
+throughHall(GYM.x0, GYM.x1, GYM.z0, GYM.z1, GYM.h, { w: 18, h: 12 },
+  { wall: lam(0x8a8f96), roof: lam(0x55595f), floor: lam(0xffffff, { map: rep(courtTex, 6, 14) }), ceil: lam(0x3a3d42), signBg: '#9c1c1c' }, 'NHÀ THI ĐẤU');
+{
+  const gz = (GYM.z0 + GYM.z1) / 2, seat = lam(0x2f5c8c);
+  for (let i = 0; i < 4; i++) solid(GYM.x1 - 0.6 - 8 + 2 * i, 0, GYM.z0 + 12, GYM.x1 - 0.6, 1.6 * (i + 1), GYM.z1 - 12, i % 2 ? seat : lam(0x3d6fa8));   // bleachers
+  for (const sx of [GYM.x0 + 4, GYM.x1 - 12]) solid(sx - 0.25, 0, gz - 0.25, sx + 0.25, 9.5, gz + 0.25, MAT.metal);   // volleyball net: under it or over it
+  put(new THREE.PlaneGeometry(GYM.x1 - 12 - GYM.x0 - 4, 2.6), lam(0xffffff, { map: rep(netTex, 7, 1), alphaTest: 0.4, side: THREE.DoubleSide }), (GYM.x0 + GYM.x1 - 8) / 2, 8, gz, { cast: false });
+  addBox(GYM.x0 + 4, 6.7, gz - 0.1, GYM.x1 - 12, 9.3, gz + 0.1);
+  gap('LUỒN DƯỚI LƯỚI BÓNG CHUYỀN!', 'lưới', new THREE.Vector3((GYM.x0 + GYM.x1 - 8) / 2, 3, gz), 18, p => p.x > GYM.x0 + 4 && p.x < GYM.x1 - 12 && p.y < 6.6 && Math.abs(p.z - gz) < 0.4, new THREE.Vector3((GYM.x0 + GYM.x1 - 8) / 2, 8, gz), 80);
+  for (const z of [GYM.z0 + 14, GYM.z1 - 14]) {   // hoops on the long wall
+    solid(GYM.x0 + 0.6, 9, z - 1.8, GYM.x0 + 0.8, 12, z + 1.8, MAT.white);
+    put(new THREE.TorusGeometry(0.9, 0.07, 6, 24), lam(0xff6a00), GYM.x0 + 1.9, 9.6, z, { rx: PI / 2 });
+    gap('XUYÊN RỔ BÓNG RỔ!', 'bảng rổ', new THREE.Vector3(GYM.x0 + 1.9, 9.6, z), 3, p => Math.hypot(p.x - GYM.x0 - 1.9, p.z - z) < 0.8 && Math.abs(p.y - 9.6) < 0.35, new THREE.Vector3(GYM.x0 + 0.7, 10, z), 250);
+  }
+  for (let z = GYM.z0 + 10; z < GYM.z1 - 6; z += 16) solid(GYM.x0, GYM.h - 1.6, z - 0.5, GYM.x1, GYM.h - 0.6, z + 0.5, lam(0x55595f));   // roof trusses
+  put(new THREE.PlaneGeometry(14, 4), signMat(signTex([{ t: 'XANH 0 — ĐỎ 0', size: 120 }], { w: 1024, h: 260, bg: '#111', fg: '#ff5a3c', border: '#444' })), (GYM.x0 + GYM.x1) / 2, 15, GYM.z1 - 0.65, { ry: PI, cast: false });
+}
+// the warhead store, its wide door facing the back of their lab
+const STORE = { x0: -66, x1: -26, z0: -735, z1: -690, h: 9, door: new THREE.Vector3(-46, 3.5, -690) };
+{
+  const { x0, x1, z0, z1, h } = STORE, wallM = lam(0x8d8f7e), T = 0.5, hz = lam(0xffd23f);
+  solid(x0, 0, z0, x0 + T, h, z1, wallM); solid(x1 - T, 0, z0, x1, h, z1, wallM); solid(x0, 0, z0, x1, h, z0 + T, wallM);
+  solid(x0, 0, z1 - T, x0 + 4, h, z1, wallM); solid(x1 - 4, 0, z1 - T, x1, h, z1, wallM); solid(x0 + 4, 7, z1 - T, x1 - 4, h, z1, wallM);   // wide door
+  solid(x0 - 0.5, h, z0 - 0.5, x1 + 0.5, h + 0.5, z1 + 0.5, lam(0x5f6355));
+  radarRects.push([x0, z0, x1, z1]); roofRects.push([x0, z0, x1, z1, h]);
+  for (let i = 0; i < 16; i++) solid(x0 + 4 + i * 2, 6.4, z1 - 0.1, x0 + 5 + i * 2, 7, z1 + 0.05, i % 2 ? lam(0x222222) : hz, { collide: false });   // hazard stripes
+  put(new THREE.PlaneGeometry(16, 1.6), signMat(signTex(['KHO ĐẦU ĐẠN · CẤM VÀO'], { w: 1024, h: 132, size: 80 })), STORE.door.x, 8.0, z1 + 0.06, { cast: false });
+  const body = new THREE.CylinderGeometry(0.42, 0.42, 2.4, 12).rotateX(PI / 2), tip = new THREE.ConeGeometry(0.42, 0.9, 12).rotateX(-PI / 2).translate(0, 0, -1.65);
+  const fins = new THREE.BoxGeometry(1.3, 0.06, 0.5).translate(0, 0, 1.1);
+  const list = [];
+  for (const rx of [x0 + 6, x0 + 13.5, x0 + 21, x0 + 28.5, x0 + 34]) {
+    solid(rx - 1.7, 0, z0 + 3, rx + 1.7, 0.5, z1 - 4, MAT.metal, { collide: false });
+    addBox(rx - 1.7, 0, z0 + 3, rx + 1.7, 2.2, z1 - 4);
+    for (let z = z0 + 5; z < z1 - 5; z += 3.2) for (const [ox, oy] of [[-0.9, 0.95], [0.9, 0.95], [0, 1.75]]) list.push([rx + ox, oy, z]);
+  }
+  const mk = (geo, color) => { const m = new THREE.InstancedMesh(geo, lam(color), list.length); list.forEach((p, i) => m.setMatrixAt(i, new THREE.Matrix4().makeTranslation(...p))); m.castShadow = true; scene.add(m); };
+  mk(body, 0x55603a); mk(tip, 0xc8102e); mk(fins, 0x3a3f2a);
+}
+// their football pitch
+const PITCH = new THREE.Vector3(-2, 0.5, -712);
+put(new THREE.PlaneGeometry(40, 52), decal(lam(0x4f9a43), 3), PITCH.x, 0.04, PITCH.z, { rx: -PI / 2, cast: false });
+for (const gzz of [PITCH.z - 25, PITCH.z + 25]) for (const sx of [-3, 3]) solid(PITCH.x + sx - 0.1, 0, gzz - 0.1, PITCH.x + sx + 0.1, 2.4, gzz + 0.1, MAT.white);
+phuong(27, -748, 0.9); bang(-24, mirZ(-125), 0.9); phuong(20, mirZ(-128), 0.9);
+bench(27, -742); bench(-24, mirZ(-132));
+
+// =====================================================================
+//  The shared schoolyard: trees, benches and games laid out point-symmetrically on both halves
+// =====================================================================
+for (const s of [1, -1]) {
+  const X = x => s * x, Z = z => s > 0 ? z : mirZ(z), ry = r => s > 0 ? r : r + PI;
+  phuong(X(-32), Z(-218), 1.1); phuong(X(36), Z(-240), 1); bang(X(-56), Z(-292), 1); bang(X(58), Z(-262), 0.9);
+  banyan(X(-38), Z(-338), 1, ry(0.5)); phuong(X(44), Z(-318), 1); bang(X(-12), Z(-275), 0.8);
+  bench(X(-32), Z(-224)); bench(X(36), Z(-246)); bench(X(44), Z(-324));
+  // volleyball net: fly under it
+  const nx0 = Math.min(X(-50), X(-34)), nx1 = Math.max(X(-50), X(-34)), nz = Z(-250);
+  for (const x of [nx0, nx1]) solid(x - 0.08, 0, nz - 0.08, x + 0.08, 3.2, nz + 0.08, MAT.metal);
+  put(new THREE.PlaneGeometry(14, 1.0), lam(0xffffff, { map: rep(netTex, 4, 1), alphaTest: 0.4, side: THREE.DoubleSide }), (nx0 + nx1) / 2, 2.6, nz, { cast: false });
+  addBox(nx0, 2.1, nz - 0.1, nx1, 3.1, nz + 0.1);
+  gap('LUỒN DƯỚI LƯỚI BÓNG CHUYỀN!', 'lưới', new THREE.Vector3((nx0 + nx1) / 2, 1, nz), 9, p => p.x > nx0 && p.x < nx1 && p.y < 2.05 && Math.abs(p.z - nz) < 0.35, new THREE.Vector3((nx0 + nx1) / 2, 2.6, nz), 80);
+  // the festival gate arch over the walk to the Giếng Trời
+  const az = Z(-345);
+  for (const sx of [-1, 1]) { solid(sx * 7 - 0.25, 0, az - 0.25, sx * 7 + 0.25, 9.6, az + 0.25, s > 0 ? MAT.blue : MAT.red); put(new THREE.SphereGeometry(0.35, 10, 8), lam(0xffd93b), sx * 7, 9.9, az); }
+  const gb = put(new THREE.PlaneGeometry(14, 2), signMat(signTex([s > 0 ? 'HỘI KHOẺ PHÙ ĐỔNG · PHE XANH' : 'HỘI KHOẺ PHÙ ĐỔNG · PHE ĐỎ'], { w: 1024, h: 140, size: 70, bg: s > 0 ? '#1d4fa3' : '#b20d24' })), 0, 8.4, az, { cast: false });
+  gb.material.side = THREE.DoubleSide;
+  addBox(-7, 7.4, az - 0.1, 7, 9.4, az + 0.1);
+  gap('XUYÊN CỔNG HỘI KHOẺ!', 'cổng', new THREE.Vector3(0, 4, az), 8, p => Math.abs(p.x) < 6.7 && p.y < 7.3 && Math.abs(p.z - az) < 0.5, new THREE.Vector3(6.9, 4, az), 40);
+}
 
 for (const k of Object.keys(staticStudents)) instances(GEO[k], vcMat, staticStudents[k]);
 instances(GEO.bike, vcMat, bikes);
@@ -493,41 +704,8 @@ instances(new THREE.IcosahedronGeometry(0.24, 0), lam(0xffffff, { emissive: 0x55
 instances(new THREE.IcosahedronGeometry(1, 1), lam(0xffffff, { flatShading: true }), leafBits, true);
 instances(new THREE.BoxGeometry(1, 1, 1), lam(0xffffff), rootBits, true);
 instances(new THREE.PlaneGeometry(0.16, 0.12), lam(0xffffff, { side: THREE.DoubleSide }), petalList.map(p => ({ ...p, color: 0xe8331f })), false);
-
-// ---- Trường Bên Kia Sông: across the river behind our back wall (escort-mode target) ----
-// Everything built here is gathered into rivalGroup and only shown in escort mode.
-const _rivalChild0 = scene.children.length, _rivalRect0 = radarRects.length;
-put(new THREE.PlaneGeometry(400, 38), decal(lam(0x3f86c8, { emissive: 0x0a2a4a }), 3), 0, 0.03, -1057, { rx: -PI / 2, cast: false });   // the river
-for (const sx of [-1, 1]) solid(sx * 2.2 - 0.25, 0, -1076, sx * 2.2 + 0.25, 1.2, -1038, MAT.stone, { collide: false });
-put(new THREE.BoxGeometry(5, 0.3, 40), MAT.wood, 0, 1.3, -1057, { cast: false });   // little footbridge
-put(new THREE.PlaneGeometry(120, 430), decal(lam(0xffffff, { map: rep(concreteTex, 30, 107) }), 2), 0, 0.02, -1291, { rx: -PI / 2, cast: false });
-const rivalMat = lam(0xc9785f), rivalTrim = lam(0x7a2e2e);
-function rivalBlock(x0, x1, z0, z1, h) {
-  solid(x0, 0, z0, x1, h, z1, rivalMat);
-  for (let y = 3; y < h; y += 3.5) put(new THREE.BoxGeometry(Math.abs(x1 - x0) + 0.1, 0.25, Math.abs(z1 - z0) + 0.1), rivalTrim, (x0 + x1) / 2, y, (z0 + z1) / 2, { cast: false });
-  gableRoof(x0, x1, Math.min(z0, z1), Math.max(z0, z1), h, 4, Math.abs(z1 - z0) > Math.abs(x1 - x0));
-  radarRects.push([Math.min(x0, x1), Math.min(z0, z1), Math.max(x0, x1), Math.max(z0, z1)]);
-}
-rivalBlock(-58, -42, -1110, -1290, 14); rivalBlock(42, 58, -1150, -1330, 14); rivalBlock(-40, 40, -1462, -1480, 12);
-for (const sx of [-1, 1]) solid(sx * 60 - 0.5, 0, -1080, sx * 60 + 0.5, 3.2, -1500, lam(0x9c4a3a));
-solid(-60, 0, -1500, 60, 4, -1501, lam(0x9c4a3a));
-put(new THREE.PlaneGeometry(20, 3), signMat(signTex([{ t: 'TRƯỜNG BÊN KIA SÔNG', size: 110 }], { w: 1024, h: 150, bg: '#7a2e2e', fg: '#ffd93b' })), 0, 15.5, -1461.9, { cast: false });
-const rivalFlagTex = canvasTex(300, 200, (g, w, h) => {
-  g.fillStyle = '#c8102e'; g.fillRect(0, 0, w, h);
-  g.fillStyle = '#1a0505'; g.fillRect(0, h - 26, w, 8); g.fillRect(0, 18, w, 8);
-  // a black eagle with spread, feathered wings
-  g.fillStyle = '#1a0505'; g.beginPath(); g.moveTo(150, 70); g.lineTo(70, 92); g.lineTo(52, 84); g.lineTo(64, 100); g.lineTo(48, 104); g.lineTo(70, 112); g.lineTo(130, 110);
-  g.lineTo(140, 150); g.lineTo(150, 136); g.lineTo(160, 150); g.lineTo(170, 110); g.lineTo(230, 112); g.lineTo(252, 104); g.lineTo(236, 100); g.lineTo(248, 84); g.lineTo(230, 92); g.closePath(); g.fill();
-  g.beginPath(); g.arc(150, 72, 11, 0, PI * 2); g.fill();
-});
-solid(-0.15, 0, -1200.15, 0.15, 16, -1199.85, MAT.metal);
-const rivalFlag = put(new THREE.PlaneGeometry(4, 2.6), lam(0xffffff, { map: rivalFlagTex, side: THREE.DoubleSide, transparent: true, alphaTest: 0.05 }), 2.1, 14.6, -1200, { cast: false });
-put(new THREE.PlaneGeometry(36, 22), decal(lam(0x4f9a43), 3), 18, 0.04, -1390, { rx: -PI / 2, cast: false });   // football pitch
-for (const sx of [-1, 1]) solid(18 + sx * 18 - 0.1, 0, -1393, 18 + sx * 18 + 0.1, 2.4, -1387, MAT.white);
-const rivalGroup = new THREE.Group();
-scene.children.slice(_rivalChild0).forEach(o => rivalGroup.add(o));
-scene.add(rivalGroup); rivalGroup.visible = false;
-const RIVAL_RECTS = [_rivalRect0, radarRects.length];   // radar outlines that belong to the rival school
+const shuttle = new THREE.Group();   // (no badminton players, so the shuttlecock is never shown)
+const walkers = [];
 
 // =====================================================================
 //  Spatial grid for world collision
