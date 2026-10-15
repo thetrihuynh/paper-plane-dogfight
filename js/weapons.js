@@ -97,7 +97,7 @@ function launchMissile(f, target) {
   missiles.push(m);
   launchSound(f === P ? 1 : clamp(1 - f.pos.distanceTo(P.pos) / 150, 0.1, 1));
   if (f === P) stats.msl++;
-  if (target === P) radioOnce('mslWarn', 'Blackboard', 'Alpha 1, missile bám đuôi! Break gắt hoặc thả pháo sáng (V)!', 12);
+  if (target === P) radioOnce('mslWarn', 'Blackboard', pick(['Alpha 1, tên lửa bám đuôi! Bẻ lái gắt hoặc thả pháo sáng (V)!', 'Có tên lửa sau lưng cậu! V, ngay!', 'Missile đang đuổi theo cậu đấy! Lộn vòng đi!']), 12);
   return m;
 }
 function explodeMissile(m) {
@@ -285,7 +285,7 @@ function updatePickups(dt) {
     if (P.supplyT >= (P.msl === 0 ? 4 : 10)) {
       P.supplyT = 0;
       spawnPickup(lowSpot(P.pos, 20, 90) || findSpawn(25, 60), 'drop');
-      radio('Blackboard', 'Hộp tiếp tế tên lửa đã thả xuống thấp, dưới tán cây và mái nhà. Theo cột sáng vàng, bay xuyên qua để nạp.', true);
+      radio('Blackboard', pick(['Hộp tiếp tế đã thả xuống thấp, dưới tán cây hoặc mái nhà. Theo cột sáng vàng mà bay xuyên qua.', 'Hết tên lửa rồi à? Tôi thả cho cậu một hộp đấy. Tìm cột sáng vàng nhé.', 'Tiếp tế xuống rồi, ở chỗ thấp. Cột sáng vàng, thấy không?']), true);
     }
   } else P.supplyT = 0;
 }

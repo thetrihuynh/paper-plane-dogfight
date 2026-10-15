@@ -198,7 +198,7 @@ function updateEnding(dt) {
     c.fires.push(b.p.clone().setY(Math.max(1, b.p.y)));
   }
   // the base keeps burning
-  const spots = c.fires.concat(endingFires, t > 2 ? END_FIRES.map(a => new THREE.Vector3(...a)) : []);
+  const spots = c.fires.concat(endingFires, t > 2 ? END_FIRES.filter(a => !(escortEv.craneDown && a[0] > 40 && a[2] > -660)).map(a => new THREE.Vector3(...a)) : []);   // (the east wing doesn't burn if it was spared)
   herons.forEach((h, i) => { if (h !== heron && h.alive) { h.pos.copy(heron.pos).add(_pv.set(i === 1 ? -16 : 16, -1, 12)); h.q.copy(heron.q); } });   // the other bombers keep station on the lead
   for (const sp of spots) {
     if (Math.random() < dt * 9) puff(fire, _tmp.copy(sp).add(_pv.set(rr(-1.5, 1.5), rr(0, 1), rr(-1.5, 1.5))), _pv.set(0, rr(1, 2.5), 0), rr(0.5, 0.9), 0.5, 1.4, [0xffa53a, 0xff6a1f, 0xffd23f][(Math.random() * 3) | 0]);
@@ -240,6 +240,7 @@ function updateEnding(dt) {
   line(1, 0.4, 'Crane 1', 'Nhiệm vụ hoàn thành. Crane, RTB.');
   line(2, 4.6, 'Alpha 2', 'Xong rồi... cuộc chiến kết thúc rồi.');
   line(3, 7.0, 'Alpha 3', 'Nhìn từ trên này... sao chẳng thấy vui gì cả.');
+  if (escortEv.craneDown) line(14, 9.0, 'Alpha 2', 'Dãy nhà phía đông của họ... vẫn còn đứng. Quả bom thứ ba không bao giờ rơi xuống.');   // because of Wingman
   line(4, 12.8, 'Blackboard', 'Lá cờ Phe Đỏ đã cháy. Chiến tranh kết thúc. Tất cả... về trường thôi.');
   line(6, 15.4, 'Alpha 1', '(Một mảnh cờ cháy bay ngang qua cánh. Giấy kẻ ô... giống hệt giấy của mình.)');
   line(5, 18.4, 'Blackboard', 'Blackboard gọi Wingman, báo cáo vị trí— ...À. Phải rồi.');   // habit: there's nobody on that channel any more
@@ -281,12 +282,13 @@ function endingCamera(dt) {
 const ESC_V = 5;
 // the finale's intro runs 3.8 s longer: Alpha 1 has a question before the throttles open
 const escD = () => escortMode === 'lab' ? 0 : 3.8, escLen = () => 11.5 + escD(), escGo = () => 6.8 + escD();
-const ESC_FORM = [[0, 3, -5], [-6, 0, 2], [6, 0, 2], [-10, 1, -3], [10, 1, -3]];   // P, Alpha 2, Alpha 3, Alpha 4, Alpha 5 around the bomber
+const ESC_FORM = [[0, 3, -5], [-6, 0, 2], [6, 0, 2], [-10, 1, -3], [10, 1, -3], [0, 2.5, 7]];   // P, Alpha 2, Alpha 3, Alpha 4, Alpha 5 around the bomber, Wingman behind it
 function startEscortCut() {
   for (const a of ALLIES) if (!flyers.some(f => f.alive && f.name === a.name)) makeFlyer('ally', 'blue', a.name, a.color);
   const lan = flyers.find(f => f.alive && f.name === 'Alpha 2'), minh = flyers.find(f => f.alive && f.name === 'Alpha 3');
   const tuan = escortMode === 'lab' ? null : makeFlyer('ally', 'blue', 'Alpha 4', 0x9be37a), ha = escortMode === 'lab' ? null : makeFlyer('ally', 'blue', 'Alpha 5', 0xffb35c);   // Alpha 4 and Alpha 5 only fly the finale
-  cut = { kind: 'escort', t: 0, boss: heron, crew: [P, lan, minh, tuan, ha], said: {} };
+  const wing = escortMode === 'lab' ? null : wingmanUp() || makeWingman();   // the finale: Wingman flies it too
+  cut = { kind: 'escort', t: 0, boss: heron, crew: [P, lan, minh, tuan, ha, wing], said: {} };
   P.invulnT = escLen(); document.body.classList.add('cine');
   if (!cineOn) endEscortCut();
 }
@@ -355,7 +357,7 @@ function sayNow(who, text) { radioQ.length = 0; radioQ.push({ who, text }); radi
 // Before the dash the timeline is c.t; from the dash on, EAGLE_KEYS' own timeline runs as eagleT (ot), and the
 // path is shifted to follow the formation, which never stops flying north-to-south at 8 m/s
 const EAGLE_TALK = [
-  ['Blackboard', 'Radar bắt một tín hiệu... hướng mười hai giờ, ngay trong nắng.', 1.2],
+  ['Alpha 2', 'Radar bắt một tín hiệu... hướng mười hai giờ, ngay trong nắng.', 1.2],
   ['Alpha 3', 'Red Eagle vượt vạch ranh giới?! Chính hắn từng nói không ai được qua lằn ranh mà!'],
   ['Red Eagle', 'Tôi biết. Nhưng lệnh đã ban xuống. Hôm nay tôi phải phá lời hứa đó.'],
   ['Wingman', '...Là Red thật.'],
@@ -445,7 +447,7 @@ function updateCutscene(dt) {
     orient(b, _tmp.set(0.001, 0, 1));
     if (i === 2 && !c.said.card) { c.said.card = 1; flash('⚠ RED EAGLE', '', 2.6); if (AU.ctx) { tone(110, 82, 1.4, 0.16, 'sawtooth'); noiseHit(AU.ctx.currentTime, 140, 0.5, 1.2); } }
     if (i === EAGLE_TALK.length - 1 && t - c.lSaid > 2.2) {   // cut off mid-sentence: he goes
-      c.D = t; sayNow('Blackboard', 'Hắn tăng tốc! Break, break!'); whoosh(); shake = 0.4;
+      c.D = t; sayNow('Alpha 3', 'Hắn tăng tốc! Break, break!'); whoosh(); shake = 0.4;
       if (AU.ctx) tone(180, 900, 0.9, 0.09, 'sawtooth');
     }
     if (pressed.Enter || pressed.NumpadEnter) skipCutscene();
@@ -472,7 +474,7 @@ function updateCutscene(dt) {
   line(5, 7.2, 'Alpha 4', 'Alpha 4 trúng đạn! Rách cả hai cánh, phải hạ cánh khẩn cấp!');
   line(10, 8.6, 'Red Eagle', 'Các anh về đi. Tôi chỉ cần mấy chiếc Hạc.');
   line(6, 10.8, 'Alpha 2', 'Alpha 5 cũng phải hạ cánh... Hắn bắn rách cánh, mà không bắn rơi?');
-  line(7, 12.3, 'Blackboard', 'Hắn quay lại! Alpha 1, hắn đối đầu trực diện!');
+  line(7, 12.3, 'Alpha 2', 'Hắn quay lại! Alpha 1, hắn đối đầu trực diện!');
   if (ot > 13.95 && !c.said.pass) {   // the shave: wind blast, a shudder, paper flutter
     c.said.pass = 1; whoosh(); shake = 0.6;
     for (let i = 0; i < 16; i++) puff(smoke, _tmp.copy(P.pos).add(_pv.set(rr(-2.5, -0.5), rr(-0.4, 0.6), rr(-1, 1))), _pv.set(rr(-1, 0), 0, rr(1, 3)), 0.6, 0.02, 0.06, 0xffffff);
@@ -496,8 +498,7 @@ function skipCutscene() {
   const b = c.boss; eaglePos(CUT_LEN, b.pos); b.pos.z += 8 * (CUT_LEN - c.t); orient(b, _tmp.set(0.1, 0, -1));   // where the dash ends, next to the formation as it is now b.speed = 11; b.mode = 'attack'; b.preyT = 0;
   P.invulnT = 1; P.speed = 8; aim.copy(fwdOf(P, _tmp)); camPos.copy(P.pos).add(_pv.set(0, 0.5, 2.5)); camAimS.copy(aim);
   cut = null; document.body.classList.remove('cine');
-  radio('Blackboard', 'Alpha 1, 2, 3: chỉ còn ba chiếc. Giữ đội hình, đừng tách ra!', true);
-  radio('Alpha 2', 'Khép vòng vây! Hắn leo cao thì bật siêu thanh truy kích!');
+  radio('Alpha 2', 'Chỉ còn ba chiếc... Khép vòng vây! Hắn leo cao thì bật siêu thanh truy kích!', true);
   radio('Red Eagle', 'Một quả đã đủ xoá Phòng Thí Nghiệm. Ba quả... các anh định xoá luôn cả khu Tây sao?', true);   // heard first
 }
 function cutsceneCamera(dt) {
@@ -571,14 +572,33 @@ const FALL_LINES = [
   ['Wingman', 'Tôi nghe rồi, bạn già.'],
   ['Wingman', 'Đáp xuống đi, Red. Đầu hàng đi. Hôm nay không ai phải rơi nữa.'],
   ['Red Eagle', 'Cậu biết tôi mà. Red Eagle không đáp xuống bên này lằn ranh.'],
-  ['Red Eagle', 'Mà lằn ranh đó đâu phải hai đứa mình kẻ. Ngẩng lên mà xem... đèn trên đó chưa bao giờ tắt.'],
-  ['Red Eagle', 'Nhớ không? Ba đứa mình từng hẹn sẽ cùng bay qua khỏi bức tường rào kia.'],
-  ['Wingman', 'Cậu bay cao hơn mây. Tôi dạy bọn nhỏ bay. Còn cô ấy gấp một con Hạc đủ to chở cả ba.'],
-  ['Red Eagle', 'Cuối cùng cô ấy cũng gấp được rồi... chỉ là chở thứ khác.'],
+  ['Red Eagle', 'Con Hạc cô ấy hằng mơ... cuối cùng cũng gấp được rồi. Chỉ là chở thứ khác.'],   // the dream was told in Chương 9; the line to Chương 7
   ['Red Eagle', 'Tạm biệt, bạn già. Bay nốt tới ngày được nghỉ hưu nhé. Nhắn cô ấy... tôi không giận.'],
 ];
-function startEagleFall(e) {
-  const w = wingmanUp(), blues = flyers.filter(f => f.alive && f.team === 'blue' && f !== P && f !== w);
+const EAGLE_FALL = {
+  lines: FALL_LINES, eName: 'Red Eagle', wName: 'Wingman', mate: () => wingmanUp(), end: 10.6,
+  // for the first time since he cut her off, Wingman opens the channel; it's the only thing she says all chapter that isn't his name
+  after(c, t) {
+    if (t > c.fallT + 2.6 && !c.said.bb) { c.said.bb = 1; sayNow('Wingman', 'Wingman gọi Blackboard. ...Black. Red đi rồi.'); }
+    if (t > c.fallT + 6.4 && !c.said.bb2) { c.said.bb2 = 1; sayNow('Blackboard', '...Cậu ấy vẫn luôn thích bay lúc hoàng hôn.'); }
+  },
+};
+// Chương 12: Wingman, brought down by Alpha 1. The same slow circle, the same roll, the student on his wing this time
+const WINGMAN_FALL = {
+  lines: [
+    ['Wingman', 'Trúng rồi đấy. ...Bay đẹp lắm, lính mới.', 0.8],
+    ['Alpha 1', '...Tại sao?'],
+    ['Wingman', 'Vì có người từng muốn gấp một con Hạc để chở bạn bè. Không phải để chở thứ này.'],
+    ['Wingman', 'Bay cho đúng nhé, lính mới.'],   // the first thing he ever told Alpha 1, back in the training
+  ],
+  eName: 'Wingman', wName: 'Alpha 1', mate: () => P, end: 9.6,
+  after(c, t) {
+    if (t > c.fallT + 2.6 && !c.said.bb) { c.said.bb = 1; sayNow('Blackboard', '...Wingman.'); }
+    if (t > c.fallT + 5.6 && !c.said.ht) { c.said.ht = 1; sayNow('Hightower', 'Hightower ghi nhận. Tiếp tục nhiệm vụ.'); }
+  },
+};
+function startEagleFall(e, o = EAGLE_FALL) {
+  const w = o.mate(), blues = flyers.filter(f => f.alive && f.team === 'blue' && f !== P && f !== w && !isHeron(f));
   for (const m of missiles) { m.alive = false; scene.remove(m.mesh); } missiles.length = 0;
   const fd = fwdOf(e, new THREE.Vector3()).setY(0); if (fd.lengthSq() < 1e-3) fd.set(0, 0, -1); fd.normalize();
   const rt = new THREE.Vector3().crossVectors(fd, UP).normalize();
@@ -586,7 +606,7 @@ function startEagleFall(e) {
   const C = e.pos.clone().addScaledVector(rt, FALL_R); C.x = clamp(C.x, -45, 45); C.z = clamp(C.z, SCHOOL.zS + 45, SCHOOL.zN - 45); C.y = 0;
   const a = e.pos.clone().sub(C).setY(0); if (a.lengthSq() < 1) a.copy(rt).negate(); a.normalize();
   const b = new THREE.Vector3().crossVectors(UP, a).negate();   // the direction of travel at the start of the circle
-  cut = { kind: 'eagleFall', t: 0, boss: e, crew: [w, ...blues], said: {}, e, w, blues, C, a, b, y: Math.max(e.pos.y, CUT_Y), fallT: Infinity,
+  cut = { kind: 'eagleFall', t: 0, boss: e, crew: [w, ...blues], said: {}, e, w, o, blues, C, a, b, y: Math.max(e.pos.y, CUT_Y), fallT: Infinity,
     from: [e, P, w, ...blues].map(f => f.pos.clone()) };
   P.invulnT = 99; document.body.classList.add('cine');
   if (!cineOn) endEagleFall();
@@ -621,22 +641,22 @@ function updateEagleFall(dt) {
   if (t > c.fallT) e.q.multiply(_q.setFromAxisAngle(FWD, Math.min(PI, (t - c.fallT) * 2.2)));   // the roll onto his back
   else e.q.multiply(_q.setFromAxisAngle(FWD, 0.18 + Math.sin(t * 1.7) * 0.08));   // banked into the (right-hand) turn, a tired wobble
   if (Math.random() < dt * 6) puff(smoke, e.pos, _pv.set(0, 0.3, 0), 0.6, 0.05, 0.5, 0x8a8a8a);
-  place(P, 0, 1); aim.copy(fwdOf(P, _tmp));
-  if (c.w && c.w.alive) { place(c.w, 'w', 2); c.w.q.multiply(_q.setFromAxisAngle(FWD, t > c.fallT ? 0.18 + Math.min(0.45, (t - c.fallT) * 0.4) : 0.18)); }   // tipping a wing to watch him go
+  if (c.w !== P) place(P, 0, 1);
+  if (c.w && c.w.alive) { place(c.w, 'w', c.w === P ? 1 : 2); c.w.q.multiply(_q.setFromAxisAngle(FWD, t > c.fallT ? 0.18 + Math.min(0.45, (t - c.fallT) * 0.4) : 0.18)); }   // tipping a wing to watch him go
   c.blues.forEach((f, i) => { if (f.alive) { place(f, i + 1, i + 3); f.q.multiply(_q.setFromAxisAngle(FWD, 0.18)); } });
-  const i = talk(c, t, FALL_LINES);
-  c.spk = i >= 0 && t - c.lSaid < readTime(FALL_LINES[i][1]) * 0.85 + 0.6 ? FALL_LINES[i][0] : null;
-  if (i === FALL_LINES.length - 1 && c.fallT === Infinity && t - c.lSaid > readTime(FALL_LINES[i][1]) * 0.7) c.fallT = t;   // the goodbye said: he lets go
-  if (t > c.fallT + 2.6 && !c.said.bb) { c.said.bb = 1; sayNow('Blackboard', 'Red Eagle... đã rơi.'); }
-  if (t > c.fallT + 5.4 && !c.said.bb2) { c.said.bb2 = 1; sayNow('Blackboard', '...Red vẫn luôn thích bay lúc hoàng hôn.'); }   // off-script, and she knows it
-  if (t >= c.fallT + 8.6 || pressed.Enter || pressed.NumpadEnter) endEagleFall();
+  aim.copy(fwdOf(P, _tmp));
+  const L = c.o.lines, i = talk(c, t, L);
+  c.spk = i >= 0 && t - c.lSaid < readTime(L[i][1]) * 0.85 + 0.6 ? L[i][0] : null;
+  if (i === L.length - 1 && c.fallT === Infinity && t - c.lSaid > readTime(L[i][1]) * 0.7) c.fallT = t;   // the goodbye said: he lets go
+  c.o.after(c, t);
+  if (t >= c.fallT + c.o.end || pressed.Enter || pressed.NumpadEnter) endEagleFall();
 }
 function endEagleFall() {
   const c = cut; cut = null; document.body.classList.remove('cine');
   if (c.e.alive) { c.e.pos.y = Math.max(c.e.pos.y, 1); destroy(c.e, c.e.lastHitBy || P); }   // far below by now: the burst is down in the yard
   const fd = fwdOf(P, new THREE.Vector3()).setY(0).normalize();
   P.invulnT = 1; P.speed = 8; orient(P, fd); aim.copy(fd); camPos.copy(P.pos).addScaledVector(fd, -2.5).add(_pv.set(0, 0.5, 0)); camAimS.copy(aim);
-  if (c.w && c.w.alive) c.w.mode = 'attack';
+  if (c.w && c.w.alive && c.w !== P) c.w.mode = 'attack';
 }
 function eagleFallCamera(dt) {
   const c = cut, t = c.t, e = c.e, w = c.w && c.w.alive ? c.w : P;
@@ -644,8 +664,8 @@ function eagleFallCamera(dt) {
   const fe = fwdOf(e, _tmp2).setY(0).normalize(), out = _ar.crossVectors(fe, UP).negate();   // his heading, and the outside of the turn (his left: where Wingman is)
   // close-ups sit just ahead of the speaker looking back, the other one over his shoulder
   if (t > c.fallT) { _cd.copy(w.pos).addScaledVector(fwdOf(w, _tmp), -1.5).addScaledVector(out, 0.3).add(_pv.set(0, 0.6, 0)); _cl.copy(e.pos); fov = 50; }   // over Wingman's shoulder, watching him fall
-  else if (c.spk === 'Wingman') { _cd.copy(w.pos).addScaledVector(fe, 1.5).addScaledVector(out, 0.9).add(_pv.set(0, 0.28, 0)); _cl.copy(w.pos); }   // Wingman, from outside the turn
-  else if (c.spk === 'Red Eagle') { _cd.copy(e.pos).addScaledVector(fe, 1.6).addScaledVector(out, -0.95).add(_pv.set(0, 0.3, 0)); _cl.copy(e.pos); }   // him, from inside the turn
+  else if (c.spk === c.o.wName) { _cd.copy(w.pos).addScaledVector(fe, 1.5).addScaledVector(out, 0.9).add(_pv.set(0, 0.28, 0)); _cl.copy(w.pos); }   // Wingman, from outside the turn
+  else if (c.spk === c.o.eName) { _cd.copy(e.pos).addScaledVector(fe, 1.6).addScaledVector(out, -0.95).add(_pv.set(0, 0.3, 0)); _cl.copy(e.pos); }   // him, from inside the turn
   else { const mid = _tmp.addVectors(e.pos, w.pos).multiplyScalar(0.5); _cd.copy(mid).addScaledVector(fe, 5).addScaledVector(out, -1.5).add(_pv.set(0, 1.2, 0)); _cl.copy(mid); fov = 46; }   // the two of them
   camera.position.copy(_cd);
   camera.up.set(0, 1, 0); camera.lookAt(_cl);

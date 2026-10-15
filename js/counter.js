@@ -140,13 +140,13 @@ function eagleArriveCamera(dt) {
 //      two of them fly the line together, wing to wing, for a few seconds; then Wingman lights out for home and
 //      Red Eagle turns south. Without Wingman: he circles once on his side of the line and turns away ----
 // the pair's timeline: they meet, he speaks (close on him), Wingman answers (close on Wingman), they split
-const HOLD_JOIN = 2.4, HOLD_EAGLE = 3.8, HOLD_WING = 9.8, HOLD_SPLIT = 13.6, PAIR_V = 4.2;
+const HOLD_JOIN = 2.4, HOLD_EAGLE = 3.8, HOLD_WING = 15.6, HOLD_SPLIT = 21.8, PAIR_V = 4.2;
 function startEagleHold() {
   const blues = blueOthers(), e = CT.eagle, w = wingmanUp();
   const hold = new THREE.Vector3(clamp(e.pos.x, -40, 40), 30, RED_LINE - 12);
   e.hp = Math.min(e.hp, e.maxHp * 0.42);   // the dogfight cost him too: torn wings, smoking
-  const pair = w ? new THREE.Vector3(-28, 26, RED_LINE - 7) : null;   // where the two of them meet: on his side of the line, flying it east
-  cut = { kind: 'eagleHold', t: 0, boss: e, crew: blues.concat([e]), said: {}, e, e0: e.pos.clone(), hold, w, pair, len: w ? 19 : 11,
+  const pair = w ? new THREE.Vector3(-42, 26, RED_LINE - 7) : null;   // where the two of them meet: on his side of the line, flying it east
+  cut = { kind: 'eagleHold', t: 0, boss: e, crew: blues.concat([e]), said: {}, e, e0: e.pos.clone(), hold, w, pair, len: w ? 28 : 11,
     blues: blues.filter(f => f !== w).map(f => ({ f, p0: f.pos.clone() })), p0: P.pos.clone(), w0: w ? w.pos.clone() : null };
   P.invulnT = 99; document.body.classList.add('cine');
   if (!cineOn) endEagleHold();
@@ -193,6 +193,7 @@ function updateEagleHold(dt) {
   if (c.w) {
     line(2, 1.0, 'Alpha 3', 'Khoan, Wingman! Anh quay lại làm gì?!');
     line(3, HOLD_EAGLE + 0.4, 'Red Eagle', 'Cậu đừng quay lại đây nữa. Lần sau tôi sẽ không tha cho bất kỳ máy bay nào vượt qua lằn ranh đâu, kể cả cậu!');
+    line(8, HOLD_EAGLE + 5.8, 'Red Eagle', 'Lằn ranh này đâu phải hai đứa mình kẻ. Ngẩng lên mà xem, đèn trên đó chưa bao giờ tắt. ...Nhưng tôi vẫn phải giữ nó.');
     line(4, HOLD_WING + 0.5, 'Wingman', 'Chúng ta hãy còn gặp lại, bạn già ạ!');
     line(7, HOLD_WING + 2.4, 'Red Eagle', 'Gửi lời chào Blackboard. Bảng đen vẫn còn hình ba con chim tụi mình vẽ đấy.');
     line(5, HOLD_SPLIT + 2.2, 'Alpha 3', '...Bạn già?');

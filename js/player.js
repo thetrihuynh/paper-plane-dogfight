@@ -138,7 +138,7 @@ function updatePlayer(dt) {
     if (!P.looping && !document.pointerLockElement) aim.y = Math.min(aim.y, -0.25 * k);
     if (document.pointerLockElement && aim.y > 0) aim.y *= 1 - k; aim.normalize();
     if (P.pos.y > ZONE.y + 6) { P.pos.y = ZONE.y + 6; if (P.vel.y > 0) P.vel.y = 0; }
-    radioOnce('ceiling', 'Blackboard', 'Alpha 1, chạm trần bay. Giảm độ cao!', 12);
+    radioOnce('ceiling', 'Blackboard', pick(['Alpha 1, chạm trần bay rồi. Hạ xuống đi!', 'Cao quá rồi đấy. Mây không phải chỗ của cậu, xuống!']), 12);
   }
   if (P.evadeDur) {
     // barrel roll: exactly one turn around the nose, eased in and out
@@ -304,10 +304,10 @@ function updateBlackout(dt, fwd) {
   }
   if (out > WARN_BAND) {
     P.bo = Math.min(1, P.bo + dt * (0.12 + (out - WARN_BAND) * 0.01));
-    radioOnce('outZone', 'Blackboard', 'Alpha 1, đã vào vùng choáng! Quay đầu ngay, sẽ mất ý thức!', 10);
+    radioOnce('outZone', 'Blackboard', pick(['Alpha 1, cậu vào vùng choáng rồi! Quay đầu ngay, không là mất ý thức đấy!', 'Quay lại! Ngoài đó cậu sẽ ngất mất!']), 10);
   } else if (out > 0) {
     P.bo = Math.max(0, P.bo - dt * 0.15);
-    radioOnce('warnZone', 'Blackboard', 'Alpha 1, đang ở rìa khu vực tác chiến. Quay lại!', 14);
+    radioOnce('warnZone', 'Blackboard', pick(['Alpha 1, cậu sắp ra khỏi trường rồi đấy. Quay lại!', 'Định trốn học à? Quay vào trong đi!', 'Rìa khu vực rồi. Vòng lại nhé.']), 14);
   } else P.bo = Math.max(0, P.bo - dt * 0.45);
   P.ctlAuth = 1 - P.bo * 0.75;
   if (P.bo > 0.15) {                                 // the pilot's hands get shaky
@@ -319,7 +319,7 @@ function updateBlackout(dt, fwd) {
   if (P.bo >= 1) {
     P.boT = 1.8; P.ctlAuth = 0.3;
     flash('', 'MẤT KIỂM SOÁT…', 1.6);
-    radio('Blackboard', 'Mất liên lạc với Alpha 1! Alpha 1, trả lời?!', true);
+    radio('Blackboard', 'Mất liên lạc với Alpha 1! Alpha 1, trả lời tôi!', true);
   }
 }
 function wakeUp() {

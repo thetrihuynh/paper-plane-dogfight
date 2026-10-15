@@ -74,7 +74,7 @@ function escortBriefing() {
   if (escortMode === 'lab') {
     radio('Blackboard', 'Nhiệm vụ: hộ tống Crane tới Phòng Thí Nghiệm khu Tây, nơi chiếc Tàu Mẹ thứ hai đang nằm. Pháo phòng không và trạm SAM hạ được bằng súng.', true);
     radio('Alpha 3', 'Một chiếc chậm thế kia mà phá được cả toà nhà sao?');
-    flash(WAVES[wave] ? WAVES[wave].title : 'BOM NHIỆT HẠCH', 'Hộ tống Hạc Lớn · phá huỷ Phòng Thí Nghiệm và Tàu Mẹ II', 3.2);
+    flash(WAVES[wave] ? WAVES[wave].title : 'HẠC LỚN', 'Hộ tống Hạc Lớn · phá huỷ Phòng Thí Nghiệm và Tàu Mẹ II', 3.2);
     return;
   }
   // the whole briefing holds the channel, and the first attack waits for it (labEvents: talkUntil)
@@ -82,11 +82,7 @@ function escortBriefing() {
     ['Blackboard', 'Lần này là Crane 1, 2, 3, mỗi chiếc một quả. Đưa chúng tới giữa khu Tây. Chỉ cần một chiếc tới nơi.'],
     ['Alpha 2', 'Ba quả...? Blackboard, lần trước một quả đã xoá sổ cả Phòng Thí Nghiệm...'],
     ['Blackboard', 'Để chúng không bao giờ gấp nổi một chiếc Tàu Mẹ nào nữa. Kết thúc chuyện này một lần cho xong, Alpha 2.'],
-    // and the empty slot in the formation
-    ['Alpha 1', 'Blackboard... Wingman đâu? Sao anh ấy không bay cùng?'],
-    ['Blackboard', 'Wingman đã từ chối tham gia ném bom. Anh ta bị đình chỉ vì chống lệnh cấp trên... và hiện đang bị giam.'],
-    ['Alpha 2', '...Bị giam? Chỉ vì không chịu ném bom?'],
-    ['Blackboard', 'Tập trung vào nhiệm vụ, Alpha 2.'],
+    ['Wingman', '...'],   // he flies with them, and says nothing; not yet
     ['Blackboard', '...Lệnh không phải do tôi viết. Tôi chỉ đọc lên thôi.'],
   ], true);
   escortEv.talkUntil = escortT + radioHushT;
@@ -228,7 +224,7 @@ function updateEscort(dt) {
   // interceptors scramble from the rival school, more as the bomber gets closer (Chương 6 has its own script)
   interceptT -= dt * 0.4;
   const reds = flyers.filter(f => f.alive && f.team === 'red').length;
-  if (interceptT <= 0 && reds < 7 && !escortDone && !cut) {
+  if (interceptT <= 0 && reds < 7 && !escortDone && !cut && !escortEv.traitor) {
     const near = heron && heron.pos.z < SCHOOL.mid;
     interceptT = near ? 16 : 24;
     const fin = escortMode === 'finale';
@@ -336,7 +332,7 @@ function startNukeCut() {
   const finale = escortMode === 'finale';
   const bombers = herons.filter(h => h.alive);
   // each bomber takes a target; the run starts 46 m short of it, south-bound
-  const targets = finale ? FINALE_TARGETS.slice(0, Math.max(1, bombers.length)) : [LAB_TARGET];
+  const targets = !finale ? [LAB_TARGET] : bombers.length >= 3 ? FINALE_TARGETS : [FINALE_TARGETS[0], FINALE_TARGETS[2]].slice(0, bombers.length);   // with a Crane short, their east wing is never hit
   const runs = bombers.slice(0, targets.length).map((b, i) => ({ b, tgt: targets[i], start: new THREE.Vector3(targets[i].x, 28 + i * 0.6, targets[i].z + 46 + i * 4), drop: NUKE_DROP + i * 0.45, m: makeNukeBomb(), bomb: null, hit: -1, ring: null }));   // every bomber carries its own, slung under the belly
   const crew = flyers.filter(f => f.alive && f.team === 'blue' && !isHeron(f));
   cut = { kind: 'nuke', t: 0, boss: heron, crew: herons.concat(crew.filter(f => f !== P)), said: {}, finale, runs, start: runs[0].start, hit: -1,
@@ -375,12 +371,13 @@ function restoreSouth() {   // a new game, or another try at the finale: the sch
 }
 // a bomb went off at T: queue up the collapse of everything in reach, nearest first, as the ring rolls outward
 function bringDown(T) {
+  const reach = escortEv.craneDown ? 55 : 105;   // fewer bombs: the blasts don't meet, and what's between them stands
   for (const s of gatherSouth()) {
     const d = Math.hypot(s.x - T.x, s.z - T.z);
-    if (d > 105 || ruin.falls.some(f => f.s === s)) continue;
+    if (d > reach || ruin.falls.some(f => f.s === s)) continue;
     ruin.falls.push({ s, at: clock + d / 45 + rr(0, 0.5), dur: rr(1.6, 2.8), tx: rr(-0.22, 0.22), tz: rr(-0.22, 0.22), dust: false });
   }
-  for (const b of boxes) if (!b.off && b.min.z < SCHOOL.mid - 30 && Math.hypot((b.min.x + b.max.x) / 2 - T.x, (b.min.z + b.max.z) / 2 - T.z) < 105 && !labBoxes.includes(b) && !rubbleBoxes.includes(b)) { b.off = true; ruin.boxesOff.push(b); }
+  for (const b of boxes) if (!b.off && b.min.z < SCHOOL.mid - 30 && Math.hypot((b.min.x + b.max.x) / 2 - T.x, (b.min.z + b.max.z) / 2 - T.z) < (escortEv.craneDown ? 55 : 105) && !labBoxes.includes(b) && !rubbleBoxes.includes(b)) { b.off = true; ruin.boxesOff.push(b); }
   // their planes: thrown out from the blast, tumbling
   const kinds = ['dart', 'swallow', 'nakamura', 'stunt', 'boomerang', 'glider'];
   for (let i = 0; i < 9; i++) {
@@ -557,6 +554,41 @@ function rookie(f, ram) {
 const rookieOf = ram => f => rookie(f, typeof ram === 'function' ? ram(f) : ram);
 // a few lines of radio, each at its own moment (radio() puts urgent lines at the front of the queue, so a burst of
 // them would play backwards)
+function startTraitor(E, h) {
+  const prey = herons.find(x => x.alive && x !== heron) || heron;   // one of the wing bombers, not the lead
+  let w = wingmanUp();
+  if (!w) { w = makeWingman(); w.pos.copy(h.pos).add(_pv.set(12, 4, 30)); orient(w, FWD); }   // (he's always there by now; just in case)
+  w.team = 'red'; w.traitor = true; w.wave = 'traitor'; w.mslLeft = 0; w.flares = 0; w.speed = 12; w.mode = 'attack';
+  w.huntHeron = w.target = prey;
+  Object.assign(E, { traitor: w, prey, craneDown: 0, twT: 0 });
+  radioChain([
+    ['Alpha 3', 'Wingman? Anh tách đội hình làm gì vậy?!'],
+    ['Wingman', 'Đây không phải là hoà bình, mà là diệt chủng!'],
+    ['Wingman', 'Tôi đã quá chán nản với việc bị kiểm soát bởi bọn ở trên cao kia rồi.'],
+    ['Blackboard', 'Wingman, quay về đội hình đi... làm ơn.'],
+    ['Wingman', 'Black... Red nhờ tôi nhắn: cậu ấy không giận.'],
+    ['Wingman', 'Xin lỗi Black... vì đã làm cô liên luỵ.'],
+    ['Wingman', 'Red, đây là thứ ít ra tôi có thể làm...'],
+  ], true);
+  flash('WINGMAN', '', 3);
+}
+function updateTraitor(E, dt) {
+  const w = E.traitor; if (!w || !w.alive) return;
+  E.twT += dt;
+  if (!E.craneDown && E.prey.alive && E.twT > 28) damage(E.prey, E.prey.hp + 1, w);   // he gets there in the end
+  if (!E.craneDown && !E.prey.alive) {
+    E.craneDown = 1; E.downT = E.twT;
+    w.huntHeron = null; w.K = Object.assign({}, w.K, { gunRange: 0 });   // he's done: he won't fire another round, at anyone
+    radioChain([
+      ['Alpha 3', `${E.prey.name} rơi rồi! Wingman... bắn hạ ${E.prey.name}!`],
+      ['Hightower', 'Hightower gọi Alpha. Wingman là kẻ phản bội. Hạ hắn.'],
+      ['Alpha 2', 'Không... đó là Wingman! Anh ấy dạy chúng ta bay mà!'],
+      ['Alpha 3', 'Lệnh là lệnh, Alpha 2. ...Alpha 1, cậu ở gần anh ấy nhất.'],
+      ['Blackboard', 'Wingman? Wingman, trả lời tôi!'],
+    ], true);
+  }
+  if (E.craneDown && E.twT > E.downT + 30) radioOnce('traitorWait', 'Wingman', 'Tôi sẽ không bắn cậu đâu, lính mới. Làm điều cậu phải làm đi.', 999);
+}
 function sayLater(E, lines) { const t0 = escortT; for (const [dt, who, text] of lines) (E.lines ||= []).push({ at: t0 + dt, who, text }); }
 // a set piece that feeds its attackers in one at a time, from well ahead so you see them coming
 const feed = (E, n, gap, spawn) => { E.feedN = n; E.feedT = 0; E.feedGap = gap; E.feed = spawn; };
@@ -626,6 +658,9 @@ const FINALE_PHASES = [   // Chương 12: many of them, all green, most of them 
     radio('Phe Đỏ (bắt sóng)', 'Ai còn bay được thì cất cánh hết! Không còn ai nữa... không còn ai nữa cả!', true);
     sayLater(E, [[5, 'Crane 1', 'Sắp tới điểm ném! Giữ chúng tránh xa thêm vài giây!'], [10, 'Alpha 3', 'Đây là tất cả những gì chúng còn lại sao...']]);
   } },
+  // when the sky is finally empty: a plane takes off from our side, behind us. Wingman. He goes for one Crane
+  { id: 'traitor', at: 0.86, maxT: 999, needClear: true, go(E, h) { startTraitor(E, h); } },
+  { id: 'run', at: 0.92, maxT: 0, go() {} },   // (the bombers wait here until he's down)
 ];
 function labEvents(dt) {
   const E = escortEv, h = heron, endZ = missionPoint().z + (escortMode === 'lab' ? 70 : 85);
@@ -636,6 +671,8 @@ function labEvents(dt) {
   const PH = escortMode === 'lab' ? LAB_PHASES : FINALE_PHASES;
   E.i ??= 0; E.curT = (E.curT || 0) + dt;
   if (E.feedN > 0 && (E.feedT -= dt) <= 0) { E.feedT = E.feedGap; E.feedN--; E.feed(E.feedN); }
+  updateTraitor(E, dt);
+  if (escortMode === 'finale' && !E.crossed && h.pos.z < mirZ(BORDER_Z)) { E.crossed = 1; sayLater(E, [[1.5, 'Blackboard', '...Ba chiếc Hạc. Đúng bằng số người tôi từng muốn chở.']]); }   // quietly, over their chalk line
   if (E.lines) for (let i = E.lines.length - 1; i >= 0; i--) if (escortT >= E.lines[i].at) { const l = E.lines.splice(i, 1)[0]; radio(l.who, l.text, true); }
   const cur = PH[E.i - 1], next = PH[E.i];
   const left = cur ? flyers.filter(f => f.alive && f.wave === cur.id).length + (E.feedN || 0) : 0;
@@ -645,9 +682,9 @@ function labEvents(dt) {
   // Hạc Lớn holds while the last wave is still on it
   // Hạc Lớn never flies past a set piece that hasn't happened yet: while the next one is held up (the last wave still
   // on it, the breather after it, or the briefing still on the radio) it circles where it is
-  const talking = escortT < (E.talkUntil || 0), blocked = busy || E.gap > 0 || talking;
+  const talking = escortT < (E.talkUntil || 0), blocked = busy || E.gap > 0 || talking || (next && next.needClear && flyers.some(f => f.alive && f.team === 'red'));
   const hold = !!next && p >= next.at && blocked;
-  if (hold && !E.hold) { E.hold = h.pos.clone(); E.holdLoud = busy; if (busy) radio(h.name, `${h.name} vào vòng chờ. Dọn sạch chúng đi rồi tôi đi tiếp!`, true); }
+  if (hold && !E.hold) { E.hold = h.pos.clone(); E.holdLoud = busy && !E.traitor; if (busy) radio(h.name, `${h.name} vào vòng chờ. Dọn sạch chúng đi rồi tôi đi tiếp!`, true); }
   else if (!hold && E.hold) { if (E.holdLoud) radio(h.name, left ? 'Không chờ được nữa, tôi phải đi tiếp!' : 'Đường sạch rồi. Crane tiếp tục hướng bay.', true); E.hold = null; }
   if (next && p >= next.at && !blocked) { E.i++; E.curT = 0; E.cleared = 0; E.feedN = 0; next.go(E, h, ahead); }
   // the bombers' own voices as they get hurt

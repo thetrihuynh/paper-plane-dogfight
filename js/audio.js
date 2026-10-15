@@ -61,10 +61,18 @@ function setMute(m) { AU.muted = m; if (AU.master) AU.master.gain.value = m ? 0 
 // =====================================================================
 const radioQ = []; let radioT = 0; const radioCD = {};
 const WHO_COL = { 'Blackboard': '#9effa0', 'Alpha 2': '#ff8fc0', 'Alpha 3': '#6fd0ff', 'Alpha 4': '#9be37a', 'Alpha 5': '#ffb35c', 'Bravo 1': '#c9a0ff', 'Bravo 2': '#fff176', 'Bravo 3': '#80deea', 'Bravo 4': '#f48fb1', 'Bravo 5': '#a5d6a7', 'Bravo 6': '#ffcc80',
-  'Crane': '#7fd6ff', 'Crane 1': '#7fd6ff', 'Crane 2': '#7fd6ff', 'Crane 3': '#7fd6ff', 'Red Eagle': '#ff5050', 'Địch': '#ff8a80', 'Phe Đỏ (bắt sóng)': '#ff8a80', 'Bạch Nhạn': '#ff8a80', 'Hắc Nhạn': '#ff8a80', 'Alpha 1': '#ffffff', 'Wingman': '#d5dde4' };
+  'Crane': '#7fd6ff', 'Crane 1': '#7fd6ff', 'Crane 2': '#7fd6ff', 'Crane 3': '#7fd6ff', 'Red Eagle': '#ff5050', 'Địch': '#ff8a80', 'Phe Đỏ (bắt sóng)': '#ff8a80', 'Bạch Nhạn': '#ff8a80', 'Hắc Nhạn': '#ff8a80', 'Alpha 1': '#ffffff', 'Hightower': '#aab4c8', 'Wingman': '#d5dde4' };
 // while a conversation holds the channel (radioChain with hush), everyone else's chatter is simply dropped
 let radioHushT = 0, radioHushWho = [];
+// Chương 11 (W.bbSilent): Blackboard gives no orders at all; all she does is try to reach Wingman (those lines go out
+// through radioChain / sayNow, not here). Missile calls are taken up by a wingman; everything else of hers goes unsaid
+function bbSilent() { return typeof WAVES !== 'undefined' && WAVES[wave] && WAVES[wave].bbSilent; }
 function radio(who, text, prio = false) {
+  if (who === 'Blackboard' && bbSilent()) {
+    radioOnce('bbGone', 'Alpha 3', 'Blackboard? ...Blackboard, chúng tôi cần chỉ thị!', 999);
+    if (!/missile|break/i.test(text)) return;
+    who = flyers.some(f => f.alive && f.name === 'Alpha 2') ? 'Alpha 2' : 'Alpha 3';
+  }
   if (radioHushT > 0 && !radioHushWho.includes(who)) return;
   if (prio) radioQ.unshift({ who, text }); else radioQ.push({ who, text }); if (radioQ.length > 10) radioQ.length = 10;
 }
@@ -75,7 +83,7 @@ function radioChain(lines, hush = false) {
   radioQ.unshift(...lines.map(([who, text]) => ({ who, text }))); if (radioQ.length > 10) radioQ.length = 10;
   if (hush) { radioT = Math.min(radioT, 0.15); radioHushWho = lines.map(l => l[0]); radioHushT = 0.15 + lines.reduce((s, l) => s + readTime(l[1]), 0); }
 }
-function radioOnce(key, who, text, cd = 15) { if ((radioCD[key] || -99) > clock) return; radioCD[key] = clock + cd; radio(who, text, true); }
+function radioOnce(key, who, text, cd = 15) { if ((radioCD[key] || -99) > clock) return; radioCD[key] = clock + cd; radio(who, text, true); }   // (Blackboard's silence is applied inside radio)
 function updateRadio(dt) {
   radioT -= dt; radioHushT -= dt;
   const el = document.getElementById('radio');

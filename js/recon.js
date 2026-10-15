@@ -36,18 +36,24 @@ document.body.appendChild(camFlashEl);
 const TUT_STEPS = [
   { title: 'Lượn qua 3 vòng vàng', hint: 'Chuột hoặc W/S/A/D để lái · Shift tăng tốc · X giảm tốc',
     radio: 'Bài 1: ba cái vòng vàng phía trước. Chuột chỉ đâu, máy bay theo đó. Đơn giản thôi.',
+    bb: [['Đẹp lắm! Ba vòng, không quệt vòng nào.'], ['Gọn ghê. Wingman, anh thấy chưa?', 'Wingman', '...Thấy rồi.']],
     start() { tutRings(); }, done: () => RC.ringNext >= RC.rings.length },
   { title: 'Bắn hạ 2 máy bay bia', hint: 'Chuột trái / Space: bắn súng · giữ R: tự bám đuôi mục tiêu',
     radio: 'Bài 2: hai máy bay bia. Chúng không bắn trả, may cho cậu. Bám đuôi rồi bắn.',
+    bb: [['Hai bia, rơi cả hai. Ờ thì... tốn đạn hơn hai phát một chút, nhưng vẫn tính.', 'Wingman', 'Bia không biết né. Ngoài kia thì có.'],
+         ['Wingman này, anh bay mẫu cho cậu ấy một vòng đi chứ? ...Không à? Thật hết nói.', 'Wingman', 'Học bằng mắt thì quên. Học bằng tay mới nhớ.']],
     start() { tutDrones(2); }, done: () => RC.drones.every(f => !f.alive) },
   { title: 'Khoá và phóng tên lửa vào máy bay bia', hint: 'Giữ mũi vào mục tiêu tới khi KHOÁ · F / chuột phải: phóng',
     radio: 'Bài 3: giữ mũi vào mục tiêu tới khi khoá xanh rồi phóng. Đừng phí, ngoài kia không ai phát thêm tên lửa cho cậu đâu.',
+    bb: [['Khoá, phóng, trúng. Nhớ lấy cảm giác này nhé, ngoài kia không dễ thế đâu.'], ['Trúng rồi! Tôi nghe cả tiếng nổ từ đài chỉ huy đấy.']],
     start() { P.msl = Math.max(P.msl, 2); P.wpnGun = false; tutDrones(1); }, done: () => RC.drones.every(f => !f.alive) },
   { title: 'Lộn vòng né tránh', hint: 'Nhấn V: lộn vòng tăng tốc, tự thả pháo sáng',
     radio: 'Bài 4: bị tên lửa bám thì nhấn V. Lộn vòng, pháo sáng lo phần còn lại. Tôi sống tới giờ là nhờ cái nút đó.',
+    bb: [['Lộn vòng đẹp đấy. Tôi ngồi dưới này mà còn chóng mặt thay cậu.'], ['Đúng rồi! Cứ thế, đừng bao giờ quên cái nút đó.']],
     start() {}, done: () => P.evadeT > 0 },
   { title: 'Bay lướt thấp dưới 4 m trong 3 giây', hint: 'Hạ thật thấp, sát mặt sân · bay thấp là cách lọt dưới tầm radar',
     radio: 'Bài cuối: lướt sát mặt đất. Dưới mái hiên với tán cây thì chẳng ai trên cao nhìn thấy cậu. ...Ai trên cao à? Cứ bay đi đã.',
+    bb: [['Sát đất thế cơ à... cỏ sân Đông chắc giật mình lắm.'], ['Thấp ghê! Thêm tí nữa là cậu lướt qua giày tôi rồi.']],
     start() { RC.lowT = 0; }, done: () => RC.lowT >= 3 },
 ];
 
@@ -60,13 +66,16 @@ function startRecon(kind) {
   RC.interceptors = []; RC.drones = []; clearTutRings();
   if (kind === 'tutorial') {
     RC.phase = 'tut';
-    radio('Blackboard', 'Alpha 1, trước nhiệm vụ đầu tiên, hoàn thành vài bài huấn luyện trên sân Đông. Nhấn K để bỏ qua.', true);
+    radio('Blackboard', 'Trước khi nhận việc thật, mình khởi động vài bài trên sân Đông nhé. Ai tự tin quá thì nhấn K để bỏ qua... nhưng tôi không khuyên đâu.', true);
     radio('Wingman', 'Wingman đây. Họ giao tôi kèm cậu mấy bài đầu. Bay cho đúng, đừng bắt tôi nói lại hai lần.');
+    radio('Blackboard', 'Đừng để anh ấy doạ. Anh ấy bay giỏi lắm đấy, chỉ là dạo này lười thôi.');
+    radio('Wingman', '...Tôi đang để dành sức cho ngày nghỉ hưu.');
     flash('HUẤN LUYỆN BAY', 'Làm quen với máy bay giấy của bạn', 2.4);
   } else if (kind === 'sneak') {
     RC.phase = 'brief'; RC.stepT = 2.5;
-    radio('Blackboard', 'Alpha 1, nhiệm vụ trinh sát. Phe Đỏ đang giấu thứ gì đó trong Phòng Thí Nghiệm khu Tây. Radar trên nóc phòng quét cả sân trường.', true);
-    radio('Blackboard', 'Bay thấp dưới tầm radar, xuyên qua phòng và chụp ảnh. Bị radar bắt trước khi chụp được là nhiệm vụ thất bại.');
+    radio('Blackboard', 'Alpha 1, việc thật đầu tiên của cậu đây: trinh sát. Phe Đỏ đang giấu gì đó trong Phòng Thí Nghiệm khu Tây.', true);
+    radio('Blackboard', 'Cái radar trên nóc nó quét cả sân. Bay thấp, lách dưới mái, chui qua cửa phòng rồi chụp vài tấm. Lộ trước khi chụp được là mình về tay trắng.');
+    radio('Blackboard', 'Không cần vội. Tôi theo cậu suốt đường đi.');
   } else startChase(cont);
 }
 // a part is done: in the campaign go straight on into the next one; otherwise let the normal flow end the chapter
@@ -80,7 +89,7 @@ function startChase(cont) {
     P.pos.set(0, 4.5, LABH.z1 + 5); orient(P, _tmp.set(0.001, 0, 1)); aim.set(0, 0, 1); P.speed = 8; P.prevVel = null; P.trails.forEach(t => t.init = false);
     P.hp = P.maxHp; P.msl = Math.max(P.msl, MSL_PER_WAVE); P.flares = Math.max(P.flares, FLR_PER_WAVE); P.sonic = false;
   }
-  radio('Blackboard', 'Đã có ảnh. RTB về khu Đông, giữ độ cao thấp.', true);
+  radio('Blackboard', 'Có ảnh rồi! Giỏi lắm. Giờ về nhà thôi, nhớ bay thấp, đừng để tới phút cuối mới bị bắt nhé.', true);
 }
 function endReconWorld() {
   stealthEl.style.display = 'none'; clearTutRings(); showLabWeapon(false);
@@ -118,8 +127,14 @@ function finishTutorial(skipped) {
   RC.drones = []; clearTutRings();
   RC.phase = 'tutdone'; RC.stepT = 2.5;
   flash(skipped ? 'BỎ QUA HUẤN LUYỆN' : 'HUẤN LUYỆN HOÀN THÀNH', 'Sẵn sàng nhận nhiệm vụ', 2.4);
-  radio('Blackboard', skipped ? 'Rõ. Bỏ qua huấn luyện, vào nhiệm vụ.' : 'Huấn luyện hoàn tất. Alpha 1, sẵn sàng tác chiến.', true);
-  if (!skipped) { radio('Wingman', '...Ừ. Được đấy, lính mới. Khá hơn tôi hồi mới gấp ra.'); radio('Wingman', 'Hồi xưa tôi chỉ mơ được dạy bọn nhỏ bay thế này. Không phải để đưa chúng ra trận.'); }
+  radio('Blackboard', skipped ? 'Bỏ qua luôn à? Tự tin ghê. Được, vào việc thôi.' : 'Xong cả năm bài! Alpha 1, giờ thì cậu sẵn sàng thật rồi đấy.', true);
+  if (!skipped) [
+    ['Wingman', '...Ừ. Được đấy, lính mới. Khá hơn tôi hồi mới gấp ra.'],
+    ['Blackboard', 'Thấy chưa, anh dạy hay mà. Nhận thêm một lứa nữa đi.'],
+    ['Wingman', 'Vài tuần nữa tôi nghỉ rồi.'],
+    ['Blackboard', 'Năm ngoái anh cũng nói y câu đó.'],
+    ['Wingman', 'Hồi xưa tôi chỉ mơ được dạy bọn nhỏ bay thế này. Không phải để đưa chúng ra trận.'],
+  ].forEach(([w, t]) => radio(w, t));
 }
 function startSneak() {
   RC.phase = 'sneak'; RC.meter = 0; RC.wp = 0;
@@ -310,8 +325,8 @@ function updateRescueCut(dt) {
     f.rg.z += c.spd * dt; f.pos.lerpVectors(f.rg, slot, k * k * (3 - 2 * k));   // the start point keeps pace, so they really close in orient(f, _tmp.set((slot.x - f.pos.x) * 0.05, 0.15 * climb, 1)); f.speed = c.spd; f.vel.set(0, 0, c.spd);
   });
   const line = (n, at, who, text) => { if (t > at && !c.said[n]) { c.said[n] = 1; sayNow(who, text); } };
-  line(1, 0.3, 'Blackboard', 'Alpha 1, spike! Bị khoá radar!');
-  line(2, 1.4, 'Blackboard', 'Khoá cứng rồi! Tăng tốc, tăng tốc!');
+  line(1, 0.3, 'Blackboard', 'Alpha 1, spike! Cậu bị khoá rồi!');
+  line(2, 1.4, 'Blackboard', 'Khoá cứng rồi! Chạy đi, chạy!');
   line(3, RS.k1 + 0.45, 'Wingman', 'Cần giúp không, lính mới? ...Thôi, khỏi trả lời.');
   if (c.kills.length > 1) line(4, RS.k2 + 0.3, 'Alpha 2', 'Chiếc này của tôi!');
   line(5, RS.home + 1.2, 'Alpha 2', 'Suýt chết đấy nhỉ?');
@@ -323,7 +338,10 @@ function endRescueCut() {
   for (const k of c.kills) if (k.f.alive) destroy(k.f, k.by);
   c.allies.forEach((f, i) => { f.obj.visible = true; f.rg = null; f.pos.copy(P.pos).add(_pv.set(i ? -1.25 : 1.25, 0.22, -0.6)); orient(f, _tmp.set(0.001, 0, 1)); f.speed = 9; f.mode = 'attack'; });
   P.invulnT = 1; P.speed = 9; orient(P, _tmp.set(0.001, 0, 1)); aim.copy(fwdOf(P, _tmp)); camPos.copy(P.pos).add(_pv.set(0, 0.5, -2.5)); camAimS.copy(aim);
-  radio('Blackboard', 'Alpha 1 đã về an toàn. Ảnh Tàu Mẹ đã nằm trên bàn chỉ huy. Phe Đỏ biết mình bị lộ... tất cả, sẵn sàng.', true);
+  radio('Blackboard', 'Alpha 1 về rồi! ...Phù. Ảnh Tàu Mẹ đã nằm trên bàn tôi. Cậu làm tốt lắm.', true);
+  [['Blackboard', 'Còn anh, Wingman: một loạt đạn hạ một chiếc, xong đòi về đi ngủ. Phí tài quá đấy.'],
+   ['Wingman', 'Tài thì phải để dành, Blackboard. Cho lúc thật sự cần.'],   // and he does, in Chương 12
+   ['Blackboard', 'Phe Đỏ biết mình bị lộ rồi. Tất cả nghỉ đi... nhưng đừng ai ngủ say quá.']].forEach(([w, t]) => radio(w, t));
   endReconWorld();
   waveState = 'active';   // nothing left in the air: the normal flow ends the chapter
 }
@@ -379,14 +397,14 @@ function detected(byGust) {
   RC.detected = true; RC.meter = 1; RC.fightT = 0; RC.gustT = -1; RC.interceptors = [];
   if (!RC.labSeen) {   // caught before we saw anything: the whole mission was for nothing
     if (AU.ctx) for (let i = 0; i < 3; i++) tone(520, 880, 0.45, 0.07, 'sawtooth', i * 0.5);
-    radio('Blackboard', 'Alpha 1 bị radar phát hiện. Chúng sẽ giấu mọi thứ trước khi ta kịp thấy... Huỷ nhiệm vụ, RTB.', true);
+    radio('Blackboard', 'Chúng thấy cậu rồi... Thể nào cũng giấu hết trước khi mình kịp nhìn. Về thôi, Alpha 1. Không sao đâu, mình làm lại.', true);
     missionFail('Bị radar phát hiện trước khi kịp trinh sát Phòng Thí Nghiệm');
     stealthEl.style.display = 'none';
     return;
   }
   flash('BỊ PHÁT HIỆN!', 'Radar Phe Đỏ đã bắt được Alpha 1', 2.6);
-  radio('Blackboard', byGust ? 'Gió hất Alpha 1 lên, lộ trên radar rồi! Còi báo động khu Tây đang hú!' : 'Alpha 1 bay quá cao, radar bắt được rồi! Còi báo động khu Tây đang hú!', true);
-  radio('Blackboard', 'Hai bandit cất cánh, mang đầy tên lửa! Hạ chiếc nào chúng cử thêm chiếc đó. Không giao chiến, chạy về qua vạch ranh giới khu Xanh!');
+  radio('Blackboard', byGust ? 'Cơn lốc hất cậu lên rồi! Radar thấy cậu, còi khu Tây đang hú!' : 'Cao quá rồi, Alpha 1! Radar thấy cậu, còi khu Tây đang hú!', true);
+  radio('Blackboard', 'Hai chiếc cất cánh, đầy tên lửa. Nghe tôi: đừng đánh. Chạy về bên này vạch phấn, tấm ảnh quan trọng hơn mọi chiến công.');
   if (AU.ctx) for (let i = 0; i < 4; i++) tone(520, 880, 0.45, 0.07, 'sawtooth', i * 0.5);
   shake = Math.min(0.7, shake + 0.3);
 }
@@ -402,7 +420,7 @@ function scramble(n = 2, reinforce = false) {
     RC.interceptors.push(f);
   }
   popup(reinforce ? `PHE ĐỎ CỬ THÊM ${n} TIÊM KÍCH!` : `${n} TIÊM KÍCH CẤT CÁNH TRUY ĐUỔI!`, RED, 2);
-  if (reinforce) radio('Blackboard', pick(['Hạ một, chúng cất cánh thêm hai! Không giao chiến, chạy đi!', 'Thêm bandit từ khu Tây! Không thắng nổi đâu, về qua vạch ranh giới!']), true);
+  if (reinforce) radio('Blackboard', pick(['Hạ một, chúng cho cất cánh thêm hai! Đừng ham, chạy đi!', 'Thêm bandit từ khu Tây! Không thắng nổi đâu, về qua vạch phấn!', 'Tôi biết cậu muốn đánh. Đừng. Về đây đã.']), true);
 }
 const _st = new THREE.Vector3();
 function updateRecon(dt) {
@@ -414,7 +432,7 @@ function updateRecon(dt) {
   if (RC.phase === 'tut') {
     if (pressed.KeyK) { finishTutorial(true); return; }
     const S = TUT_STEPS[RC.step];
-    if ((RC.step < 0 || (S && S.doneAt != null)) && RC.stepT <= 0) {   // next lesson
+    if ((RC.step < 0 || (S && S.doneAt != null)) && RC.stepT <= 0 && !radioQ.length) {   // next lesson, once the chatter has been said
       RC.step++;
       const N = TUT_STEPS[RC.step];
       if (!N) { finishTutorial(false); return; }
@@ -427,6 +445,7 @@ function updateRecon(dt) {
       RC.lowT = P.pos.y < 4 ? RC.lowT + dt : Math.max(0, RC.lowT - dt * 0.5);
       if (S.done()) {
         S.doneAt = clock; RC.stepT = 1.6; score += 50;
+        if (S.bb) { const [t, who, reply] = pick(S.bb); radio('Blackboard', t); if (who) radio(who, reply); RC.stepT = 1.6 + (who ? readTime(t) : 0); }   // she cheers; now and then Wingman gets poked
         popup(`✓ ${S.title}`, '#7dff9a', 1.6); burst(P.pos, 30, [0x7dff9a, 0xffffff], 5, 1.2, 1);
         if (AU.ctx) { tone(660, 990, 0.12, 0.07, 'triangle'); tone(990, 1320, 0.16, 0.07, 'triangle', 0.12); }
       }
@@ -439,10 +458,10 @@ function updateRecon(dt) {
     }
   } else if (RC.phase === 'tutdone') {
     obj = 'Huấn luyện hoàn thành';
-    if (RC.stepT <= 0) reconChapterDone();
+    if (RC.stepT <= 0 && !radioQ.length && radioT < 0.8) reconChapterDone();   // (they finish their talk first)
   } else if (RC.phase === 'brief') {
     obj = 'Chuẩn bị nhiệm vụ trinh sát…';
-    if (RC.stepT <= 0) startSneak();
+    if (RC.stepT <= 0 && !radioQ.length && radioT < 0.8) startSneak();
   } else if (RC.phase === 'sneak') {
     if (cut) { stealthEl.style.display = 'none'; return; }   // the scripted moments drive everything while they play
     const d = P.pos.distanceTo(RADAR_POS), fl = radarFloor(d), roof = underRoof(P.pos), fw = fwdOf(P, _fw);
@@ -465,7 +484,7 @@ function updateRecon(dt) {
       if (RC.gustT > 2.8) detected(true);
     } else if (RC.labSeen && !RC.detected && !roof && Math.hypot(P.pos.x, P.pos.z - LABW.z) > 20 && ((RC.labT += dt) > 1.5 && fw.z > 0.2 || RC.labT > 7)) {   // clear of the lab, heading home... and the air turns on us
       RC.gustT = 0; RC.gustSide = P.pos.x > 0 ? -1 : 1; P.sonic = false;
-      radio('Blackboard', 'Cẩn thận, gió xoáy! Một cơn lốc đang cuộn qua sân Tây!', true);
+      radio('Blackboard', 'Cẩn thận, gió xoáy! Có cơn lốc đang cuộn qua sân Tây, đừng để nó hất cậu lên!', true);
       flash('', 'GIÓ XOÁY!', 1.4);
       if (AU.ctx) noiseHit(AU.ctx.currentTime, 220, 0.6, 1.6);
     }
@@ -473,13 +492,13 @@ function updateRecon(dt) {
       if (seen) {
         RC.meter = Math.min(1, RC.meter + dt * (RC.gustT >= 0 ? 0.35 : 0.45 + 0.1 * seen));
         RC.pingT -= dt; if (RC.pingT <= 0) { RC.pingT = 0.55; if (AU.ctx) tone(1250, 1250, 0.06, 0.05, 'square'); }
-        if (RC.gustT < 0) radioOnce('reconSeen', 'Blackboard', 'Alpha 1, radar đang quét trúng! Hạ thấp hoặc chui dưới mái hiên!', 10);
+        if (RC.gustT < 0) radioOnce('reconSeen', 'Blackboard', pick(['Alpha 1, radar đang quét trúng cậu! Thấp xuống, hoặc chui dưới mái hiên!', 'Cậu đang lộ đấy! Xuống thấp, nhanh!', 'Radar chạm vào cậu rồi, núp đi!']), 10);
       } else RC.meter = Math.max(0, RC.meter - dt * 0.2);
       if (RC.meter >= 1 && RC.gustT < 0) { detected(false); return; }
     }
-    if (P.pos.z < ROW_N[1]) radioOnce('reconYard', 'Blackboard', 'Ra sân rồi, trống trải lắm. Sát đất, lấy cây và Giếng Trời làm bình phong!', 999);
-    if (roof && P.pos.z < ROW_S[1] + 2) radioOnce('reconIn', 'Blackboard', 'Vào hiên Dãy C rồi, dưới mái thì radar mù. Phòng Thí Nghiệm ngay cạnh, cửa mở về phía sân!', 999);
-    if (!RC.labSeen && P.pos.distanceTo(RADAR_POS) < 60) radioOnce('reconNear', 'Blackboard', 'Sát chân radar rồi, nó không nhìn được thẳng xuống đâu. Bay xuyên qua cửa Phòng Thí Nghiệm!', 999);
+    if (P.pos.z < ROW_N[1]) radioOnce('reconYard', 'Blackboard', 'Ra sân rồi. Trống trải lắm, cứ như đứng giữa sân cờ vậy. Bám sát đất, núp sau cây với Giếng Trời.', 999);
+    if (roof && P.pos.z < ROW_S[1] + 2) radioOnce('reconIn', 'Blackboard', 'Vào hiên Dãy C rồi, dưới mái này radar mù tịt. Phòng Thí Nghiệm ngay bên cạnh, cửa mở ra phía sân đấy.', 999);
+    if (!RC.labSeen && P.pos.distanceTo(RADAR_POS) < 60) radioOnce('reconNear', 'Blackboard', 'Sát chân radar rồi. Cái chảo đó không cúi xuống nhìn được đâu, yên tâm. Giờ thì chui qua cửa!', 999);
     // the chase: they can't be beaten here; get back over the half-way line
     if (RC.detected) {
       RC.fightT += dt;

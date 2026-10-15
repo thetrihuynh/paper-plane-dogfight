@@ -276,9 +276,9 @@ function setupMission(chapter, single) {
   skyTo = PALETTES[WAVES[chapter].sky] || PALETTES.morning;   // the chapter's sky (its scenario may still change it)
   spawnWave(++wave);
   if (!chapter) [   // the very first take-off gets the welcome before the tutorial's first instruction
-    ['Blackboard', 'Nhắc lại: không rời khuôn viên trường. Ra quá xa sẽ choáng và mất kiểm soát.'],
-    ['Alpha 2', 'Alpha 2 đây. Hôm nay Alpha 1 bay một mình, chúng tôi theo dõi từ mặt đất!'],
-    ['Blackboard', 'Đây là Blackboard, đài chỉ huy. Phi đội Alpha vừa thành lập. Alpha 1, chào mừng lên trời!'],
+    ['Blackboard', 'À, một điều thôi: đừng bay ra khỏi tường rào. Ra xa quá là choáng đấy, rồi tôi lại phải đi nhặt cậu về.'],
+    ['Alpha 2', 'Alpha 2 đây! Hôm nay Alpha 1 bay một mình, tụi mình đứng dưới đất cổ vũ!'],
+    ['Blackboard', 'Blackboard gọi Alpha 1, nghe rõ không? ...Tốt. Chào mừng lên trời! Cậu là chiếc đầu tiên của phi đội Alpha đấy.'],
   ].forEach(([w, t]) => radio(w, t, true));
   updateSky(99);   // already under the chapter's sky, not fading into it
   if (!cut) { camFwd.copy(fwdOf(P, _fw)); camAimS.copy(aim); camPos.copy(P.pos).addScaledVector(camAimS, -2.2); updateCamera(1); }   // camera already behind the plane, no swoop in from the menu view
@@ -409,6 +409,8 @@ function findSpawn(minD, maxD, area) {
 }
 let resupplyT = 0;
 const beatsSaid = new Set();
+// a wingman who's been shot down doesn't talk: a scripted exchange plays only if everyone in it is still flying
+const canSay = lines => lines.every(([w]) => !(ALLIES.some(a => a.name === w) || w === WINGMAN.name) || flyers.some(f => f.alive && f.name === w));
 function updateWaves(dt) {
   eagleBanter(dt);
   for (let i = allyReturns.length - 1; i >= 0; i--) {
@@ -431,7 +433,7 @@ function updateWaves(dt) {
   if (waveState === 'active' && WAVES[wave] && WAVES[wave].beats) WAVES[wave].beats.forEach(([left, lines], k) => {
     if (enemies.length > left || beatsSaid.has(wave + ':' + k)) return;
     beatsSaid.add(wave + ':' + k);
-    if (lines.every(([w]) => !ALLIES.some(a => a.name === w) || flyers.some(f => f.alive && f.name === w))) lines.forEach(([w, t]) => radio(w, t));   // queued behind what's on air, in order
+    if (canSay(lines)) lines.forEach(([w, t]) => radio(w, t));   // queued behind what's on air, in order
   });
   if (waveState === 'wait') {
     waveT -= dt;
@@ -441,11 +443,15 @@ function updateWaves(dt) {
     const p = _tmp.copy(P.pos).addScaledVector(fwdOf(P, _fw).setY(0).normalize(), 35); p.y = clamp(p.y, 6, 20); p.x = clamp(p.x, -60, 60); p.z = clamp(p.z, SCHOOL.zS + 20, SCHOOL.zN - 20);
     spawnPickup(lowSpot(p, 0, 50) || p.clone(), 'resupply', 'msl'); popup('THÙNG TIẾP TẾ TÊN LỬA!', '#ffd93b', 1.6);
   } else if (enemies.length === 0) {
+    const W = WAVES[wave], outro = W && W.outro && canSay(W.outro) ? W.outro : null;
+    // after the fight, a quiet exchange (W.outro): the chapter waits for it to be said
+    if (outro && !beatsSaid.has(wave + ':outro')) { beatsSaid.add(wave + ':outro'); outro.forEach(([w, t]) => radio(w, t)); }
+    if (outro && playMode === 'chapter' && (radioQ.length || radioT > 0.4)) return;
     for (const f of [...flyers]) if (f.temp) removeFlyer(f);   // the extra wingmen head back to base
     if (playMode === 'chapter') chapterComplete();
     else if (wave >= WAVES.length - 1) missionComplete();
     else {
-      waveState = 'wait'; waveT = 13; startCourse();
+      waveState = 'wait'; waveT = 13 + (outro ? outro.reduce((s, l) => s + readTime(l[1]), 0) : 0); startCourse();
       const saved = objectives.filter(o => o.alive).length;
       if (objectives.length) { score += saved * 200; popup(`Giữ được ${saved}/${objectives.length} mục tiêu · +${saved * 200}`, '#7fb8ff', 2.5); }
       setObjectives(null); windOn = false;
@@ -467,6 +473,15 @@ function damage(f, amt, src) {
   if (f === P && P.invulnT > 0) return;
   if (cut && f === cut.boss) return;   // untouchable while his entrance plays
   if (cut && cut.kind === 'nuke' && f.team === 'blue') return;   // nothing touches the bomb run
+  if (src && src.traitor) {   // Chương 12: Wingman fires on one Crane and on nothing else, least of all Alpha 1
+    if (!isHeron(f) || escortEv.craneDown) return;
+    amt *= 5;
+  }
+  if (f.name === WINGMAN.name && !f.traitor && gameMode === 'escort' && escortMode === 'finale') amt = Math.min(amt, Math.max(0, f.hp - 40));   // he's still there when it's time
+  if (f.traitor) {   // only Alpha 1 can bring him down, and not before he's done what he came for
+    if (src !== P) return;
+    if (!escortEv.craneDown) amt = Math.min(amt, Math.max(0, f.hp - f.maxHp * 0.5));
+  }
   if (src && src.kind === 'ace' && f.name === WINGMAN.name) {   // he won't fire on his old wingman
     if (gameMode === 'counter') radioOnce('eagleSpares', 'Alpha 3', 'Lạ thật... hắn lướt ngay qua mũi Wingman mà không bắn một viên nào.', 60);
     return;
@@ -516,6 +531,7 @@ function damage(f, amt, src) {
   if (src === P && f !== P) hitMarkT = 0.15;
   if (f.kind === 'ace' && f.hp < f.maxHp * 0.35) radioOnce('aceLow', 'Alpha 2', 'Red Eagle hư hại nặng! Ép tiếp, sắp hạ được rồi!', 999);
   if (f.hp <= 0 && f.kind === 'ace' && f.team === 'red' && gameMode !== 'counter' && !f.fallen && wingmanUp() && state === 'play') { f.hp = 1; f.fallen = true; f.lastHitBy = src; startEagleFall(f); return; }
+  if (f.hp <= 0 && f.traitor && !f.fallen && state === 'play') { f.hp = 1; f.fallen = true; startEagleFall(f, WINGMAN_FALL); return; }
   if (f.hp <= 0) destroy(f, src);
 }
 function destroy(f, src, crashed = false) {
@@ -525,6 +541,7 @@ function destroy(f, src, crashed = false) {
   burst(f.pos, 40, [f.colorHex, 0xffffff, 0xdddddd], 4, 2.5, 1.5);
   if (f === P) { playerDown(); return; }
   if (f.K.turrets) shipDown(f);
+  if (f.traitor) return;   // no points, no cheering
   if (f.team === 'red') {
     const credit = src === P || (f.lastHitBy === P && clock - f.lastHitT < 8);
     if (credit && (f.K.mslN || 0) > 0 && (P.msl <= 3 || Math.random() < 0.5)) {
@@ -545,7 +562,7 @@ function destroy(f, src, crashed = false) {
       else if (f.kind === 'ace') { radio('Blackboard', 'Splash Red Eagle! Hắn rơi rồi! Tuyệt vời, Alpha 1!', true); radioChain([['Red Eagle', 'Mấy quả bom đó... xin các anh đừng thả. Bên dưới đó cũng là giấy của các anh.'], ['Red Eagle', 'Nói với cậu ấy... tôi đã giữ lời. Tôi chưa từng bắn cậu ấy.']]); }
       else if (f.kind === 'elite') { const mate = flyers.find(x => x.alive && x.kind === 'elite'); radio(mate ? mateName() : 'Blackboard', mate ? `Splash ${f.name}! ${mate.name} đang lao thẳng vào Alpha 1!` : 'Song Nhạn đã rơi cả hai! Alpha 1, xác nhận át chủ bài!', true); if (!mate && wingmanUp()) radio('Wingman', 'Cả hai chiếc... Khá lắm, lính mới. Tôi nói thật đấy.'); }
       else if (Math.random() < 0.6) { const [w, t] = pick(KILL_LINES); radio(w, t); }
-    } else if (crashed) radio('Blackboard', `${f.name} tự đâm vào địa hình!`);
+    } else if (crashed) radio('Blackboard', pick([`${f.name} tự đâm vào địa hình!`, `${f.name} quệt cây rồi rơi luôn.`, `Ối... ${f.name} tự đâm xuống đất kìa.`]));
     else if (src && src.team === 'blue' && !(cut && cut.kind === 'rescue')) radio(src.name, pick(['Splash one!', 'Trúng! Hạ một chiếc!', 'Thêm một bandit xuống đất!']));   // the rescue has its own lines
   } else if (f.team === 'blue') {
     radio('Blackboard', `${f.name} rơi! ${f.name}, báo cáo tình trạng!`, true);
@@ -556,13 +573,13 @@ function crash(f) { destroy(f, f.lastHitBy, true); }
 function playerDown() {
   state = 'dead'; endT = 0;
   if (document.pointerLockElement) document.exitPointerLock();
-  radio('Blackboard', 'Alpha 1 rơi! Alpha 1, Blackboard gọi, trả lời!', true);
+  radio('Blackboard', 'Alpha 1 rơi! Alpha 1, trả lời tôi đi... Alpha 1!', true);
   flash('MÁY BAY BỊ HẠ', '', 2.5);
 }
 function chapterComplete() {
   state = 'won'; endT = 0;
   const last = wave >= WAVES.length - 1;
-  radio('Blackboard', last ? 'Cuộc chiến kết thúc. Tất cả phi đội, RTB. Về tổ thôi!' : 'Nhiệm vụ hoàn thành. Tất cả, RTB. Phe Đỏ chưa chịu thua đâu.', true);
+  radio('Blackboard', last ? 'Cuộc chiến kết thúc. Tất cả phi đội, RTB. Về tổ thôi!' : pick(['Xong rồi. Tất cả về nhà, nghỉ một chút đi.', 'Nhiệm vụ hoàn thành. Về thôi, các cậu làm tốt lắm.', 'Trời sạch rồi. RTB, và đừng ai nhào lộn lúc hạ cánh đấy.']), true);
   flash('CHƯƠNG HOÀN THÀNH', WAVES[wave].title, 3);
 }
 function missionComplete() {
