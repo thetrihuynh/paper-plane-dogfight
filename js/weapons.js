@@ -90,7 +90,7 @@ function launchMissile(f, target) {
   f.gunSide = -f.gunSide;
   const m = {
     p: f.pos.clone().addScaledVector(down, 0.5 * f.K.scale).addScaledVector(right, 0.35 * f.gunSide), dir: fwd, speed: f.speed + 2,
-    target, team: f.team, owner: f, life: 7, alive: true, armed: 0.25, mesh: new THREE.Mesh(GEO.missile, mslMat), puffD: 0,
+    target, aimP: target === P, team: f.team, owner: f, life: 7, alive: true, armed: 0.25, mesh: new THREE.Mesh(GEO.missile, mslMat), puffD: 0,
     vel: new THREE.Vector3(), turn: f === P ? 3.2 : (f.K.mslTurn || 1.9), vmax: f === P ? 21 : (f.K.mslSpeed || 17.5), dmg: f === P ? 60 : (f.K.mslDmg || 34), flareChecked: false,
   };
   m.mesh.castShadow = true; m.mesh.scale.setScalar(0.35); scene.add(m.mesh);
@@ -102,6 +102,7 @@ function launchMissile(f, target) {
 }
 function explodeMissile(m) {
   m.alive = false; scene.remove(m.mesh);
+  if (m.aimP && m.owner.kind === 'ace' && P.alive && P.pos.distanceTo(m.p) > 1.2 + P.K.hitR) eaglePraise(m.owner, 'dodge');   // Alpha 1 got away from it
   explosion(m.p, 0.8, 0.8);
   let killed = null;
   for (const f of flyers) {
@@ -240,6 +241,12 @@ for (const k in PICKUP_TYPES) {
 const crateGeo = new THREE.BoxGeometry(0.9, 0.9, 0.9);
 const ringGeo = new THREE.TorusGeometry(1.2, 0.06, 6, 28);
 const beamGeo = new THREE.CylinderGeometry(0.12, 0.12, 40, 8, 1, true).translate(0, 20, 0);
+// supply goes down low, into the openings under the trees and roofs, out of the Hightowers' sight: [near, minD, maxD] -> a spot or null
+function lowSpot(near, minD, maxD) {
+  const ok = gaps.filter(g => g.c.y >= 1.5 && g.c.y < SIGHT_Y && g.r >= 3 && Math.abs(g.c.x) < SCHOOL.x - 4 && g.c.z < SCHOOL.zN - 4 && g.c.z > SCHOOL.zS + 4
+    && g.c.distanceTo(near) >= minD && g.c.distanceTo(near) <= maxD && !pointBlocked(g.c, 1));
+  return ok.length ? pick(ok).c.clone() : null;
+}
 function spawnPickup(pos, why, type = 'msl') {
   const T = PICKUP_TYPES[type];
   const g = new THREE.Group(), box = new THREE.Mesh(crateGeo, T.mat), ring = new THREE.Mesh(ringGeo, T.ringMat), beam = new THREE.Mesh(beamGeo, T.beamMat);
@@ -277,8 +284,8 @@ function updatePickups(dt) {
     P.supplyT = (P.supplyT || 0) + dt;
     if (P.supplyT >= (P.msl === 0 ? 4 : 10)) {
       P.supplyT = 0;
-      spawnPickup(findSpawn(25, 60), 'drop');
-      radio('Blackboard', 'Hộp tiếp tế tên lửa đã thả. Theo cột sáng vàng, bay xuyên qua để nạp.', true);
+      spawnPickup(lowSpot(P.pos, 20, 90) || findSpawn(25, 60), 'drop');
+      radio('Blackboard', 'Hộp tiếp tế tên lửa đã thả xuống thấp, dưới tán cây và mái nhà. Theo cột sáng vàng, bay xuyên qua để nạp.', true);
     }
   } else P.supplyT = 0;
 }

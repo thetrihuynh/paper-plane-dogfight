@@ -632,6 +632,7 @@ function drawFighterHUD(fwd) {
     const altCol = alt > ZONE.y ? RED : alt > ZONE.y - 8 ? YEL : alt < 1.2 ? YEL : HUDC;
     htext(alt.toFixed(1), cx + bw * 0.72, cy, 15, 'left', altCol, '800');
     htext('m', cx + bw * 0.72, cy + 14, 10, 'left');
+    if (!towerSees(P.pos)) htext('KHUẤT THÁP', cx + bw * 0.72, cy + 28, 10, 'left', '#7dff9a', '800');
     htext(String(Math.round(heading)).padStart(3, '0') + '°', cx, cy - bh - 6, 12);
     if ((P.g ?? 1) > 2.5) htext(`${P.g.toFixed(1)}G`, cx - bw * 0.72, cy + 30, 12, 'right', YEL, '800');
     if (P.afterburner) htext('TĂNG TỐC', cx - bw * 0.72, cy - 16, 10, 'right', YEL, '800');
@@ -678,6 +679,9 @@ function drawFighterHUD(fwd) {
   hg.fillStyle = 'rgba(255,224,102,0.18)'; hg.fillRect(ax, yOf(ZONE.y), 12, (ZONE.y - (ZONE.y - 8)) * appu);
   hg.fillStyle = 'rgba(255,77,77,0.28)'; hg.fillRect(ax, yOf(ZONE.y + 40), 12, 40 * appu);
   hg.fillStyle = 'rgba(160,110,60,0.35)'; hg.fillRect(ax, yOf(0), 12, 30 * appu);
+  hg.fillStyle = 'rgba(125,255,154,0.16)'; hg.fillRect(ax, yOf(SIGHT_Y), 12, SIGHT_Y * appu);   // out of the towers' sight
+  hg.strokeStyle = '#7dff9a'; hg.beginPath(); hg.moveTo(ax, yOf(SIGHT_Y)); hg.lineTo(ax + 30, yOf(SIGHT_Y)); hg.stroke(); hg.strokeStyle = HUDC;
+  htext('THÁP', ax + 42, yOf(SIGHT_Y) - 7, 10, 'left', '#7dff9a');
   for (let m = Math.ceil(alt - tapeH / 2 / appu); m <= alt + tapeH / 2 / appu; m++) {
     if (m < 0) continue;
     const y = yOf(m), big = m % 5 === 0;
@@ -692,6 +696,7 @@ function drawFighterHUD(fwd) {
   hg.fillStyle = 'rgba(0,20,8,0.75)'; hg.fillRect(ax + 6, cy - 12, 56, 24); hg.strokeRect(ax + 6, cy - 12, 56, 24);
   htext(alt.toFixed(1), ax + 58, cy, 16, 'right', altCol, '800');
   htext('ALT m', ax + 32, cy - tapeH / 2 - 10, 11);
+  if (!towerSees(P.pos)) htext('KHUẤT TẦM THÁP', ax + 32, cy + 22, 10, 'center', '#7dff9a', '800');
   const vs = P.vel.y;
   htext(`VS ${vs >= 0 ? '+' : ''}${vs.toFixed(1)}`, ax + 32, cy + tapeH / 2 + 12, 11, 'center', vs < -2.5 ? YEL : HUDC);
 

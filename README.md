@@ -12,6 +12,7 @@ Mở `index.html` bằng trình duyệt (cần mạng để tải three.js từ 
 - Xuất kích chơi liền 12 chương, hoặc chọn chơi riêng từng chương
 - Xưởng gấp máy bay: 7 kiểu gấp có thật (Phi Tiêu, Suzanne, Nakamura, Nhào Lộn, Chim Én, Bumerang, Vòng Ống), tự chọn màu giấy và màu viền
 - Chế độ siêu thanh (cánh gập lại), né tên lửa lăn vòng, súng với vòng ngắm đón đầu, tên lửa khoá mục tiêu
+- Hai toà tháp Hightower canh trời: bay dưới 10 m hoặc dưới mái là khuất tầm tháp, tên lửa khoá chậm hẳn (cả hai phe). Hộp tiếp tế rơi xuống các khe thấp dưới tán cây, mái nhà
 - Luồn qua khe: gốc và hầm lá cây đa, tầng lá bàng, ghế đá, rổ bóng rổ… để cắt đuôi tên lửa
 - Radar kiểu máy bay chiến đấu, hộp tiếp tế, vật phẩm tăng sức mạnh, huy chương và kỷ lục
 

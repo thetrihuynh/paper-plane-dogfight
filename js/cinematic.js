@@ -361,7 +361,7 @@ const EAGLE_TALK = [
   ['Đại Bàng Đỏ', 'Tôi biết. Hôm nay tôi là người phá lời hứa đó.'],
   ['Wingman', '...Là cậu ta thật.'],
   ['Alpha 1', 'Anh quen hắn?'],
-  ['Wingman', 'Từ hồi giữa sân còn chưa có vạch phấn nào.'],
+  ['Wingman', 'Từ hồi giữa sân còn chưa có vạch phấn nào... và ngoài kia còn chưa mọc lên hai cái tháp đó.'],
   ['Wingman', 'Nghe này, lính mới: đừng bao giờ đối đầu trực diện với cậu ta. Cậu ta sẽ—'],
 ];
 const eagleT = (c, t) => { const u = t - c.D; return u < 2 ? u * 2.75 : u + 3.5; };   // dash time -> EAGLE_KEYS time
@@ -444,7 +444,7 @@ function updateCutscene(dt) {
     if (c.close) { b.pos.set(0, CUT_Y + 8 - 1.6 * (1 - e), -560 + 6 * t); b.vel.set(0, 0, 6); b.speed = 6; }
     else { b.pos.set(0, CUT_Y + 8, cz - 190); b.vel.set(0, 0, -8); b.speed = 8; }
     orient(b, _tmp.set(0.001, 0, 1));
-    if (i === 2 && !c.said.card) { c.said.card = 1; flash('⚠ ĐẠI BÀNG ĐỎ', 'Át chủ bài giỏi nhất của Phe Đỏ', 2.6); if (AU.ctx) { tone(110, 82, 1.4, 0.16, 'sawtooth'); noiseHit(AU.ctx.currentTime, 140, 0.5, 1.2); } }
+    if (i === 2 && !c.said.card) { c.said.card = 1; flash('⚠ ĐẠI BÀNG ĐỎ', '', 2.6); if (AU.ctx) { tone(110, 82, 1.4, 0.16, 'sawtooth'); noiseHit(AU.ctx.currentTime, 140, 0.5, 1.2); } }
     if (i === EAGLE_TALK.length - 1 && t - c.lSaid > 2.2) {   // cut off mid-sentence: he goes
       c.D = t; sayNow('Blackboard', 'Hắn tăng tốc! Break, break!'); whoosh(); shake = 0.4;
       if (AU.ctx) tone(180, 900, 0.9, 0.09, 'sawtooth');
@@ -572,7 +572,11 @@ const FALL_LINES = [
   ['Wingman', 'Tôi nghe rồi, bạn già.'],
   ['Wingman', 'Đáp xuống đi. Đầu hàng đi. Hôm nay không ai phải rơi nữa.'],
   ['Đại Bàng Đỏ', 'Cậu biết tôi mà. Đại Bàng không đáp xuống bên này lằn ranh.'],
-  ['Đại Bàng Đỏ', 'Tạm biệt, bạn già. Bay nốt tới ngày được nghỉ hưu nhé.'],
+  ['Đại Bàng Đỏ', 'Mà lằn ranh đó đâu phải hai đứa mình kẻ. Ngẩng lên mà xem... đèn trên đó chưa bao giờ tắt.'],
+  ['Đại Bàng Đỏ', 'Nhớ không? Ba đứa mình từng hẹn sẽ cùng bay qua khỏi bức tường rào kia.'],
+  ['Wingman', 'Cậu bay cao hơn mây. Tôi dạy bọn nhỏ bay. Còn cậu ấy gấp một con Hạc đủ to chở cả ba.'],
+  ['Đại Bàng Đỏ', 'Cuối cùng cậu ấy cũng gấp được rồi... chỉ là chở thứ khác.'],
+  ['Đại Bàng Đỏ', 'Tạm biệt, bạn già. Bay nốt tới ngày được nghỉ hưu nhé. Nhắn cậu ấy... tôi không giận.'],
 ];
 function startEagleFall(e) {
   const w = wingmanUp(), blues = flyers.filter(f => f.alive && f.team === 'blue' && f !== P && f !== w);
@@ -625,7 +629,8 @@ function updateEagleFall(dt) {
   c.spk = i >= 0 && t - c.lSaid < readTime(FALL_LINES[i][1]) * 0.85 + 0.6 ? FALL_LINES[i][0] : null;
   if (i === FALL_LINES.length - 1 && c.fallT === Infinity && t - c.lSaid > readTime(FALL_LINES[i][1]) * 0.7) c.fallT = t;   // the goodbye said: he lets go
   if (t > c.fallT + 2.6 && !c.said.bb) { c.said.bb = 1; sayNow('Blackboard', 'Red Eagle... đã rơi.'); }
-  if (t >= c.fallT + 6 || pressed.Enter || pressed.NumpadEnter) endEagleFall();
+  if (t > c.fallT + 5.4 && !c.said.bb2) { c.said.bb2 = 1; sayNow('Blackboard', '...Cậu ấy vẫn luôn thích bay lúc hoàng hôn.'); }   // off-script, and he knows it
+  if (t >= c.fallT + 8.6 || pressed.Enter || pressed.NumpadEnter) endEagleFall();
 }
 function endEagleFall() {
   const c = cut; cut = null; document.body.classList.remove('cine');

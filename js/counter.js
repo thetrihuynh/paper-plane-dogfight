@@ -104,7 +104,7 @@ function updateEagleArrive(dt) {
     if (k.v.alive && t > k.at - 0.5 && e.gunT <= 0) { e.gunT = 0.04; const d = _tmp2.subVectors(k.v.pos, e.pos).normalize(); fireBullet(e, _tmp.copy(e.pos).addScaledVector(d, 1), d, 0); }
     if (k.v.alive && t >= k.at) { destroy(k.v, e); CT.lost++; shake = Math.min(0.8, shake + 0.4); burst(k.v.pos, 50, [k.v.colorHex, 0xffffff], 6, 1.6, 1); }
   }
-  if (t > (wingmanUp() ? 7.9 : 4.2) && !c.said.title) { c.said.title = 1; flash('⚠ ĐẠI BÀNG ĐỎ', 'Át chủ bài của Phe Đỏ · lần đầu xuất hiện', 3); if (AU.ctx) { tone(110, 82, 1.4, 0.16, 'sawtooth'); noiseHit(AU.ctx.currentTime, 140, 0.5, 1.2); } }
+  if (t > (wingmanUp() ? 7.9 : 4.2) && !c.said.title) { c.said.title = 1; flash('⚠ ĐẠI BÀNG ĐỎ', '', 3); if (AU.ctx) { tone(110, 82, 1.4, 0.16, 'sawtooth'); noiseHit(AU.ctx.currentTime, 140, 0.5, 1.2); } }
   const line = (n, at, who, text) => { if (t > at && !c.said[n]) { c.said[n] = 1; sayNow(who, text); } };
   line(1, 0.3, 'Blackboard', 'Khoan... radar bắt một tín hiệu lạ. Trên cao, phía tây. Tốc độ rất lớn!');
   if (c.victims[0]) line(2, 1.6, c.victims[0].name, 'Cái gì kia—');
@@ -120,7 +120,7 @@ function endEagleArrive() {
   arrivePos(c, c.len, c.e.pos); c.e.speed = 11; c.e.mode = 'attack'; c.e.preyT = 0;
   P.invulnT = 1; P.speed = 9; camPos.copy(P.pos).add(_pv.set(0, 0.5, 2.5)); camAimS.copy(aim);
   radio('Đại Bàng Đỏ', 'Đây là bầu trời của Phe Đỏ. Mời các anh quay về.', true);   // calm, courteous, and that's all he says for a while
-  if (wingmanUp()) { radio('Alpha 2', 'Wingman, anh biết hắn?'); radio('Blackboard', 'Đại Bàng Đỏ. Mật danh Red Eagle. Tất cả, cẩn thận.'); }
+  if (wingmanUp()) { radio('Alpha 2', 'Wingman, anh biết hắn?'); radio('Blackboard', 'Tập trung. Giữ đội hình, đừng ai tách ra.'); }
   CT.phase = 'massacre'; CT.t = 0; CT.killCD = 9; CT.idle = 0; CT.man = null; CT.lostM = 0;
   for (const f of blueOthers()) f.target = c.e;   // everyone goes for him
 }
@@ -194,6 +194,7 @@ function updateEagleHold(dt) {
     line(2, 1.0, 'Alpha 3', 'Khoan, Wingman! Anh quay lại làm gì?!');
     line(3, HOLD_EAGLE + 0.4, 'Đại Bàng Đỏ', 'Cậu đừng quay lại đây nữa. Lần sau tôi sẽ không tha cho bất kỳ máy bay nào vượt qua lằn ranh đâu, kể cả cậu!');
     line(4, HOLD_WING + 0.5, 'Wingman', 'Chúng ta hãy còn gặp lại, bạn già ạ!');
+    line(7, HOLD_WING + 2.4, 'Đại Bàng Đỏ', 'Gửi lời chào Blackboard. Bảng đen vẫn còn hình ba con chim tụi mình vẽ đấy.');
     line(5, HOLD_SPLIT + 2.2, 'Alpha 3', '...Bạn già?');
     line(6, HOLD_SPLIT + 3.8, 'Blackboard', `Ta mất ${CT.lost} máy bay. Tất cả, RTB.`);
   } else {

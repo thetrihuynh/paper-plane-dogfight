@@ -239,12 +239,13 @@ function updatePlayer(dt) {
     P.closing = P.prevTgtD != null ? lerp(P.closing || 0, (P.prevTgtD - d) / Math.max(dt, 1e-3), 0.1) : 0;
     P.prevTgtD = d; P.tgtD = d; P.tgtA = a;
     { const behind = _tmp.subVectors(P.pos, P.target.pos).dot(fwdOf(P.target, _tmp2)) < 0;   // am I on its six?
-      P.tailT = behind && d < 30 && a < 0.4 ? (P.tailT || 0) + dt : Math.max(0, (P.tailT || 0) - dt * 3); }
+      P.tailT = behind && d < 30 && a < 0.4 ? (P.tailT || 0) + dt : Math.max(0, (P.tailT || 0) - dt * 3);
+      if (P.tailT > 2.5 && P.target.kind === 'ace') eaglePraise(P.target, 'tail'); }
     P.inEnv = d < LOCK_RANGE && a < LOCK_CONE;
     if (P.gunMode) { P.lockP = 0; P.inEnv = d < GUN_RANGE && a < LOCK_CONE; }   // guns: no seeker, just "in range"
     const was = P.lockP;
     if (P.gunMode) { /* no lock-on with guns */ }
-    else if (P.inEnv) { P.lockGrace = 0.8; P.lockP = Math.min(1, P.lockP + dt / (0.3 + 0.45 * a / LOCK_CONE)); }  // faster near the centre
+    else if (P.inEnv) { P.lockGrace = 0.8; P.lockP = Math.min(1, P.lockP + dt * (towerSees(P.target.pos) ? 1 : 0.5) / (0.3 + 0.45 * a / LOCK_CONE)); }  // faster near the centre, slower on a target hiding low
     else if (P.lockP >= 1 && P.lockGrace > 0) P.lockGrace -= dt;                                         // hold the lock briefly
     else P.lockP = Math.max(0, P.lockP - dt * 1.5);
     if (was < 1 && P.lockP >= 1) { P.lockFx = 0.5; lockedSound(); }

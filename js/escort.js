@@ -87,6 +87,7 @@ function escortBriefing() {
     ['Blackboard', 'Wingman đã từ chối tham gia ném bom. Anh ta bị đình chỉ vì chống lệnh cấp trên... và hiện đang bị giam.'],
     ['Alpha 2', '...Bị giam? Chỉ vì không chịu ném bom?'],
     ['Blackboard', 'Tập trung vào nhiệm vụ, Alpha 2.'],
+    ['Blackboard', '...Lệnh không phải do tôi viết. Tôi chỉ đọc lên thôi.'],
   ], true);
   escortEv.talkUntil = escortT + radioHushT;
   flash(WAVES[wave] ? WAVES[wave].title : 'PHẢN CÔNG', 'Hộ tống ba Hạc Lớn tới giữa khu Phe Đỏ', 3.2);
@@ -484,6 +485,7 @@ function endNukeCut() {
   setLabRuined(true); showLabWeapon(false); labWeapon.position.y = LABW.y;
   flash('PHÒNG THÍ NGHIỆM ĐÃ BỊ XOÁ SỔ', `Tàu Mẹ II bị chôn vùi · +1500 · Hạc Lớn còn ${keep}%: +${keep * 10}`, 3.4);
   radio('Phe Đỏ (bắt sóng)', 'Phòng Thí Nghiệm... sập hết rồi. Mấy chiếc đang gấp dở trong đó... có chiếc nào còn bay được không? Trả lời đi!', true);
+  radio('Blackboard', '...Hồi trước, con Hạc ấy được vẽ ra để chở người.');   // his old dream, said to nobody
   if (heron) removeFlyer(heron);   // banks away for home
   P.invulnT = 1.5; P.pos.copy(c.start).add(_pv.set(-7, -2, -60)); orient(P, _ax.set(0.001, 0, 1)); P.speed = 9; aim.set(0, 0, 1); camPos.copy(P.pos).add(_pv.set(0, 0.5, -2.5)); camAimS.copy(aim);
   endEscortWorld(); waveState = 'active';   // the normal flow ends the chapter once their stragglers are gone

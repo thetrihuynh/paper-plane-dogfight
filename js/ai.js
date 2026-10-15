@@ -416,8 +416,11 @@ function updateAI(a, dt) {
   if (a.mslLeft > 0 && t) {
     a.mslT -= dt;
     const inCone = a.mslT <= 0 && a.mode === 'attack' && dist < (a.K.mslRange || 60) && dist > 15 && fwd.angleTo(_tmp.subVectors(t.pos, a.pos).normalize()) < (a.K.mslCone || 0.55);
-    a.lockT = inCone ? a.lockT + dt : Math.max(0, a.lockT - dt * 2);
-    if (t === P && a.lockT > 0.3) { P.lockedBy = a; P.lockedByT = 0.25; }
+    a.lockT = inCone ? a.lockT + dt * (towerSees(t.pos) ? 1 : 0.35) : Math.max(0, a.lockT - dt * 2);   // a target flying low, out of the towers' sight, is slow to lock
+    if (t === P && a.lockT > 0.3) {
+      P.lockedBy = a; P.lockedByT = 0.25;
+      if (towerSees(P.pos) && gameMode !== 'recon') radioOnce('towerSees', 'Alpha 2', pick(['Trên cao là chỗ hai toà tháp nhìn thấy cậu, nên tụi nó khoá nhanh lắm! Xuống thấp, luồn dưới mái với tán cây!', 'Alpha 1, xuống thấp! Dưới mười mét tên lửa khoá chậm hẳn!']), 75);
+    }
     if (a.lockT >= (a.K.mslLock || (a.kind === 'ace' ? 1.1 : 1.6) - (a.kind === 'ace' ? 0.2 : 0.4) * (a.phase || 0))) {   // an enraged boss locks faster   // an enraged boss locks faster
       launchMissile(a, t); a.mslLeft--; a.lockT = 0; a.mslT = a.K.mslGap ? rr(...a.K.mslGap) : a.kind === 'ace' ? rr(4.5, 6.5) : rr(7, 10);
       if (a.kind === 'elite') {   // salvo: the partner fires at the same target from its own angle

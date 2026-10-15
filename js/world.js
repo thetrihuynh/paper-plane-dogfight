@@ -456,6 +456,8 @@ function hightower(x, z, col, signBg) {
   TOWERS.push(t);
   return t;
 }
+const SIGHT_Y = 10;   // below this, or under a roof, the Hightowers can't see you: seekers lock on far slower
+const towerSees = p => p.y > SIGHT_Y && !underRoof(p);
 const TOWER_BLUE = hightower(-240, -170, 0x2f6fd8, '#1d4fa3'), TOWER_RED = hightower(240, mirZ(-170), 0xd83a3a, '#b20d24');
 function towerString(tw, to) {
   const a = new THREE.Vector3(tw.x + rr(-6, 6), tw.crown + rr(0, 6), tw.z + rr(-6, 6)), pts = [];

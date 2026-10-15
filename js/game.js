@@ -28,9 +28,9 @@ function makeWingman() {
 // starts and as it wears on, and one when either of them flies something the other recognises. One exchange at a time.
 const BANTER = {
   hello: [['Đại Bàng Đỏ', '...Cậu cũng ở đây à, bạn già.'], ['Wingman', 'Tôi cũng chẳng muốn đâu. Quay về đi, vẫn còn kịp.']],
-  hp75: [['Đại Bàng Đỏ', 'Hồi đó giữa sân đâu có vạch phấn nào, phải không?'], ['Wingman', 'Hồi đó chẳng ai nghĩ sẽ cần đến nó.']],
+  hp75: [['Đại Bàng Đỏ', 'Hồi đó giữa sân đâu có vạch phấn nào, phải không?'], ['Wingman', 'Hồi đó chưa ai trên cao cần đến nó.']],
   hp50: [['Wingman', 'Về đi. Cậu đâu cần rơi vì một vạch phấn.'], ['Đại Bàng Đỏ', 'Còn cậu, vẫn bay cho những người đã kẻ nó.']],
-  hp25: [['Đại Bàng Đỏ', 'Cậu vẫn bay cho Blackboard à?'], ['Wingman', 'Tôi bay vì mấy cậu lính mới này thôi. Vài tuần nữa là tôi nghỉ rồi.']],
+  hp25: [['Đại Bàng Đỏ', 'Cậu vẫn bay cho Blackboard à?'], ['Wingman', 'Tôi bay vì mấy cậu lính mới này thôi. Vài tuần nữa là tôi nghỉ rồi.'], ['Đại Bàng Đỏ', 'Ngày xưa ba đứa mình đâu cần ai ra lệnh mới biết bay về đâu.']],
   spin: [['Wingman', 'Vẫn cú lộn hai vòng đó... bao nhiêu năm rồi vẫn không đổi.'], ['Đại Bàng Đỏ', 'Ha, điều này làm ta nhớ tới hồi còn học chung đấy.'], ['Wingman', 'Chúng ta có ký ức khác nhau về hồi đi học đấy, ông bạn à.']],
   zoom: [['Đại Bàng Đỏ', 'Bị kẹp giữa hai chiếc thì leo cao. Ai dạy tôi điều đó nhỉ?'], ['Wingman', 'Tôi dạy cậu để cùng bay, không phải để bay ngược chiều nhau.']],
   reverse: [['Wingman', 'Lộn ngược qua đầu đối thủ... hồi trước cả sân cờ vỗ tay mỗi lần cậu làm thế.'], ['Đại Bàng Đỏ', 'Hồi trước sân cờ chỉ có một lá cờ.']],
@@ -41,6 +41,21 @@ function banter(e, key) {
   const B = e.bt ||= { cd: 0, said: {}, t: 0, tailT: 0 };
   if (B.said[key] || B.cd > 0) return false;
   B.said[key] = 1; B.cd = 16; radioChain(BANTER[key], true); return true;
+}
+// Đại Bàng Đỏ gives the white plane its due: when Alpha 1 slips one of his missiles, hurts him, or holds his tail.
+// Calm, a little amused, and every so often a hint of who taught it to fly
+const EAGLE_PRAISE = {
+  dodge: ['Né đẹp lắm, lính mới.', 'Hừm. Không tệ.', 'Lại hụt. Cậu bay chẳng giống lính mới chút nào.', 'Cú lộn đó... tôi biết ai dạy cậu rồi.'],
+  hit: ['Khá lắm.', 'Cậu bắn trúng tôi rồi đấy. Người dạy cậu hẳn tự hào lắm.', 'Ha... cậu làm tôi nhớ tới một người. Hồi người đó còn bay cho vui.'],
+  tail: ['Bám đuôi tôi được lâu thế này... cậu là người thứ hai đấy.', 'Bình tĩnh, không vội bóp cò. Y hệt người đã dạy cậu.'],
+};
+function eaglePraise(e, kind) {
+  if (!e || !e.alive || e.fallen || cut || state !== 'play' || !P.alive) return;
+  const B = e.praise ||= { cd: 0, used: {} };
+  const pool = EAGLE_PRAISE[kind].filter(s => !B.used[s]);
+  if (clock < B.cd || !pool.length) return;
+  const s = pick(pool); B.used[s] = 1; B.cd = clock + 18;
+  radio('Đại Bàng Đỏ', s);
 }
 function eagleSkill(a, key) { if (banterOn() === a) banter(a, key); }   // called by his AI when he flies one of his moves
 function eagleBanter(dt) {
@@ -285,7 +300,7 @@ const BOSS_INTRO = {
   elite: ['SONG NHẠN', 'Hắc Nhạn & Bạch Nhạn'],
   mother: ['TÀU MẸ II', 'Chiếc chiến hạm bay thứ hai'],
   dread: ['TÀU MẸ', 'Chiến hạm bay của Phe Đỏ · đích đến: Thư Viện'],
-  ace: ['ĐẠI BÀNG ĐỎ', 'Át chủ bài của Phe Đỏ'],
+  ace: ['ĐẠI BÀNG ĐỎ', ''],   // no title: the cinematics have already shown who he is
 };
 const skyCur = { ...PALETTES.morning }, _c1 = new THREE.Color(), _c2 = new THREE.Color();
 let skyTo = PALETTES.morning, windOn = false;
@@ -408,7 +423,7 @@ function updateWaves(dt) {
   } else if (enemies.length > 0 && WAVES[wave] && WAVES[wave].resupply && (resupplyT -= dt) <= 0) {   // missile crates dropped in ahead of us
     resupplyT = WAVES[wave].resupply;
     const p = _tmp.copy(P.pos).addScaledVector(fwdOf(P, _fw).setY(0).normalize(), 35); p.y = clamp(p.y, 6, 20); p.x = clamp(p.x, -60, 60); p.z = clamp(p.z, SCHOOL.zS + 20, SCHOOL.zN - 20);
-    spawnPickup(p.clone(), 'resupply', 'msl'); popup('THÙNG TIẾP TẾ TÊN LỬA!', '#ffd93b', 1.6);
+    spawnPickup(lowSpot(p, 0, 50) || p.clone(), 'resupply', 'msl'); popup('THÙNG TIẾP TẾ TÊN LỬA!', '#ffd93b', 1.6);
   } else if (enemies.length === 0) {
     for (const f of [...flyers]) if (f.temp) removeFlyer(f);   // the extra wingmen head back to base
     if (playMode === 'chapter') chapterComplete();
@@ -439,6 +454,10 @@ function damage(f, amt, src) {
   if (src && src.kind === 'ace' && f.name === WINGMAN.name) {   // he won't fire on his old wingman
     if (gameMode === 'counter') radioOnce('eagleSpares', 'Alpha 3', 'Lạ thật... hắn lướt ngay qua mũi Wingman mà không bắn một viên nào.', 60);
     return;
+  }
+  if (f.kind === 'ace' && src === P) {   // a missile, or a solid burst of guns, makes him say something
+    f.pHurt = (clock - (f.pHurtT || -9) < 2.5 ? f.pHurt || 0 : 0) + amt; f.pHurtT = clock;
+    if (f.pHurt >= 40 && f.hp > amt) { f.pHurt = 0; eaglePraise(f, 'hit'); }   // (not on the shot that brings him down)
   }
   if (f === P && P.shieldT > 0) { amt *= 0.3; if (P.shieldMesh) P.shieldMesh.material.opacity = 0.5; }
   if (gameMode === 'counter') {   // Chương 7: nobody brings Đại Bàng Đỏ down today, and he's merciless but not instant

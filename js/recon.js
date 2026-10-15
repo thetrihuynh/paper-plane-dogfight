@@ -47,7 +47,7 @@ const TUT_STEPS = [
     radio: 'Bài 4: bị tên lửa bám thì nhấn V. Lộn vòng, pháo sáng lo phần còn lại. Tôi sống tới giờ là nhờ cái nút đó.',
     start() {}, done: () => P.evadeT > 0 },
   { title: 'Bay lướt thấp dưới 4 m trong 3 giây', hint: 'Hạ thật thấp, sát mặt sân · bay thấp là cách lọt dưới tầm radar',
-    radio: 'Bài cuối: lướt sát mặt đất. Nhiệm vụ thật hôm nay cần đúng cái này, nên làm cho tử tế.',
+    radio: 'Bài cuối: lướt sát mặt đất. Dưới mái hiên với tán cây thì chẳng ai trên cao nhìn thấy cậu. ...Ai trên cao à? Cứ bay đi đã.',
     start() { RC.lowT = 0; }, done: () => RC.lowT >= 3 },
 ];
 
@@ -119,7 +119,7 @@ function finishTutorial(skipped) {
   RC.phase = 'tutdone'; RC.stepT = 2.5;
   flash(skipped ? 'BỎ QUA HUẤN LUYỆN' : 'HUẤN LUYỆN HOÀN THÀNH', 'Sẵn sàng nhận nhiệm vụ', 2.4);
   radio('Blackboard', skipped ? 'Rõ. Bỏ qua huấn luyện, vào nhiệm vụ.' : 'Huấn luyện hoàn tất. Alpha 1, sẵn sàng tác chiến.', true);
-  if (!skipped) radio('Wingman', '...Ừ. Được đấy, lính mới. Khá hơn tôi hồi mới gấp ra.');
+  if (!skipped) { radio('Wingman', '...Ừ. Được đấy, lính mới. Khá hơn tôi hồi mới gấp ra.'); radio('Wingman', 'Hồi xưa tôi chỉ mơ được dạy bọn nhỏ bay thế này. Không phải để đưa chúng ra trận.'); }
 }
 function startSneak() {
   RC.phase = 'sneak'; RC.meter = 0; RC.wp = 0;
