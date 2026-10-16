@@ -172,6 +172,7 @@ function burnFlag(p) {   // p 0..1: the fire eats the flag from the fly end (x =
 }
 const END_FIRES = [[-50, 12, -640], [-30, 12, -645], [48, 12, -640], [0, 13, -639], [53, 19, -712], [-46, 10, -712], [-2, 1, -712], [0, 1, FLAG_RED.z], [-30, 1, -600], [34, 1, -560]];
 function startEnding() {
+  musicPlay('requiem', 4);
   // the remnants turn tail; guns fall silent
   for (const f of [...flyers]) if (f.alive && f.team === 'red') removeFlyer(f);
   for (const u of groundUnits) u.alive = false;
@@ -241,7 +242,7 @@ function updateEnding(dt) {
   line(2, 4.6, 'Alpha 2', 'Xong rồi... cuộc chiến kết thúc rồi.');
   line(3, 7.0, 'Alpha 3', 'Nhìn từ trên này... sao chẳng thấy vui gì cả.');
   if (escortEv.craneDown) line(14, 9.0, 'Alpha 2', 'Dãy nhà phía đông của họ... vẫn còn đứng. Quả bom thứ ba không bao giờ rơi xuống.');   // because of Wingman
-  line(4, 12.8, 'Blackboard', 'Lá cờ Phe Đỏ đã cháy. Chiến tranh kết thúc. Tất cả... về trường thôi.');
+  line(4, 12.8, 'Blackboard', 'Lá cờ Phe Đỏ đã cháy. Chiến tranh kết thúc. Tất cả... về nhà thôi.');
   line(6, 15.4, 'Alpha 1', '(Một mảnh cờ cháy bay ngang qua cánh. Giấy kẻ ô... giống hệt giấy của mình.)');
   line(5, 18.4, 'Blackboard', 'Blackboard gọi Wingman, báo cáo vị trí— ...À. Phải rồi.');   // habit: there's nobody on that channel any more
   if (line(10, 21, 'Alpha 1', '(Xa ngoài tường rào, hai toà tháp vẫn sáng đèn. Một xanh. Một đỏ.)')) c.towerT = t;
@@ -271,14 +272,14 @@ const SPARE_LINES = [
   ['Wingman', 'Hồi xưa có ba đứa hẹn nhau sẽ cùng bay qua bức tường đó. Chưa đứa nào đi được.'],
   ['Wingman', 'Đi đi, lính mới. Cả ba đứa.'],
   ['Alpha 1', 'Còn anh?'],
-  ['Wingman', 'Vài tuần nữa tôi mới được nghỉ. Với lại... có người vẫn đang chờ tôi về.'],
+  ['Wingman', 'Tôi còn vài tuần nữa mới được nghỉ. Với lại, có người đang chờ tôi về.'],
   ['Wingman', 'Bay cho đúng nhé, lính mới.'],   // the first thing he ever told Alpha 1; this time he isn't falling
   ['Alpha 2', 'Ba đứa, ba hướng...'],
   ['Alpha 3', '...chung một đường bay.'],
   ['Alpha 1', '(Bên kia tường rào, chẳng có vạch phấn nào.)', 0, 3],   // and then nothing for a while: Wingman watches them go
   // they won't answer the tower any more, so it goes through her
   ['Hightower', 'Hightower gọi Blackboard! Ra lệnh cho Alpha quay về. NGAY LẬP TỨC!'],
-  ['Blackboard', '(cười) Tôi luôn muốn làm điều này!', 0, 0.8],
+  ['Blackboard', '(bật cười) Biết không... tôi đã muốn nói câu này từ lâu lắm rồi.', 0, 0.8],
   ['Blackboard', 'Blackboard, out.'],
   ['Wingman', 'Wingman gọi Blackboard. Tôi về đây, Black.'],
   ['Blackboard', '...Ừ. Tôi chờ.'],
@@ -289,6 +290,7 @@ const SPARE_LINES = [
 ];
 const SPARE_GO = SPARE_LINES.findIndex(l => l[1].startsWith('Bay cho đúng')), SPARE_WING = SPARE_LINES.findIndex(l => l[1].startsWith('Wingman gọi')), SPARE_BB = SPARE_LINES.findIndex(l => l[1].includes('khu Tây'));
 function startSpareEnding() {
+  musicStop(1.2);
   for (const f of [...flyers]) if (f.alive && f.team === 'red') removeFlyer(f);
   for (const u of groundUnits) u.alive = false;
   for (const m of missiles) { m.alive = false; scene.remove(m.mesh); } missiles.length = 0;
@@ -322,7 +324,7 @@ function updateSpare(dt) {
     // the crash: the gate and the wall either side of it come down
     c.hit = true; scene.remove(cr.obj); removeFlyer(cr);
     camFlashEl.style.transition = 'none'; camFlashEl.style.opacity = 0.8; requestAnimationFrame(() => { camFlashEl.style.transition = 'opacity 1.4s'; camFlashEl.style.opacity = 0; });
-    if (AU.ctx) { noiseHit(AU.ctx.currentTime, 80, 1.0, 2.5); tone(70, 35, 2, 0.2, 'sawtooth'); }
+    bigBoom(0.8); rumble(5, 0.7);
     for (let i = 0; i < 5; i++) explosion(_tmp.copy(SPARE_GATE).add(_pv.set(rr(-8, 8), rr(-3, 4), rr(-2, 2))), 3.5, 0);
     shake = 1; breakGate();
     for (let i = 0; i < 5; i++) c.fires.push(new THREE.Vector3(rr(-14, 14), rr(0.5, 3), SPARE_GATE.z + rr(-2, 2)));
@@ -359,9 +361,11 @@ function updateSpare(dt) {
   const i = talk(c, t, SPARE_LINES);
   if (i !== c.lastI) { c.lastI = i; const L = SPARE_LINES[i]; if (L && L[3]) c.lAt += L[3]; }   // a held silence after this line
   c.spk = i >= 0 && t - c.lSaid < readTime(SPARE_LINES[i][1]) * 0.85 + 0.4 ? SPARE_LINES[i][0] : null;
-  if (i === SPARE_GO && c.goT == null && t >= c.lAt) c.goT = t;
+  if (i === SPARE_GO && c.goT == null && t >= c.lAt) { c.goT = t; musicPlay('hope', 4); }   // over the wall
   if (i >= SPARE_WING && c.wT == null) c.wT = c.lSaid;
-  if (i >= SPARE_BB && c.bT == null) c.bT = c.lSaid;
+  if (i >= SPARE_BB && c.bT == null) { c.bT = c.lSaid; musicStop(2.5); }   // she calls the other side, and everything holds its breath
+  if (i === SPARE_LINES.length - 1 && c.ansT == null) { c.ansT = t; musicSting([62, 66, 69, 74], 0.07); }   // and somebody answers: one warm chord...
+  if (c.ansT != null && t > c.ansT + 2 && !c.said.hope2) { c.said.hope2 = 1; musicPlay('hope', 5); }   // ...and the theme comes back
   if ((i === SPARE_LINES.length - 1 && t >= c.lAt + 3) || t >= END_LEN + 30 || pressed.Enter || pressed.NumpadEnter) finishSpare();
 }
 function finishSpare() {
@@ -421,6 +425,7 @@ const ESC_V = 5;
 const escD = () => escortMode === 'lab' ? 0 : 3.8, escLen = () => 11.5 + escD(), escGo = () => 6.8 + escD();
 const ESC_FORM = [[0, 3, -5], [-6, 0, 2], [6, 0, 2], [-10, 1, -3], [10, 1, -3], [0, 2.5, 7]];   // P, Alpha 2, Alpha 3, Alpha 4, Alpha 5 around the bomber, Wingman behind it
 function startEscortCut() {
+  if (escortMode !== 'lab') musicPlay('requiem', 3);   // the last flight
   for (const a of ALLIES) if (!flyers.some(f => f.alive && f.name === a.name)) makeFlyer('ally', 'blue', a.name, a.color);
   const lan = flyers.find(f => f.alive && f.name === 'Alpha 2'), minh = flyers.find(f => f.alive && f.name === 'Alpha 3');
   const tuan = escortMode === 'lab' ? null : makeFlyer('ally', 'blue', 'Alpha 4', 0x9be37a), ha = escortMode === 'lab' ? null : makeFlyer('ally', 'blue', 'Alpha 5', 0xffb35c);   // Alpha 4 and Alpha 5 only fly the finale
@@ -462,7 +467,7 @@ function updateEscortCut(dt) {
   if (t >= escLen() || pressed.Enter || pressed.NumpadEnter) endEscortCut();
 }
 function endEscortCut() {
-  const c = cut; cut = null; document.body.classList.remove('cine');
+  const c = cut; cut = null; document.body.classList.remove('cine'); musicStop(5);
   // jump to the end state: fighters out in front, bomber cruising behind
   const hz = escHeronZ(escLen()), ahead = 0.5 * 4 * (escLen() - escGo()) ** 2;
   heron.pos.set(0, 26, hz); orient(heron, FWD); heron.speed = 7;
@@ -720,7 +725,7 @@ const FALL_LINES = [
   ['Red Eagle', 'Mấy quả bom đó... xin các anh đừng thả. Bên dưới đó cũng là giấy của các anh.', 0.8],
   ['Wingman', 'Tôi nghe rồi, bạn già.'],
   ['Wingman', 'Đáp xuống đi, Red. Đầu hàng đi. Hôm nay không ai phải rơi nữa.'],
-  ['Red Eagle', 'Cậu biết tôi mà. Red Eagle không đáp xuống bên này lằn ranh.'],
+  ['Red Eagle', 'Cậu biết tôi mà. Tôi không đáp xuống bên này lằn ranh.'],
   ['Red Eagle', 'Con Hạc cô ấy hằng mơ... cuối cùng cũng gấp được rồi. Chỉ là chở thứ khác.'],   // the dream was told in Chương 9; the line to Chương 7
   ['Red Eagle', 'Tạm biệt, bạn già. Bay nốt tới ngày được nghỉ hưu nhé. Nhắn cô ấy... tôi không giận.'],
 ];
@@ -747,6 +752,7 @@ const WINGMAN_FALL = {
   },
 };
 function startEagleFall(e, o = EAGLE_FALL) {
+  musicPlay('sorrow', 3);
   const w = o.mate(), blues = flyers.filter(f => f.alive && f.team === 'blue' && f !== P && f !== w && !isHeron(f));
   for (const m of missiles) { m.alive = false; scene.remove(m.mesh); } missiles.length = 0;
   const fd = fwdOf(e, new THREE.Vector3()).setY(0); if (fd.lengthSq() < 1e-3) fd.set(0, 0, -1); fd.normalize();
@@ -801,7 +807,7 @@ function updateEagleFall(dt) {
   if (t >= c.fallT + c.o.end || pressed.Enter || pressed.NumpadEnter) endEagleFall();
 }
 function endEagleFall() {
-  const c = cut; cut = null; document.body.classList.remove('cine');
+  const c = cut; cut = null; document.body.classList.remove('cine'); musicStop(5);
   if (c.e.alive) { c.e.pos.y = Math.max(c.e.pos.y, 1); destroy(c.e, c.e.lastHitBy || P); }   // far below by now: the burst is down in the yard
   const fd = fwdOf(P, new THREE.Vector3()).setY(0).normalize();
   P.invulnT = 1; P.speed = 8; orient(P, fd); aim.copy(fd); camPos.copy(P.pos).addScaledVector(fd, -2.5).add(_pv.set(0, 0.5, 0)); camAimS.copy(aim);

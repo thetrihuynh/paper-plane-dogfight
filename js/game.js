@@ -30,16 +30,16 @@ const BANTER = {
   hello: [['Red Eagle', '...Cậu cũng ở đây à, bạn già.'], ['Wingman', 'Tôi cũng chẳng muốn đâu, Red. Quay về đi, vẫn còn kịp.']],
   hp75: [['Red Eagle', 'Hồi đó giữa sân đâu có vạch phấn nào, phải không?'], ['Wingman', 'Hồi đó chưa ai trên cao cần đến nó.']],
   hp50: [['Wingman', 'Về đi, Red. Cậu đâu cần rơi vì một vạch phấn.'], ['Red Eagle', 'Vạch phấn là lệnh. Tôi chưa từng cãi lệnh, cậu biết mà.']],
-  hp25: [['Red Eagle', 'Cậu vẫn bay cho Blackboard à?'], ['Wingman', 'Tôi bay vì mấy cậu lính mới này thôi. Vài tuần nữa là tôi nghỉ rồi.'], ['Wingman', 'Ngày xưa ba đứa mình đâu cần ai ra lệnh mới biết bay về đâu.'], ['Red Eagle', 'Ngày xưa cậu cũng chẳng bao giờ nghe lệnh. Một trong hai ta phải nghe chứ.']],
-  spin: [['Wingman', 'Vẫn cú lộn hai vòng đó... bao nhiêu năm rồi vẫn không đổi.'], ['Red Eagle', 'Ha, điều này làm ta nhớ tới hồi còn học chung đấy.'], ['Wingman', 'Chúng ta có ký ức khác nhau về hồi đi học đấy, ông bạn à.']],
+  hp25: [['Red Eagle', 'Cậu vẫn bay cho Black à?'], ['Wingman', 'Tôi bay vì mấy cậu lính mới này thôi. Vài tuần nữa là tôi nghỉ rồi.'], ['Wingman', 'Ngày xưa ba đứa mình đâu cần ai ra lệnh mới biết bay về đâu.'], ['Red Eagle', 'Ngày xưa cậu cũng chẳng bao giờ nghe lệnh. Một trong hai ta phải nghe chứ.']],
+  spin: [['Wingman', 'Vẫn cú lộn hai vòng đó... bao nhiêu năm rồi vẫn không đổi.'], ['Red Eagle', 'Ha... nhớ hồi ba đứa mình tập trên sân cờ không?'], ['Wingman', 'Hồi đó cậu lộn hai vòng là để khoe với Black. Giờ thì để hạ tôi.']],
   zoom: [['Red Eagle', 'Bị kẹp giữa hai chiếc thì leo cao. Ai dạy tôi điều đó nhỉ?'], ['Wingman', 'Tôi dạy cậu để cùng bay, không phải để bay ngược chiều nhau.']],
   reverse: [['Wingman', 'Lộn ngược qua đầu đối thủ... hồi trước cả sân cờ vỗ tay mỗi lần cậu làm thế.'], ['Red Eagle', 'Hồi trước sân cờ chỉ có một lá cờ.']],
   // Blackboard (she was the third of them) tries to talk them out of it; both cut her off, and keep talking to each other
   cutoff: [['Blackboard', 'Wingman, Red... nghe tôi. Hai cậu dừng lại đi. Hôm nay không ai phải giao chiến cả.'],
-           ['Red Eagle', '...Xin lỗi. Red Eagle, out.'], ['Wingman', 'Xin lỗi, Blackboard. Wingman out.'],
+           ['Red Eagle', '...Xin lỗi, Black. Red, out.'], ['Wingman', 'Xin lỗi, Black. Wingman out.'],
            // off her channel, just the two of them: the old argument
            ['Wingman', 'Cậu làm thế là Black buồn đấy!'], ['Red Eagle', '...Nhiệm vụ của cậu là làm cô ấy hạnh phúc. Cậu quên rồi à?'],
-           ['Wingman', 'Cậu thì lúc nào cũng nghĩa vụ với mệnh lệnh nhỉ?'], ['Red Eagle', 'Bởi vậy tôi luôn ghét cái tính bốc đồng của cậu đấy, Wingman à!']],
+           ['Wingman', 'Còn cậu thì lúc nào cũng chỉ biết mệnh lệnh.'], ['Red Eagle', 'Còn cậu thì vẫn bốc đồng y như xưa, Wingman.']],
   plea: [['Blackboard', 'Wingman? Wingman, trả lời tôi!'], ['Blackboard', '...Hai người các cậu thực sự muốn tiêu diệt nhau sao?']],
   tail: [['Red Eagle', 'Cậu vẫn bám đuôi khéo như ngày nào.'], ['Wingman', 'Ngày đó tôi bám đuôi cậu là để che cho cậu.']],
 };
@@ -175,6 +175,7 @@ function togglePause() {
   if (!paused && state === 'play') lockPointer();
   if (paused && document.pointerLockElement) document.exitPointerLock();
   if (AU.ctx) { AU.lock.g.gain.value = 0; AU.alert.g.gain.value = 0; }
+  musicDuck(paused ? 0.3 : 1);
 }
 
 let bigT = 0;
@@ -242,6 +243,7 @@ async function warmUp() {   // compile every shader the scene needs now instead 
 }
 
 async function startGame(chapter = 0, single = false) {
+  musicStop(0.4);
   if (loading) return;
   initAudio(); lockPointer();   // both need the click/keypress itself, so they go before any await
   showLoading('Đang chuẩn bị nhiệm vụ...');
@@ -284,6 +286,7 @@ function setupMission(chapter, single) {
   if (!cut) { camFwd.copy(fwdOf(P, _fw)); camAimS.copy(aim); camPos.copy(P.pos).addScaledVector(camAimS, -2.2); updateCamera(1); }   // camera already behind the plane, no swoop in from the menu view
 }
 function toMenu() {
+  musicStop(0.8);
   state = 'menu'; skyTo = PALETTES.morning; windOn = false; endEscortWorld(); endReconWorld(); endCounter(); setLabRuined(false);
   if (document.pointerLockElement) document.exitPointerLock();
   $('result').classList.add('hidden'); $('objective').classList.add('hidden'); $('menu').classList.remove('hidden'); showMenuPage('menuMain');
@@ -343,6 +346,50 @@ function showStory(i) {
   showStory.t1 = setTimeout(() => { c.style.opacity = 0; }, 6500);
   showStory.t2 = setTimeout(() => c.classList.add('hidden'), 7200);
 }
+// ---- interludes (W.interlude): before a chapter, a black screen where the squadron talks things over, a line at a
+//      time, typed out. Click / Space / Enter: the next line now; K: skip the lot. Otherwise each line stays up long
+//      enough to read and the next one follows. The game stands still behind it (main.js). Once per chapter per
+//      session: a retry goes straight in. Lines are [who, text]; who null is a stage direction
+let interlude = null;
+const interludeSeen = new Set();
+function openInterlude(i) {
+  const I = WAVES[i] && WAVES[i].interlude; if (!I || interludeSeen.has(i)) return false;
+  interludeSeen.add(i);
+  interlude = { I, story: i, k: -1, t: 0, lineT: 0, typed: 0, wait: 0.9, el: null, full: '', closeAt: null };
+  $('ilPlace').textContent = I.place || ''; $('ilLines').replaceChildren();
+  $('interlude').classList.remove('hidden', 'out');
+  if (I.mood) musicPlay(I.mood, 2);
+  return true;
+}
+$('interlude').addEventListener('click', () => { if (interlude) interlude.tap = true; });
+function interludeLine(s) {
+  const box = $('ilLines');
+  for (const d of box.children) d.classList.add('old');
+  while (box.children.length >= 5) box.firstChild.remove();
+  const [who, text] = s.I.lines[s.k], d = document.createElement('div');
+  if (who) { const b = document.createElement('b'); b.textContent = who; b.style.color = WHO_COL[who] || '#c9d2da'; d.append(b); } else d.className = 'nar';
+  s.el = document.createElement('span'); d.append(s.el); box.append(d);
+  s.full = text; s.typed = 0; s.lineT = 0; s.wait = readTime(text) * 0.9;
+  if (AU.ctx) noiseHit(AU.ctx.currentTime, 2600, 0.025, 0.09, 'bandpass');   // a soft rustle of paper
+}
+function closeInterlude(s) { if (s.closeAt == null) { s.closeAt = s.t + 0.6; $('interlude').classList.add('out'); } }
+function updateInterlude(dt) {
+  const s = interlude; s.t += dt; s.lineT += dt;
+  const go = pressed.Space || pressed.Enter || pressed.NumpadEnter || pressed.Mouse0 || s.tap; s.tap = false;
+  if (s.closeAt != null) {
+    if (s.t < s.closeAt) return;
+    $('interlude').classList.add('hidden'); interlude = null;
+    if (s.I.mood && !cut && MUS.name === s.I.mood) musicStop(3);   // (a chapter that opens on a cutscene may carry on with the same theme)
+    showStory(s.story); return;
+  }
+  if (pressed.KeyK) { closeInterlude(s); return; }
+  if (s.k < 0) { if (s.t > 0.9 || go) { s.k = 0; interludeLine(s); } return; }
+  if (s.typed < s.full.length) {   // typing it out
+    s.typed = go ? s.full.length : Math.min(s.full.length, s.typed + dt * 40);
+    s.el.textContent = s.full.slice(0, Math.floor(s.typed)); return;
+  }
+  if (go || s.lineT > s.wait) { if (++s.k < s.I.lines.length) interludeLine(s); else closeInterlude(s); }
+}
 const benched = [];   // wingmen left at school for a chapter with a smaller flight
 // extra wingmen for one chapter only (W.reinforce): they take off with us and head home when it's over
 function addReinforcements(W) {
@@ -371,7 +418,7 @@ function spawnWave(i) {
   setFlight(W); addReinforcements(W);
   if (W.msl) P.msl = Math.max(P.msl, W.msl);   // a big fight: a bigger load-out
   resupplyT = W.resupply || 0;
-  showStory(i);
+  if (!openInterlude(i)) showStory(i);   // (with an interlude first, the story card waits for it)
   if (W.escort) { startEscort(W.escort); return; }
   if (W.recon) { startRecon(W.recon); return; }
   if (W.counter) { startCounter(); return; }
@@ -474,11 +521,11 @@ function damage(f, amt, src) {
   if (cut && f === cut.boss) return;   // untouchable while his entrance plays
   if (cut && cut.kind === 'nuke' && f.team === 'blue') return;   // nothing touches the bomb run
   if (src && src.traitor) {   // Chương 12: Wingman fires on one Crane and on nothing else, least of all Alpha 1 (unless Alpha 1 joins him: then on the rest of them too)
-    const join = escortEv.choice === 'join';
-    if (!isHeron(f) || (escortEv.craneDown && !join)) return;
-    amt *= join ? 1.5 : 5;
+    if (!isHeron(f) || escortEv.craneDown) return;   // one Crane, and his guns are empty
+    amt *= 5;
   }
   if (f.name === WINGMAN.name && !f.traitor && gameMode === 'escort' && escortMode === 'finale') amt = Math.min(amt, Math.max(0, f.hp - 40));   // he's still there when it's time
+  if (isHeron(f) && f.team === 'red' && src && src.team === 'blue') amt *= 1.4;   // Chương 12, with Wingman: they aim at the wing roots, as he told them
   if (f.traitor) {   // only Alpha 1 can bring him down, and not before he's done what he came for
     if (src !== P) return;
     if (!escortEv.craneDown) amt = Math.min(amt, Math.max(0, f.hp - f.maxHp * 0.5));

@@ -340,7 +340,7 @@ function endRescueCut() {
   P.invulnT = 1; P.speed = 9; orient(P, _tmp.set(0.001, 0, 1)); aim.copy(fwdOf(P, _tmp)); camPos.copy(P.pos).add(_pv.set(0, 0.5, -2.5)); camAimS.copy(aim);
   radio('Blackboard', 'Alpha 1 về rồi! ...Phù. Ảnh Tàu Mẹ đã nằm trên bàn tôi. Cậu làm tốt lắm.', true);
   [['Blackboard', 'Còn anh, Wingman: một loạt đạn hạ một chiếc, xong đòi về đi ngủ. Phí tài quá đấy.'],
-   ['Wingman', 'Tài thì phải để dành, Blackboard. Cho lúc thật sự cần.'],   // and he does, in Chương 12
+   ['Wingman', 'Tài thì phải để dành, Black. Cho lúc thật sự cần.'],   // and he does, in Chương 12
    ['Blackboard', 'Phe Đỏ biết mình bị lộ rồi. Tất cả nghỉ đi... nhưng đừng ai ngủ say quá.']].forEach(([w, t]) => radio(w, t));
   endReconWorld();
   waveState = 'active';   // nothing left in the air: the normal flow ends the chapter

@@ -7,5 +7,17 @@ WAVES.push(
             ['Alpha 2', 'Nó to và chậm, không cơ động được. Coi chừng tên lửa phóng từ hai cánh!'],
             ['Alpha 4', 'Alpha 4, Alpha 5, Bravo 1, Bravo 2 đã cất cánh! Chúng tôi lo đám hộ tống!'],
             ['Alpha 3', 'Alpha 2, Alpha 3 yểm hộ. Alpha 1, dồn tên lửa vào thân tàu!'],
-            ['Blackboard', 'Alpha 1 mang 14 tên lửa. Mỗi hai chục giây có thùng tiếp tế thả xuống, bay xuyên qua để nạp thêm.']] }
+            ['Blackboard', 'Alpha 1 mang 14 tên lửa. Mỗi hai chục giây có thùng tiếp tế thả xuống, bay xuyên qua để nạp thêm.']],
+    // before it starts, on a black screen
+    interlude: { place: 'Phòng chỉ huy khu Đông · đêm sau chuyến trinh sát', mood: 'tension', lines: [
+      [null, 'Ảnh chụp trải kín mặt bàn. Không ai ngồi xuống.'],
+      ['Blackboard', 'Họ gọi nó là Tàu Mẹ. Sải cánh bằng nửa sân bóng, thân gấp ba lớp giấy.'],
+      ['Alpha 3', 'Ba lớp... đạn của mình bắn vào chắc chỉ như mưa phùn.'],
+      ['Blackboard', 'Hai bên cánh là giàn tên lửa. Dưới bụng có khoang chở tiêm kích: nó bay tới đâu, cả đàn túa ra tới đó.'],
+      ['Alpha 2', 'Nhưng nếp gấp nặng thế kia thì quay đầu khó lắm. Nó chậm.'],
+      ['Blackboard', 'Chậm. Nó không cần nhanh. Nó chỉ cần tới được nơi nó muốn.'],
+      ['Alpha 3', 'Nơi nào?'],
+      ['Blackboard', 'Thư Viện. Nơi mình gấp máy bay. Mất xưởng gấp thì rơi chiếc nào là mất hẳn chiếc đó.'],
+      ['Wingman', 'Có hai chiếc. Chiếc trong phòng còn gấp dở. Chiếc ngoài sân bóng thì xong rồi.'],
+      ['Blackboard', '...Và giờ họ biết mình đã nhìn thấy nó.']] } }
 );

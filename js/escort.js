@@ -80,8 +80,8 @@ function escortBriefing() {
   // the whole briefing holds the channel, and the first attack waits for it (labEvents: talkUntil)
   radioChain([
     ['Blackboard', 'Lần này là Crane 1, 2, 3, mỗi chiếc một quả. Đưa chúng tới giữa khu Tây. Chỉ cần một chiếc tới nơi.'],
-    ['Alpha 2', 'Ba quả...? Blackboard, lần trước một quả đã xoá sổ cả Phòng Thí Nghiệm...'],
-    ['Blackboard', 'Để chúng không bao giờ gấp nổi một chiếc Tàu Mẹ nào nữa. Kết thúc chuyện này một lần cho xong, Alpha 2.'],
+    ['Alpha 2', 'Lần trước một quả đã đủ xoá cả Phòng Thí Nghiệm, Blackboard. Ba quả thì còn lại gì?'],
+    ['Blackboard', 'Không còn gì để gấp Tàu Mẹ nữa. Kết thúc một lần cho xong, Alpha 2.'],
     ['Wingman', '...'],   // he flies with them, and says nothing; not yet
     ['Blackboard', '...Lệnh không phải do tôi viết. Tôi chỉ đọc lên thôi.'],
   ], true);
@@ -219,8 +219,7 @@ function updateEscort(dt) {
       missionFail(herons.length > 1 ? 'Cả ba Hạc Lớn đã bị bắn hạ…' : 'Hạc Lớn đã bị bắn hạ…'); return;
     }
     heron = next; heron.formLead = null; for (const h of herons) if (h !== heron && h.alive) h.formLead = heron;
-    if (escortEv.choice === 'join') { const w = escortEv.traitor; if (w && w.alive) w.huntHeron = w.target = heron; }
-    else radio('Blackboard', `${heron.name} dẫn đầu đội hình! Còn ${herons.filter(h => h.alive).length} chiếc, bảo vệ bằng mọi giá!`, true);
+    if (escortEv.choice !== 'join') radio('Blackboard', `${heron.name} dẫn đầu đội hình! Còn ${herons.filter(h => h.alive).length} chiếc, bảo vệ bằng mọi giá!`, true);
   }
   // the finale's briefing: everyone holds formation round the bombers at their pace until Blackboard is done talking
   if (escortMode === 'finale' && heron && heron.alive && !cut && escortT < (escortEv.talkUntil || 0)) cruise(dt);
@@ -351,6 +350,7 @@ function startNukeCut() {
   for (const h of herons) if (h.alive && !runs.some(r => r.b === h)) h.pos.copy(runs[0].start).add(_pv.set(0, 4, 20));
   for (const f of flyers) if (f.alive && f.team === 'red') f.flee = true;   // their fighters scatter from under them
   P.invulnT = 99; document.body.classList.add('cine');
+  musicStop(1.5); if (AU.ctx) tone(55, 48, NUKE_DROP + NUKE_FALL, 0.25, 'sine', 0, 0.4);   // everything goes quiet but a low drone
 }
 // =====================================================================
 //  The finale's aftermath: everything standing on their side within reach of a bomb comes down as the shockwave
@@ -437,7 +437,7 @@ function updateRuins(dt) {
 function detonate(c, r, t) {
   r.hit = t; scene.remove(r.m); if (c.hit < 0) c.hit = t;
   camFlashEl.style.transition = 'none'; camFlashEl.style.opacity = 1; requestAnimationFrame(() => { camFlashEl.style.transition = 'opacity 1.8s'; camFlashEl.style.opacity = 0; });
-  if (AU.ctx) { noiseHit(AU.ctx.currentTime, 60, 1.2, 3.5); noiseHit(AU.ctx.currentTime + 0.15, 140, 0.9, 2.5); tone(55, 30, 3, 0.3, 'sawtooth'); }
+  bigBoom(1); if (c.finale) rumble(6, 0.5);
   for (let i = 0; i < 6; i++) explosion(_tmp.copy(r.tgt).add(_pv.set(rr(-6, 6), rr(-2, 4), rr(-6, 6))), 5, 0);
   r.ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1, 64), nukeRingMat.clone()); r.ring.userData.dyn = true; r.ring.rotation.x = -PI / 2; r.ring.position.set(r.tgt.x, 1.5, r.tgt.z); scene.add(r.ring);
   for (const u of groundUnits) if (u.alive && u.pos.distanceTo(r.tgt) < 90) damageGround(u, 999);
@@ -453,7 +453,7 @@ function updateNukeCut(dt) {
     if (t > r.drop && !r.bomb) {   // one bomb each: off the hook, nose down, straight onto its target
       const p = r.m.position.clone();
       r.bomb = { m: r.m, p, v: new THREE.Vector3((r.tgt.x - p.x) / NUKE_FALL, -2, (r.tgt.z - p.z) / NUKE_FALL) };
-      if (AU.ctx) tone(320, 90, 1.6, 0.06, 'sine');
+      if (AU.ctx) tone(320, 90, 1.6, 0.06, 'sine', 0, 0.5);
     }
     if (r.bomb && r.hit < 0) {
       const b = r.bomb; b.v.y -= 9.8 * dt; b.p.addScaledVector(b.v, dt); b.m.position.copy(b.p); b.m.lookAt(_tmp.copy(b.p).add(b.v));
@@ -477,6 +477,7 @@ function updateNukeCut(dt) {
     labWeapon.position.y = LABW.y - s * s * 14;
     if (s >= 1 && !c.said.ruin) { c.said.ruin = 1; setLabRuined(true); showLabWeapon(false); labWeapon.position.y = LABW.y; labParts.forEach(o => o.rotation.z = 0); }
   }
+  if (c.hit >= 0 && t > c.hit + 2.2 && !c.said.mus) { c.said.mus = 1; musicPlay('requiem', 6); }   // once the roar has died down
   const line = (n, at, who, text) => { if (t > at && !c.said[n]) { c.said[n] = 1; sayNow(who, text); } };
   if (!c.finale) {
     line(1, 0.4, 'Blackboard', 'Crane vào hướng ném. Khoang bom mở.');
@@ -485,7 +486,7 @@ function updateNukeCut(dt) {
     if (c.hit >= 0) { line(4, c.hit + 2.6, 'Alpha 3', '...Trời ơi.'); line(5, c.hit + 4.6, 'Blackboard', 'Phòng Thí Nghiệm và Tàu Mẹ II... không còn gì nữa. Crane, RTB.'); }
   } else {
     line(1, 0.4, 'Hightower', 'Hightower gọi Crane. Vào hướng ném.');
-    line(2, 2.0, 'Alpha 2', escortEv.choice === 'join' ? 'Không... không kịp nữa rồi!' : c.runs.length > 1 ? `${c.runs.length} quả... cùng một lúc sao?` : 'Chỉ còn một chiếc... nhưng một quả cũng đủ rồi.');
+    line(2, 2.0, 'Alpha 2', escortEv.choice === 'join' ? 'Không... không kịp nữa rồi!' : c.runs.length > 1 ? `${c.runs.length > 2 ? 'Ba' : 'Hai'} quả... cùng một lúc sao?` : 'Chỉ còn một chiếc... nhưng một quả cũng đủ rồi.');
     line(3, NUKE_DROP + 0.2, 'Hightower', 'Thả.');
     if (c.hit >= 0) { line(4, c.hit + 2.8, 'Alpha 3', 'Đủ rồi... thế là đủ rồi mà...'); line(5, c.hit + 5.2, 'Alpha 1', '(Bên dưới đó... là nơi những chiếc như mình được gấp ra.)'); }
   }
@@ -500,7 +501,7 @@ function endNukeCut() {
   for (const f of flyers) if (f.alive && f.team === 'red') f.flee = true;
   if (c.finale && escortEv.choice === 'join') { missionFail('Không kịp... những quả bom vẫn rơi xuống khu Tây.'); return; }
   if (c.finale) { startEnding(); return; }   // and the war is over
-  setLabRuined(true); showLabWeapon(false); labWeapon.position.y = LABW.y;
+  setLabRuined(true); showLabWeapon(false); labWeapon.position.y = LABW.y; musicStop(10);   // the requiem fades out over the stragglers
   flash('PHÒNG THÍ NGHIỆM ĐÃ BỊ XOÁ SỔ', `Tàu Mẹ II bị chôn vùi · +1500 · Hạc Lớn còn ${keep}%: +${keep * 10}`, 3.4);
   radio('Phe Đỏ (bắt sóng)', 'Phòng Thí Nghiệm... sập hết rồi. Mấy chiếc đang gấp dở trong đó... có chiếc nào còn bay được không? Trả lời đi!', true);
   radio('Blackboard', '...Hồi trước, con Hạc ấy được vẽ ra để chở bạn bè.');   // her old dream, said to nobody
@@ -582,13 +583,13 @@ function startTraitor(E, h) {
   w.team = 'red'; w.traitor = true; w.wave = 'traitor'; w.mslLeft = 0; w.flares = 0; w.speed = 12; w.mode = 'attack';
   w.huntHeron = w.target = prey;
   Object.assign(E, { traitor: w, prey, craneDown: 0, twT: 0 });
-  startTraitorCut(E);   // he breaks formation and brings it down, up close (the talking comes after, in updateTraitor)
+  musicStop(1.5); startTraitorCut(E);   // he breaks formation and brings it down, up close (the talking comes after, in updateTraitor)
 }
 // ---- the cutscene: everyone held in formation round the lead Crane, flying on; Wingman drops back, lights his burner
 //      and zooms straight up, comes over the top and down onto the Crane on the wing, and shoots it to pieces from
 //      close behind (in slow motion), then pulls over it and out ahead. Close-ups of Alpha 2 and Alpha 3 as it falls.
 //      Positions are in the formation's own frame: x right, y up, z back from the lead Crane
-const TW_FIRE = 5.0, TW_KILL = 6.8, TW_LEN = 13;
+const TR_FIRE = 5.0, TR_KILL = 6.8, TR_LEN = 13;
 function startTraitorCut(E) {
   const w = E.traitor, prey = E.prey, h = heron;
   const fw = fwdOf(h, new THREE.Vector3()).setY(0); if (fw.lengthSq() < 1e-3) fw.set(0, 0, -1); fw.normalize();
@@ -603,9 +604,9 @@ function startTraitorCut(E) {
   local.set(P, new THREE.Vector3(px * 0.35, 3, 2));
   for (const f of flyers) if (f.alive && slots[f.name]) local.set(f, new THREE.Vector3(...slots[f.name]));
   // his line: [t, x, y, z]
-  const keys = [[0, 0, 2.5, 7], [1.0, px * 0.15, 2.2, 10], [2.2, px * 0.3, 10, 9], [3.4, px * 0.55, 20, 6], [4.3, px * 0.9, 14, 18], [TW_FIRE, px, 5.5, 25], [TW_KILL, px, 1.8, 15.5], [7.8, px * 0.9, 4.5, 4], [9.5, px * 0.5, 4, -12], [TW_LEN, 0, 4, -40]];
+  const keys = [[0, 0, 2.5, 7], [1.0, px * 0.15, 2.2, 10], [2.2, px * 0.3, 10, 9], [3.4, px * 0.55, 20, 6], [4.3, px * 0.9, 14, 18], [TR_FIRE, px, 5.5, 25], [TR_KILL, px, 1.8, 15.5], [7.8, px * 0.9, 4.5, 4], [9.5, px * 0.5, 4, -12], [TR_LEN, 0, 4, -40]];
   cut = { kind: 'traitor', t: 0, boss: w, crew: [...local.keys()].filter(f => f !== w), said: {}, E, w, prey, fw, rt, H0, v, local, keys,
-    curve: new THREE.CatmullRomCurve3(keys.map(k => new THREE.Vector3(k[1], k[2], k[3]))), slow: t => t > TW_FIRE - 0.3 && t < TW_KILL + 0.8 ? 0.4 : 1 };
+    curve: new THREE.CatmullRomCurve3(keys.map(k => new THREE.Vector3(k[1], k[2], k[3]))), slow: t => t > TR_FIRE - 0.3 && t < TR_KILL + 0.8 ? 0.4 : 1 };
   w.team = 'red';
   P.invulnT = 99; document.body.classList.add('cine');
   if (!cineOn) endTraitorCut();
@@ -630,32 +631,34 @@ function updateTraitorCut(dt) {
   _tmp.sub(w.pos); orient(w, _tmp); w.vel.copy(_tmp).divideScalar(0.05); w.speed = w.vel.length();
   w.afterburner = t > 1.0 && t < 4;
   if (w.afterburner && Math.random() < 0.8) puff(fire, _tmp.copy(w.pos).addScaledVector(fwdOf(w, _tmp2), -0.4), _pv.set(0, 0, 0), 0.2, 0.12, 0.05, 0xffb347);
-  if (t > 1.0 && t < 1.2 && !c.said.boom) { c.said.boom = 1; whoosh(); if (AU.ctx) tone(200, 700, 0.8, 0.07, 'sawtooth'); }
+  if (t > 1.0 && t < 1.2 && !c.said.boom) { c.said.boom = 1; whoosh(); if (AU.ctx) tone(200, 700, 0.8, 0.07, 'sawtooth'); musicPlay('drive', 0.4); }
+  if (t > TR_FIRE - 0.3 && !c.said.slow) { c.said.slow = 1; slowmo(); musicDuck(0.4, 0.5); }
   // the guns: a long burst from close behind, into its wing and body
-  if (t > TW_FIRE && t < TW_KILL && prey.alive) {
+  if (t > TR_FIRE && t < TR_KILL && prey.alive) {
     c.gunT = (c.gunT || 0) - dt;
     if (c.gunT <= 0) {
       c.gunT = 0.05;
       const from = _tmp.copy(w.pos).addScaledVector(fwdOf(w, _tmp2), 0.5);
       fireBullet(w, from, _ax.subVectors(_twA.copy(prey.pos).add(_pv.set(rr(-1.5, 1.5), rr(-0.4, 0.4), rr(-1, 1))), from).normalize(), 0);
-      if (AU.ctx && Math.random() < 0.5) tone(900, 300, 0.05, 0.03, 'square');
+      gunSound(0.8); if (Math.random() < 0.35) paperTear(0.6);
     }
     if (Math.random() < dt * 25) { const p = _tmp.copy(prey.pos).add(_pv.set(rr(-2.5, 2.5), rr(-0.3, 0.6), rr(-1.5, 1.5))); burst(p, 4, [prey.colorHex, 0xf4f1e8], 3, 0.8, 0.6); if (Math.random() < 0.4) puff(fire, p, _pv.set(0, 1, 0), 0.5, 0.3, 0.6, 0xff8c1a); }
-    prey.hp = Math.max(1, prey.maxHp * (1 - (t - TW_FIRE) / (TW_KILL - TW_FIRE)));
+    prey.hp = Math.max(1, prey.maxHp * (1 - (t - TR_FIRE) / (TR_KILL - TR_FIRE)));
   }
-  if (t >= TW_KILL && prey.alive) {   // it comes apart
+  if (t >= TR_KILL && prey.alive) {   // it comes apart (and the music cuts out with it)
+    bigBoom(0.6); paperTear(1); musicStop(0.15); musicDuck(1, 0.1);
     c.local.delete(prey); prey.hp = 0; destroy(prey, w);
     prey.vel.copy(c.fw).multiplyScalar(c.v * 0.7).add(_pv.set(0, -1, 0)); prey.spin.set(rr(-1, 1), rr(-0.5, 0.5), Math.sign(c.keys[5][1]) * rr(2, 3));
     explosion(prey.pos, 3); for (let i = 0; i < 3; i++) burst(_tmp.copy(prey.pos).add(_pv.set(rr(-3, 3), rr(-1, 1), rr(-2, 2))), 40, [prey.colorHex, 0xffffff, 0xd8d2c0], 8, 2.5, 2.5);
     shake = 0.6;
   }
   const say = (k, at, who, text) => { if (t > at && !c.said[k]) { c.said[k] = 1; sayNow(who, text); } };
-  say(1, 1.3, 'Alpha 3', 'Wingman? Anh tách đội hình làm gì vậy?!');
-  say(2, 4.4, 'Wingman', 'Đây không phải là hoà bình, mà là diệt chủng!');
-  say(3, 8.0, 'Alpha 2', 'Không... không thể nào!');
-  say(4, 10.2, 'Alpha 3', `Wingman... bắn hạ ${prey.name}!`);
+  say(1, 1.3, 'Alpha 3', 'Wingman? Anh đi đâu vậy?!');
+  say(2, 4.4, 'Wingman', 'Kết thúc chiến tranh à? Không... đây là xoá sổ cả khu Tây!');
+  say(3, 8.0, 'Alpha 2', 'Wingman... bắn vào phe mình?');
+  say(4, 10.2, 'Alpha 3', `...${prey.name} rơi rồi.`);
   aim.copy(c.fw);
-  if (t >= TW_LEN || pressed.Enter || pressed.NumpadEnter) endTraitorCut();
+  if (t >= TR_LEN || pressed.Enter || pressed.NumpadEnter) endTraitorCut();
 }
 function endTraitorCut() {
   const c = cut; cut = null; document.body.classList.remove('cine');
@@ -663,7 +666,7 @@ function endTraitorCut() {
   if (prey.alive) { prey.hp = 0; destroy(prey, w); }
   w.afterburner = false; w.huntHeron = null; w.target = null; w.mode = 'attack';
   P.invulnT = 1; P.speed = Math.max(P.speed, 8); aim.copy(c.fw); camPos.copy(P.pos).addScaledVector(c.fw, -2.5).add(_pv.set(0, 0.5, 0)); camAimS.copy(aim);
-  E.twT = 0;
+  E.twT = 0; musicPlay('tension', 4);
 }
 function traitorCamera(dt) {
   const c = cut, t = c.t, w = c.w, prey = c.prey;
@@ -674,8 +677,8 @@ function traitorCamera(dt) {
   };
   if (t < 1.0) { shot = 1; close(w, 1); }   // Wingman in his slot, quiet
   else if (t < 3.4) { shot = 2; twWorld(c, _twB.set(c.keys[1][1] + 1.5, 0.8, 14), t, _cd); _cl.copy(w.pos); fov = 54; }   // from below and behind, keeping pace with the formation, as he goes straight up
-  else if (t < TW_FIRE) { shot = 3; _cd.copy(w.pos).addScaledVector(fwdOf(w, _tmp2), -2.4).addScaledVector(upOf(w, _ar), 0.7); _cl.copy(prey.pos); fov = 56; }   // over his shoulder, coming down onto it
-  else if (t < TW_KILL + 0.6) { shot = 4; _cd.copy(prey.pos).addScaledVector(c.rt, Math.sign(c.keys[5][1]) * 7).add(_pv.set(0, 1.8, 0)).addScaledVector(c.fw, 3); _cl.copy(prey.pos).lerp(w.pos, 0.3); fov = 48; }   // close on the Crane as the rounds tear into it
+  else if (t < TR_FIRE) { shot = 3; _cd.copy(w.pos).addScaledVector(fwdOf(w, _tmp2), -2.4).addScaledVector(upOf(w, _ar), 0.7); _cl.copy(prey.pos); fov = 56; }   // over his shoulder, coming down onto it
+  else if (t < TR_KILL + 0.6) { shot = 4; _cd.copy(prey.pos).addScaledVector(c.rt, Math.sign(c.keys[5][1]) * 7).add(_pv.set(0, 1.8, 0)).addScaledVector(c.fw, 3); _cl.copy(prey.pos).lerp(w.pos, 0.3); fov = 48; }   // close on the Crane as the rounds tear into it
   else if (t < 8.0) { shot = 5; _cd.copy(P.pos).addScaledVector(c.fw, -2).add(_pv.set(0, 0.7, 0)); _cl.copy(prey.pos); fov = 52; }   // Alpha 1's view: it falls away, burning
   else if (t < 10.2 && a2) { shot = 6; close(a2, -1); }
   else if (a3) { shot = 7; close(a3, 1); }
@@ -695,17 +698,17 @@ function updateTraitor(E, dt) {
     w.huntHeron = null; w.K = Object.assign({}, w.K, { gunRange: 0 });   // he's done: he won't fire another round, at anyone
     const n = herons.filter(h => h.alive).length;
     radioChain([   // (the cutscene had the first lines; at most 10 fit in the queue)
-      ['Wingman', 'Tôi đã quá chán nản với việc bị kiểm soát bởi bọn ở trên cao kia rồi.'],
-      ['Blackboard', 'Wingman, quay về đội hình đi... làm ơn.'],
+      ['Wingman', 'Red giữ lệnh tới phút cuối. Tôi thì không giữ nổi.'],
+      ['Blackboard', 'Wingman. Quay về đi. ...Làm ơn.'],
       ['Wingman', 'Black... Red nhờ tôi nhắn: cậu ấy không giận.'],
-      ['Wingman', 'Xin lỗi Black... vì đã làm cô liên luỵ.'],
-      ['Wingman', 'Red, đây là thứ ít ra tôi có thể làm...'],
+      ['Wingman', 'Người ta sẽ hỏi cô về tôi. Cứ nói cô không biết gì, Black.'],
+      ['Wingman', 'Red... tôi chỉ làm được đến đây thôi.'],
       ['Hightower', 'Hightower gọi Alpha. Wingman là kẻ phản bội. Hạ hắn.'],
-      ['Wingman', `Còn ${n > 1 ? 'hai' : 'một'} chiếc nữa, lính mới. Tôi không bắt cậu theo tôi đâu.`],
-      ['Alpha 2', 'Alpha 1... cậu định làm gì?'],
+      ['Wingman', `Hết đạn rồi. Còn ${n > 1 ? 'hai' : 'một'} chiếc nữa, lính mới. Tôi dạy cậu bay, không dạy cậu nghe lời ai. Kể cả tôi.`],
+      ['Alpha 2', 'Alpha 1...?'],
       // the new three: whatever Alpha 1 does, the other two go with it
-      ['Alpha 3', 'Cậu chọn gì thì tôi vẫn bay sau cánh cậu. Từ hồi sân cờ đã thế rồi.'],
-      ['Alpha 2', 'Tôi cũng vậy. Ba đứa, ba hướng... nhưng chung một đường bay.'],
+      ['Alpha 3', 'Cậu chọn gì, tôi vẫn ở sau cánh cậu. Như hồi trên sân cờ.'],
+      ['Alpha 2', 'Tôi cũng vậy. Ba đứa mình mà.'],   // ("ba đứa, ba hướng" is kept for when they fly out over the wall)
     ], true);
     E.askAt = escortT + radioHushT;
   }
@@ -714,23 +717,24 @@ function updateTraitor(E, dt) {
     if (!choosing && escortT >= E.askAt) openChoice(E);
     if (choosing) {
       P.invulnT = Math.max(P.invulnT, 0.5);
+      if (AU.ctx && AU.ctx.currentTime > (E.hbAt || 0)) { E.hbAt = AU.ctx.currentTime + 1.1; heartbeat(0.9); }
       if (pressed.Digit1 || pressed.Numpad1) chooseSide(E, 'stop');
       else if (pressed.Digit2 || pressed.Numpad2) chooseSide(E, 'join');
     }
     return;
   }
-  if (E.choice === 'stop' && E.twT > E.downT + 30) radioOnce('traitorWait', 'Wingman', 'Tôi sẽ không bắn cậu đâu, lính mới. Làm điều cậu phải làm đi.', 999);
+  if (E.choice === 'stop' && E.twT > E.downT + 30) radioOnce('traitorWait', 'Wingman', 'Súng tôi trống rồi, lính mới. ...Làm đi.', 999);
 }
 let choosing = null;   // the escort events waiting on Alpha 1, while the choice is up
-function openChoice(E) { choosing = E; $('choice').classList.remove('hidden'); }
+function openChoice(E) { choosing = E; $('choice').classList.remove('hidden'); slowmo(); musicDuck(0.35, 1); }
 function closeChoice() { choosing = null; $('choice').classList.add('hidden'); }
 document.querySelectorAll('#choice button').forEach(b => b.addEventListener('click', () => { if (choosing) chooseSide(choosing, b.dataset.k); }));
 function chooseSide(E, k) {
-  closeChoice(); E.choice = k;
+  closeChoice(); E.choice = k; musicDuck(1, 1); musicPlay(k === 'join' ? 'drive' : 'tension', 2);
   if (k === 'stop') {   // Hightower's way: Alpha 1 brings him down (only Alpha 1 can: game.js damage())
     radioChain([
       ['Alpha 1', 'Alpha 1, rõ.'],
-      ['Alpha 2', '...Được. Cậu đã quyết thì tôi yểm hộ cậu.'],
+      ['Alpha 2', '...Rõ. Tôi yểm hộ.'],
       ['Alpha 3', 'Bọn tôi chặn hai bên. Phát cuối... là của cậu, Alpha 1.'],
       ['Blackboard', 'Wingman? Wingman, trả lời tôi!'],
     ], true);
@@ -739,8 +743,7 @@ function chooseSide(E, k) {
   // his way: the three of them turn on the bombers too. Alpha 4 and 5 won't fire on friends either way, and go home;
   // the Cranes come round for a new run, and that's all the time there is
   const w = E.traitor;
-  w.team = 'blue'; w.K = Object.assign({}, w.K, { gunRange: 30 }); w.mode = 'attack';
-  w.huntHeron = w.target = heron;
+  w.team = 'blue'; w.mode = 'attack';   // (still out of ammunition: he flies with them, and that's all)
   for (const h of herons) if (h.alive) h.team = 'red';
   E.leavers = flyers.filter(f => f.alive && (f.name === 'Alpha 4' || f.name === 'Alpha 5'));
   for (const f of E.leavers) { f.retreat = true; f.target = null; }
@@ -748,11 +751,12 @@ function chooseSide(E, k) {
   for (const u of groundUnits) u.lockT = 0;
   radioChain([
     ['Alpha 1', 'Không. Không phải thế này.'],
-    ['Wingman', '...Đúng là học trò của tôi.'],
+    ['Wingman', '...Học trò của tôi đấy. Nhắm vào gốc cánh: chỗ nếp gấp dày nhất lại là chỗ yếu nhất.'],
     ['Alpha 2', 'Alpha 2 theo cậu! Hạ mấy con Hạc trước khi chúng tới khu Tây!'],
-    ['Alpha 3', '...Hightower sẽ xoá tên cả ba đứa mình. Kệ. Tôi bay sau cánh cậu.'],
-    ['Hightower', 'Hightower gọi Crane. Alpha 1, 2, 3 đã phản bội. Vòng lại, lấy hướng ném mới.'],
-    ['Alpha 4', 'Alpha 4, Alpha 5... chúng tôi không bắn bạn mình. Rút khỏi trận.'],
+    ['Alpha 3', '...Lần đầu tiên tôi cãi lệnh đấy. Kệ.'],
+    ['Hightower', 'Hightower gọi Crane. Vòng lại, lấy hướng ném mới.'],
+    ['Hightower', 'Hightower gọi tất cả các đơn vị. Alpha 1, 2, 3 phản bội. Hạ chúng.'],
+    ['Alpha 4', '...Alpha 4, Alpha 5 không bắn bạn mình. Chúng tôi rút.'],
     ['Blackboard', '...Radar của tôi vừa mất tín hiệu Crane. Tôi không thấy gì nữa cả.'],   // she isn't guiding them any more
   ], true);
   flash('', 'Hạ những chiếc Hạc còn lại trước khi chúng vào hướng ném', 3);
@@ -823,7 +827,7 @@ const FINALE_PHASES = [   // Chương 12: many of them, all green, most of them 
     feed(E, 6, 1.8, k => huntersOn(k % 3 ? 'dart' : 'swallow', 1, '', side(h, k, 100, 120, 20, 40), 'ram', rookieOf(true)));
     flash('TÂN BINH CẢM TỬ', 'Chúng không bắn · chúng lao thẳng vào Hạc Lớn!', 2.6);
     radio('Alpha 3', 'Lại nữa! Cả chuỗi lao vào Crane, không chiếc nào định quay đầu!', true);
-    sayLater(E, [[5, 'Blackboard', 'Phe Đỏ hết phi công rồi. Thứ duy nhất chúng còn là thân mình. Hạ từng chiếc trước khi chúng chạm Crane.'],
+    sayLater(E, [[5, 'Blackboard', 'Phe Đỏ không còn ai biết bay nữa. Thứ duy nhất chúng còn là thân mình. Hạ từng chiếc trước khi chúng chạm Crane.'],
       [12, 'Alpha 2', 'Chúng... còn non hơn cả bọn mình hồi mới gấp ra. Cùng một thứ giấy, cùng một thứ tiếng.'],
       [18, 'Alpha 5', 'Đừng nghĩ nữa, Alpha 2. Một chiếc lọt qua là Crane thủng một mảng.']]);
   } },

@@ -212,6 +212,7 @@ function objectiveLost(o) {
   else if (state === 'play' && objectives.every(x => !x.alive)) missionFail('Sân trường đã bị ném bom nước tơi bời…');
 }
 function missionFail(reason) {
+  musicStop(2);
   state = 'dead'; endT = 0; P.failReason = reason;
   if (document.pointerLockElement) document.exitPointerLock();
   flash('NHIỆM VỤ THẤT BẠI', reason, 3);

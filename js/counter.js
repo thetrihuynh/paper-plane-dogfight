@@ -194,8 +194,8 @@ function updateEagleHold(dt) {
     line(2, 1.0, 'Alpha 3', 'Khoan, Wingman! Anh quay lại làm gì?!');
     line(3, HOLD_EAGLE + 0.4, 'Red Eagle', 'Cậu đừng quay lại đây nữa. Lần sau tôi sẽ không tha cho bất kỳ máy bay nào vượt qua lằn ranh đâu, kể cả cậu!');
     line(8, HOLD_EAGLE + 5.8, 'Red Eagle', 'Lằn ranh này đâu phải hai đứa mình kẻ. Ngẩng lên mà xem, đèn trên đó chưa bao giờ tắt. ...Nhưng tôi vẫn phải giữ nó.');
-    line(4, HOLD_WING + 0.5, 'Wingman', 'Chúng ta hãy còn gặp lại, bạn già ạ!');
-    line(7, HOLD_WING + 2.4, 'Red Eagle', 'Gửi lời chào Blackboard. Bảng đen vẫn còn hình ba con chim tụi mình vẽ đấy.');
+    line(4, HOLD_WING + 0.5, 'Wingman', 'Rồi sẽ còn gặp lại, bạn già.');
+    line(7, HOLD_WING + 2.4, 'Red Eagle', 'Gửi lời chào Black. Bảng đen vẫn còn hình ba con chim tụi mình vẽ đấy.');
     line(5, HOLD_SPLIT + 2.2, 'Alpha 3', '...Bạn già?');
     line(6, HOLD_SPLIT + 3.8, 'Blackboard', `Ta mất ${CT.lost} máy bay. Tất cả, RTB.`);
   } else {

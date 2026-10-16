@@ -44,7 +44,7 @@ Mở thẳng `index.html` là chơi được, không cần máy chủ. Trang n�
 | `js/aircraft.js` | mẫu máy bay, các loại máy bay, xưởng gấp, mô hình bay |
 | `js/weapons.js` | súng, tên lửa, bom nước, hộp tiếp tế, vòng thưởng, pháo sáng |
 | `js/escort.js` | màn Phản công: Hạc Lớn, pháo phòng không, SAM |
-| `js/audio.js` · `js/input.js` | âm thanh, radio · bàn phím, chuột, cảm ứng |
+| `js/audio.js` · `js/input.js` | âm thanh tổng hợp, nhạc cảnh phim soạn bằng code, radio · bàn phím, chuột, cảm ứng |
 | `js/game.js` | trạng thái game, luồng chương, kết quả, bầu trời |
 | `js/chapters/ch01.js` … `ch12.js` | **mỗi chương một file**: truyện, địch, bầu trời, lời thoại |
 | `js/player.js` | điều khiển người chơi |

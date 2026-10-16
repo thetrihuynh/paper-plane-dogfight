@@ -11,5 +11,16 @@ WAVES.push(
             [2, [['Alpha 3', 'Hết trận này tôi sẽ xin vào xưởng gấp. Gấp một chiếc thật to, chở được cả ba đứa mình bay qua tường rào.'],
                  ['Alpha 2', 'Còn tôi thì muốn dạy mấy chiếc mới gấp bay. Bay cho vui thôi, không phải để bắn nhau.'],
                  ['Alpha 2', 'Alpha 1 thì chắc chỉ muốn bay cao hơn mây.']]],
-            [1, [['Phe Đỏ (bắt sóng)', 'Hết rồi... Khu Tây chỉ còn lại một chiếc. Chỉ còn Red Eagle thôi.']]]] }
+            [1, [['Phe Đỏ (bắt sóng)', 'Hết rồi... Khu Tây chỉ còn lại một chiếc. Chỉ còn Red Eagle thôi.']]]],
+    // before it starts, on a black screen
+    interlude: { place: 'Thư Viện · trước cơn giông', mood: 'tension', lines: [
+      ['Blackboard', 'Chỉ thị từ trên tháp: gấp thêm hai con Hạc nữa. Cùng con cũ là ba. Mỗi chiếc một quả, bay cùng một lúc.'],
+      ['Alpha 2', 'Ba quả... để làm gì? Phòng Thí Nghiệm thành tro rồi mà.'],
+      ['Blackboard', 'Lệnh nói: để kết thúc chiến tranh.'],
+      ['Wingman', 'Một quả phá một toà nhà. Ba quả thì phá cả nửa sân trường.'],
+      ['Wingman', 'Black. Nửa sân bên kia cũng có người gấp máy bay.'],
+      ['Blackboard', '...Tôi biết.'],
+      ['Blackboard', 'Tôi đã hỏi lại. Trên tháp không trả lời câu hỏi.'],
+      ['Alpha 3', 'Nhưng xong chuyện này thì sẽ không còn ai phải rơi nữa, đúng không?'],
+      [null, 'Không ai trả lời Alpha 3.']] } }
 );

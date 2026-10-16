@@ -9,5 +9,5 @@ WAVES.push(
              ['Wingman', 'Đứa còn lại muốn gấp một con Hạc đủ to chở cả ba.'],
              ['Wingman', '...Rồi đứa nào cũng đi làm một việc khác. Về thôi, lính mới.']],
     radio: [['Bạch Nhạn', 'Chiếc dẫn đầu kia là chiếc đã bay xuyên Phòng Thí Nghiệm. Hắc Nhạn, để chiếc đó cho tôi.'], ['Wingman', 'Lại Song Nhạn... Chiếc trước mũi cậu là mồi, đừng đuổi. Chiếc đen sẽ vòng ra sau đuôi cậu, để nó cho tôi.'], ['Blackboard', 'Hai đấu hai. Alpha 1, Wingman: giữ đội hình, đừng tách ra!'],
-            ['Blackboard', 'Wingman, hôm nay đừng bay kiểu đi dạo nữa nhé. Cho lính mới xem anh thật sự bay thế nào.'], ['Wingman', '...Lắm lời quá, Blackboard.']] }
+            ['Blackboard', 'Wingman, hôm nay đừng bay kiểu đi dạo nữa nhé. Cho lính mới xem anh thật sự bay thế nào.'], ['Wingman', '...Lắm lời quá, Black.']] }
 );

@@ -52,6 +52,7 @@ function frameInner(now) {
   if (loading) { for (const k in pressed) delete pressed[k]; return; }   // nothing moves behind the loading screen
   if (paused) { for (const k in pressed) delete pressed[k]; renderer.render(scene, camera); return; }
   const realDt = dt;
+  if (interlude) { updateInterlude(realDt); for (const k in pressed) delete pressed[k]; renderer.render(scene, camera); return; }   // the world waits while they talk
   autoQuality(realDt);
   cineCD -= realDt;
   if (cut && state === 'play' && cut.slow) dt *= cut.slow(cut.t);   // each cutscene brings its own slow motion

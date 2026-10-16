@@ -90,6 +90,17 @@
     color: #24324a; box-shadow: 0 8px 24px rgba(0,0,0,.35); transition: opacity .7s; z-index: 6; }
   #storyCard b { display: block; color: #d62828; font-size: 18px; padding-left: 14px; }
   #storyCard span { display: block; font-size: 15px; line-height: 22px; padding-left: 14px; }
+  /* the interlude before a chapter: black, the squadron talking, one line at a time */
+  #interlude { position: fixed; inset: 0; z-index: 20; background: #050608; color: #e8ecf0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 16px; transition: opacity .6s; cursor: pointer; }
+  #interlude.out { opacity: 0; }
+  #ilPlace { position: absolute; top: 9vh; left: 0; right: 0; text-align: center; font-size: 13px; letter-spacing: .32em; text-transform: uppercase; color: #7d8896; }
+  #ilLines { width: min(680px, 100%); display: flex; flex-direction: column; gap: 16px; }
+  #ilLines div { font-size: 21px; line-height: 1.5; transition: opacity .8s; }
+  #ilLines div.old { opacity: .32; }
+  #ilLines div b { display: block; font-size: 12px; letter-spacing: .2em; text-transform: uppercase; margin-bottom: 2px; }
+  #ilLines div.nar { font-style: italic; color: #9aa4b0; text-align: center; }
+  #ilHint { position: absolute; bottom: 7vh; left: 0; right: 0; text-align: center; font-size: 12px; letter-spacing: .12em; color: #5d6773; }
+  #pause { z-index: 21; }
   #loading { z-index: 30; background: radial-gradient(circle at 50% 40%, #e9f6fb 0%, #cfe8f2 60%, #a9cfe2 100%); backdrop-filter: none; transition: opacity .35s; }
   #loading.fade { opacity: 0; pointer-events: none; }
   #loading .box { text-align: center; color: #1d4fa3; }
@@ -169,6 +180,7 @@
   </div>
 </div>
 
+<div id="interlude" class="hidden"><div id="ilPlace"></div><div id="ilLines"></div><div id="ilHint">Click · Space: câu tiếp &nbsp;·&nbsp; K: bỏ qua</div></div>
 <div id="storyCard" class="hidden"><b id="storyT"></b><span id="storyB"></span></div>
 <div id="result" class="overlay hidden">
   <div class="paper">
@@ -208,7 +220,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 window.THREE = THREE; window.mergeGeometries = mergeGeometries;
 const FILES = [ "js/core.js", "js/world.js", "js/effects.js", "js/aircraft.js", "js/weapons.js", "js/escort.js", "js/recon.js", "js/dread.js", "js/counter.js", "js/audio.js", "js/input.js", "js/game.js", "js/chapters/ch01.js", "js/chapters/ch02.js", "js/chapters/ch03.js", "js/chapters/ch04.js", "js/chapters/ch05.js", "js/chapters/ch06.js", "js/chapters/ch07.js", "js/chapters/ch08.js", "js/chapters/ch09.js", "js/chapters/ch10.js", "js/chapters/ch11.js", "js/chapters/ch12.js", "js/player.js", "js/cinematic.js", "js/ai.js", "js/camera.js", "js/hud.js", "js/main.js" ];
-const V = '20261017s';   // bump when the files change, so browsers don't run stale cached copies
+const V = '20261018d';   // bump when the files change, so browsers don't run stale cached copies
 let loaded = 0;   // the loading screen's bar fills as the files arrive; main.js takes it down once the scene is ready
 for (const f of FILES) {
   const s = document.createElement('script'); s.src = f + '?v=' + V; s.async = false;

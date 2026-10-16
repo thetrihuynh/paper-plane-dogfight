@@ -47,7 +47,7 @@ const cvs = renderer.domElement;
 cvs.addEventListener('contextmenu', (e) => e.preventDefault());
 cvs.addEventListener('mousedown', (e) => {
   if ((state === 'play') && !document.pointerLockElement && !paused) { lockPointer(); }
-  if (e.button === 0) mouse.l = true;
+  if (e.button === 0) { mouse.l = true; pressed.Mouse0 = true; }
   if (e.button === 2) { mouse.r = true; pressed.Mouse2 = true; }
 });
 addEventListener('mouseup', (e) => { if (e.button === 0) mouse.l = false; if (e.button === 2) mouse.r = false; });
